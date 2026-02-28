@@ -78,6 +78,97 @@ export const realDebridService = {
     }
   },
 
+  // Complete Real-Debrid streaming flow
+  addMagnetAndGetLink: async (magnet: string, title: string): Promise<string | null> => {
+    try {
+      const token = await realDebridService.getToken();
+      if (!token) {
+        console.error('No Real-Debrid token available');
+        return null;
+      }
+
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+
+      // Step 1: Add magnet to Real-Debrid
+      console.log('Adding magnet to Real-Debrid...');
+      const addResponse = await axios.post(`${backendUrl}/api/debrid/real-debrid/add-magnet`, null, {
+        params: { magnet, token }
+      });
+
+      if (!addResponse.data.success) {
+        console.error('Failed to add magnet');
+        return null;
+      }
+
+      const torrentId = addResponse.data.data.id;
+      console.log('Torrent added, ID:', torrentId);
+
+      // Step 2: Select all files
+      console.log('Selecting files...');
+      await axios.post(`${backendUrl}/api/debrid/real-debrid/select-files`, null, {
+        params: { torrent_id: torrentId, file_ids: 'all', token }
+      });
+
+      // Step 3: Wait for torrent to be ready (poll status)
+      console.log('Waiting for torrent to be ready...');
+      let attempts = 0;
+      let torrentInfo;
+      
+      while (attempts < 30) { // Max 30 seconds
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const infoResponse = await axios.get(`${backendUrl}/api/debrid/real-debrid/torrent-info`, {
+          params: { torrent_id: torrentId, token }
+        });
+
+        torrentInfo = infoResponse.data.data;
+        console.log('Torrent status:', torrentInfo.status);
+
+        if (torrentInfo.status === 'downloaded' || torrentInfo.status === 'waiting_files_selection') {
+          break;
+        }
+
+        attempts++;
+      }
+
+      if (!torrentInfo || torrentInfo.status !== 'downloaded') {
+        console.error('Torrent not ready');
+        return null;
+      }
+
+      // Step 4: Get the download link
+      console.log('Getting download link...');
+      const links = torrentInfo.links || [];
+      if (links.length === 0) {
+        console.error('No links available');
+        return null;
+      }
+
+      // Use the first/largest file
+      const linkToUnrestrict = links[0];
+
+      // Step 5: Unrestrict the link to get direct streaming URL
+      console.log('Unrestricting link...');
+      const unrestrictResponse = await axios.post(`${backendUrl}/api/debrid/real-debrid/unrestrict`, null, {
+        params: { link: linkToUnrestrict, token }
+      });
+
+      if (!unrestrictResponse.data.success) {
+        console.error('Failed to unrestrict link');
+        return null;
+      }
+
+      const directLink = unrestrictResponse.data.data.download;
+      console.log('Got direct link!');
+      
+      return directLink;
+
+    } catch (error) {
+      console.error('Error in Real-Debrid flow:', error);
+      return null;
+    }
+  },
+
   // Get stream links from torrents + debrid
   getStreamLinks: async (imdbId: string, type: 'movie' | 'tv', title: string, year?: number): Promise<StreamLink[]> => {
     try {
