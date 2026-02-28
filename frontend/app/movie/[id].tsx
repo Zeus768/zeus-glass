@@ -613,9 +613,39 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.bold,
     color: '#000',
   },
+  uncachedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceLight,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    gap: 2,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  uncachedText: {
+    fontSize: 10,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.textSecondary,
+  },
   linkCardActive: {
     borderColor: theme.colors.gold,
     borderWidth: 2,
+  },
+  linkCardUncached: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    opacity: 0.85,
+  },
+  linkSourceUncached: {
+    color: theme.colors.textSecondary,
+  },
+  linkSizeUncached: {
+    color: theme.colors.textMuted,
+  },
+  seedersTextUncached: {
+    color: theme.colors.textSecondary,
   },
   noLinksSubtext: {
     marginTop: theme.spacing.sm,
@@ -623,5 +653,30 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.lg,
+  },
+  loadingSubtext: {
+    marginTop: theme.spacing.xs,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+  },
+  statsBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  statText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text,
+    fontWeight: theme.fontWeight.medium,
   },
 });
