@@ -4016,10 +4016,10 @@ expo-linking@~8.0.11:
     expo-constants "~18.0.12"
     invariant "^2.2.4"
 
-expo-mail-composer@^55.0.8:
-  version "55.0.8"
-  resolved "https://registry.yarnpkg.com/expo-mail-composer/-/expo-mail-composer-55.0.8.tgz#3865a66f4d66d6a346f4a4cf5ee5b07c76bfd2bc"
-  integrity sha512-WoOug1xq0nrKf3abziXynFeeF5jNlmwMbm1bWHV8Fwj6GBxuHNQ0aW4p1Y/7BlMfH0kpeg6u93VmHA3N1MLtJw==
+expo-mail-composer@~15.0.8:
+  version "15.0.8"
+  resolved "https://registry.yarnpkg.com/expo-mail-composer/-/expo-mail-composer-15.0.8.tgz#ca6f5d07d2d93b2edcb92bbcf50d18a0f61e9495"
+  integrity sha512-v9oGZ+523ByMXxH6C82V96otbIbQEFTyk1AhBX02nFTlUpg+qlGCV5fycMGDRxfsWmRGRVfX+0K3zwpIz1NmuQ==
 
 expo-media-library@~18.2.1:
   version "18.2.1"
