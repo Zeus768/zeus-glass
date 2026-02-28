@@ -10,6 +10,7 @@ from typing import List, Optional
 import uuid
 from datetime import datetime
 from torrent_scraper import TorrentScraper
+from torrentio_indexer import TorrentioIndexer, RealDebridIntegration
 
 
 ROOT_DIR = Path(__file__).parent
