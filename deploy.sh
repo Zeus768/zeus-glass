@@ -1,136 +1,86 @@
 #!/bin/bash
-# Zeus Glass - GitHub & Expo Deploy Script
-# Run: chmod +x deploy.sh && ./deploy.sh
+# Zeus Glass - Automated Deploy Script
+# GitHub: Zeus768/zeus-glass
+# Expo: thealphaman
 
 set -e
 
-# Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Zeus Glass - Deploy Script${NC}"
 echo -e "${GREEN}========================================${NC}"
 
-# Check if git is configured
-if [ -z "$(git config user.name)" ]; then
-    echo -e "${YELLOW}Setting up Git user...${NC}"
-    git config user.name "Zeus768"
-    git config user.email "zeus768@users.noreply.github.com"
-fi
-
 # Function to push to GitHub
-push_to_github() {
+push_github() {
     echo -e "\n${GREEN}📤 Pushing to GitHub...${NC}"
-    
-    # Check if remote exists
-    if ! git remote | grep -q "origin"; then
-        echo -e "${YELLOW}No remote 'origin' found. Adding it...${NC}"
-        read -p "Enter your GitHub repo URL (e.g., https://github.com/Zeus768/zeus-glass.git): " REPO_URL
-        git remote add origin "$REPO_URL"
-    fi
-    
-    # Get current branch
-    BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    
-    # Add all changes
+    cd /app
     git add -A
     
-    # Commit if there are changes
-    if ! git diff-index --quiet HEAD --; then
-        read -p "Enter commit message (or press Enter for default): " COMMIT_MSG
-        if [ -z "$COMMIT_MSG" ]; then
-            COMMIT_MSG="Zeus Glass update - $(date '+%Y-%m-%d %H:%M')"
-        fi
-        git commit -m "$COMMIT_MSG"
-    else
+    if git diff-index --quiet HEAD --; then
         echo -e "${YELLOW}No changes to commit${NC}"
+    else
+        git commit -m "${1:-Zeus Glass update - $(date '+%Y-%m-%d %H:%M')}"
     fi
     
-    # Push
-    echo -e "${GREEN}Pushing to $BRANCH...${NC}"
-    git push -u origin "$BRANCH"
-    
-    echo -e "${GREEN}✅ Pushed to GitHub successfully!${NC}"
+    git push origin main
+    echo -e "${GREEN}✅ Pushed to GitHub!${NC}"
+    echo -e "   https://github.com/Zeus768/zeus-glass"
 }
 
 # Function to publish to Expo
-publish_to_expo() {
+publish_expo() {
     echo -e "\n${GREEN}📱 Publishing to Expo...${NC}"
-    
-    cd frontend
-    
-    # Check if logged in
-    if ! npx expo whoami 2>/dev/null; then
-        echo -e "${YELLOW}Please log in to Expo:${NC}"
-        npx expo login
-    fi
-    
-    # Publish
-    echo -e "${GREEN}Publishing update...${NC}"
-    npx expo publish
-    
-    echo -e "${GREEN}✅ Published to Expo successfully!${NC}"
-    cd ..
+    cd /app/frontend
+    npx expo publish --non-interactive
+    echo -e "${GREEN}✅ Published to Expo!${NC}"
 }
 
-# Function to build for Android
-build_android() {
+# Function to build APK
+build_apk() {
     echo -e "\n${GREEN}🤖 Building Android APK...${NC}"
-    
-    cd frontend
-    
-    # Check if logged in
-    if ! npx eas whoami 2>/dev/null; then
-        echo -e "${YELLOW}Please log in to EAS:${NC}"
-        npx eas login
-    fi
-    
-    # Build
-    echo -e "${GREEN}Starting Android build...${NC}"
-    npx eas build --platform android --profile preview
-    
-    echo -e "${GREEN}✅ Android build started!${NC}"
-    cd ..
+    cd /app/frontend
+    npx eas build --platform android --profile preview --non-interactive
+    echo -e "${GREEN}✅ Build started! Check Expo dashboard for status.${NC}"
 }
 
 # Main menu
-echo ""
-echo "What would you like to do?"
-echo "1) Push to GitHub"
-echo "2) Publish to Expo"
-echo "3) Build Android APK"
-echo "4) Do all (GitHub + Expo)"
-echo "5) Exit"
-echo ""
-read -p "Enter your choice [1-5]: " choice
-
-case $choice in
-    1)
-        push_to_github
+case "${1:-menu}" in
+    github)
+        push_github "$2"
         ;;
-    2)
-        publish_to_expo
+    expo)
+        publish_expo
         ;;
-    3)
-        build_android
+    apk)
+        build_apk
         ;;
-    4)
-        push_to_github
-        publish_to_expo
+    all)
+        push_github "$2"
+        publish_expo
         ;;
-    5)
-        echo "Goodbye!"
-        exit 0
+    menu)
+        echo ""
+        echo "Options:"
+        echo "  ./deploy.sh github [message]  - Push to GitHub"
+        echo "  ./deploy.sh expo              - Publish to Expo"
+        echo "  ./deploy.sh apk               - Build Android APK"
+        echo "  ./deploy.sh all [message]     - GitHub + Expo"
+        echo ""
+        read -p "Quick action - Push to GitHub now? (y/n): " yn
+        if [[ $yn == "y" || $yn == "Y" ]]; then
+            push_github
+        fi
         ;;
     *)
-        echo -e "${RED}Invalid choice${NC}"
+        echo -e "${RED}Unknown option: $1${NC}"
         exit 1
         ;;
 esac
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}  Deploy Complete!${NC}"
+echo -e "${GREEN}  Done!${NC}"
 echo -e "${GREEN}========================================${NC}"
