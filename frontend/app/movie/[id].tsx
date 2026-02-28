@@ -165,7 +165,8 @@ export default function MovieDetailScreen() {
   const backdropUrl = tmdbService.getImageUrl(movie.backdrop_path, 'original');
   const posterUrl = tmdbService.getImageUrl(movie.poster_path, 'w500');
   const year = movie.release_date?.split('-')[0];
-  const groupedLinks = groupLinksByQuality(streamLinks);
+  const groupedTorrents = groupTorrentsByQuality(cachedTorrents);
+  const qualityOptions = ['4K', '1080p', '720p', '480p'];
 
   return (
     <View style={styles.container}>
