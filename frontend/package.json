@@ -1,7 +1,9 @@
 {
-  "name": "frontend",
+  "name": "zeus-glass",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "author": "Zeus768",
+  "license": "MIT",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
