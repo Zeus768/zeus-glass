@@ -68,36 +68,54 @@ export default function HomeScreen() {
               contentFit="cover"
             />
             <LinearGradient
-              colors={['transparent', theme.colors.background]}
+              colors={['transparent', 'rgba(10, 14, 39, 0.8)', theme.colors.background]}
               style={styles.heroGradient}
+              locations={[0, 0.6, 1]}
             />
             <SafeAreaView style={styles.heroContent} edges={['top']}>
-              {/* Logo / App Name */}
+              {/* Top Bar with Logo */}
               <View style={styles.header}>
                 <Text style={styles.appName}>ZEUS GLASS</Text>
-                <Ionicons name="time-outline" size={24} color={theme.colors.text} />
+                <View style={styles.headerRight}>
+                  <Ionicons name="time-outline" size={20} color={theme.colors.text} />
+                  <Text style={styles.timeText}>00:30</Text>
+                </View>
               </View>
 
               {/* Featured Content */}
               <View style={styles.heroInfo}>
                 <View style={styles.trendingBadge}>
-                  <Ionicons name="trending-up" size={16} color={theme.colors.text} />
+                  <Ionicons name="star" size={14} color={theme.colors.primary} />
                   <Text style={styles.trendingText}>Trending Now</Text>
                 </View>
-                <Text style={styles.heroTitle}>{heroMovie.title}</Text>
+                <Text style={styles.heroTitle} numberOfLines={2}>{heroMovie.title}</Text>
                 <Text style={styles.heroDescription} numberOfLines={3}>
                   {heroMovie.overview}
                 </Text>
 
+                {/* Channel Badge (like Sky Atlantic) */}
+                <View style={styles.channelBadge}>
+                  <Text style={styles.channelText}>ZEUS</Text>
+                  <View style={styles.ratingBox}>
+                    <Text style={styles.ratingBoxText}>18</Text>
+                  </View>
+                </View>
+
                 {/* Buttons */}
                 <View style={styles.heroButtons}>
-                  <Pressable style={styles.watchButton}>
-                    <Ionicons name="play" size={24} color={theme.colors.text} />
+                  <Pressable 
+                    style={styles.watchButton}
+                    onPress={() => router.push(`/movie/${heroMovie.id}`)}
+                  >
+                    <Ionicons name="play" size={20} color={theme.colors.background} />
                     <Text style={styles.watchButtonText}>Watch Now</Text>
                   </Pressable>
                   <Pressable style={styles.addButton}>
-                    <Ionicons name="add" size={24} color={theme.colors.text} />
+                    <Ionicons name="add" size={20} color={theme.colors.text} />
                     <Text style={styles.addButtonText}>Playlist</Text>
+                  </Pressable>
+                  <Pressable style={styles.infoButton}>
+                    <Ionicons name="information-circle-outline" size={20} color={theme.colors.text} />
                   </Pressable>
                 </View>
               </View>
