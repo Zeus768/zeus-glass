@@ -82,6 +82,22 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="tv-shows"
+          options={{
+            title: 'TV SHOWS',
+            tabBarIcon: () => null,
+          }}
+        />
+        {showVODTab && (
+          <Tabs.Screen
+            name="vod"
+            options={{
+              title: 'VOD',
+              tabBarIcon: () => null,
+            }}
+          />
+        )}
+        <Tabs.Screen
           name="search"
           options={{
             title: 'SEARCH',
@@ -93,6 +109,24 @@ export default function TabLayout() {
           options={{
             title: 'SETTINGS',
             tabBarIcon: () => null,
+          }}
+        />
+        <Tabs.Screen
+          name="player"
+          options={{
+            href: null, // Hide from tabs
+          }}
+        />
+        <Tabs.Screen
+          name="movie/[id]"
+          options={{
+            href: null, // Hide from tabs
+          }}
+        />
+        <Tabs.Screen
+          name="tv/[id]"
+          options={{
+            href: null, // Hide from tabs
           }}
         />
       </Tabs>
