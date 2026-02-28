@@ -286,9 +286,8 @@ export const premiumizeService = {
   },
 
   getStreamLinks: async (imdbId: string, type: 'movie' | 'tv'): Promise<StreamLink[]> => {
-    return [
-      { quality: '2160p', url: 'mock-url-4k', source: 'premiumize', size: '16.0 GB', seeders: 160 },
-      { quality: '1080p', url: 'mock-url-1080p', source: 'premiumize', size: '6.0 GB', seeders: 330 },
-    ];
+    // Premiumize would use same torrent scraping but different unrestrict API
+    // For now returning empty to avoid duplicates with Real-Debrid
+    return [];
   },
 };
