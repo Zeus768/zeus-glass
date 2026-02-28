@@ -562,4 +562,29 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.success,
   },
+  cachedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.gold,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    gap: 2,
+  },
+  cachedText: {
+    fontSize: 10,
+    fontWeight: theme.fontWeight.bold,
+    color: '#000',
+  },
+  linkCardActive: {
+    borderColor: theme.colors.gold,
+    borderWidth: 2,
+  },
+  noLinksSubtext: {
+    marginTop: theme.spacing.sm,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
 });
