@@ -121,3 +121,18 @@ export interface ContinueWatching {
   lastWatched: string;
   type: 'movie' | 'tv';
 }
+
+// Cached Torrent from Real-Debrid
+export interface CachedTorrent {
+  hash: string;
+  title: string;
+  quality: string;
+  size: string;
+  seeders: number;
+  source: string;
+  cached: boolean;
+  file_id?: string;
+  filename?: string;
+  filesize?: number;
+  magnet: string;
+}
