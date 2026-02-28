@@ -48,21 +48,79 @@ export default function MovieDetailScreen() {
   const loadStreamLinks = async () => {
     setLoadingLinks(true);
     setShowLinksModal(true);
+    setCachedTorrents([]);
+    
     try {
       if (!movie) return;
       
+      // Check if user has Real-Debrid token
+      const token = await realDebridService.getToken();
+      if (!token) {
+        Alert.alert(
+          'Login Required',
+          'Please login to Real-Debrid in Settings to stream content.',
+          [{ text: 'OK', onPress: () => setShowLinksModal(false) }]
+        );
+        return;
+      }
+      
       const year = movie.release_date ? parseInt(movie.release_date.split('-')[0]) : undefined;
       
-      // Fetch real torrent links from Real-Debrid
-      const links = await realDebridService.getStreamLinks('', 'movie', movie.title, year);
-      const allDebridLinks = await allDebridService.getStreamLinks('', 'movie');
-      const premiumizeLinks = await premiumizeService.getStreamLinks('', 'movie');
+      errorLogService.info(`Searching cached torrents for "${movie.title}"`, 'MovieDetail');
       
-      setStreamLinks([...links, ...allDebridLinks, ...premiumizeLinks]);
-    } catch (error) {
-      console.error('Error loading stream links:', error);
+      // Search for cached torrents using the new cache search
+      const torrents = await debridCacheService.searchCachedMovie(
+        movie.title,
+        year
+      );
+      
+      if (torrents.length === 0) {
+        errorLogService.warn(`No cached torrents found for "${movie.title}"`, 'MovieDetail');
+      }
+      
+      setCachedTorrents(torrents);
+    } catch (error: any) {
+      errorLogService.error(`Error loading streams: ${error.message}`, 'MovieDetail', error);
+      Alert.alert('Error', 'Failed to load streams. Please try again.');
     } finally {
       setLoadingLinks(false);
+    }
+  };
+
+  const handlePlayTorrent = async (torrent: CachedTorrent) => {
+    setSelectedTorrent(torrent);
+    setGettingStream(true);
+    
+    try {
+      errorLogService.info(`Getting stream for "${torrent.title}"`, 'MovieDetail');
+      
+      // Get direct stream URL from Real-Debrid
+      const streamUrl = await debridCacheService.getStreamUrl(
+        torrent.hash,
+        torrent.file_id
+      );
+      
+      if (streamUrl) {
+        errorLogService.info('Got stream URL, navigating to player', 'MovieDetail');
+        setShowLinksModal(false);
+        
+        router.push({
+          pathname: '/player',
+          params: {
+            url: streamUrl,
+            title: movie?.title || 'Movie'
+          }
+        });
+      } else {
+        errorLogService.error('Failed to get stream URL', 'MovieDetail');
+        Alert.alert('Error', 'Failed to get streaming link. Please try again.');
+      }
+    } catch (error: any) {
+      errorLogService.error(`Stream error: ${error.message}`, 'MovieDetail', error);
+      Alert.alert('Error', error.message || 'Failed to start stream');
+    } finally {
+      setGettingStream(false);
+      setSelectedTorrent(null);
     }
   };
 
