@@ -3,6 +3,7 @@ import { DebridAccount, TraktUser, IPTVConfig } from '../types';
 import { realDebridService, allDebridService, premiumizeService } from '../services/debrid';
 import { traktService } from '../services/trakt';
 import { iptvService } from '../services/iptv';
+import { notificationService } from '../services/notifications';
 
 interface AuthState {
   // Trakt
@@ -33,6 +34,7 @@ interface AuthState {
   loadAllDebridAccount: () => Promise<void>;
   loadPremiumizeAccount: () => Promise<void>;
   loadIPTVAccount: () => Promise<void>;
+  checkAllExpiryWarnings: () => Promise<void>;
   logoutTrakt: () => Promise<void>;
   logoutRealDebrid: () => Promise<void>;
   logoutAllDebrid: () => Promise<void>;
@@ -40,7 +42,7 @@ interface AuthState {
   logoutIPTV: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => (({
   traktUser: null,
   traktLoading: false,
   realDebridAccount: null,
@@ -62,6 +64,49 @@ export const useAuthStore = create<AuthState>((set) => ({
       store.loadPremiumizeAccount(),
       store.loadIPTVAccount(),
     ]);
+    
+    // Check for expiry warnings after loading all accounts
+    await store.checkAllExpiryWarnings();
+  },
+
+  checkAllExpiryWarnings: async () => {
+    const state = get();
+    
+    // Check Real-Debrid
+    if (state.realDebridAccount) {
+      await notificationService.checkAccountExpiry(
+        'Real-Debrid',
+        state.realDebridAccount.expiryDate,
+        state.realDebridAccount.daysLeft
+      );
+    }
+    
+    // Check AllDebrid
+    if (state.allDebridAccount) {
+      await notificationService.checkAccountExpiry(
+        'AllDebrid',
+        state.allDebridAccount.expiryDate,
+        state.allDebridAccount.daysLeft
+      );
+    }
+    
+    // Check Premiumize
+    if (state.premiumizeAccount) {
+      await notificationService.checkAccountExpiry(
+        'Premiumize',
+        state.premiumizeAccount.expiryDate,
+        state.premiumizeAccount.daysLeft
+      );
+    }
+    
+    // Check IPTV
+    if (state.iptvAccount) {
+      await notificationService.checkAccountExpiry(
+        'Premium IPTV',
+        state.iptvAccount.expiryDate,
+        state.iptvAccount.daysLeft
+      );
+    }
   },
 
   loadTraktAccount: async () => {
@@ -152,4 +197,4 @@ export const useAuthStore = create<AuthState>((set) => ({
     await iptvService.logout();
     set({ iptvConfig: null, iptvAccount: null });
   },
-}));
+})));
