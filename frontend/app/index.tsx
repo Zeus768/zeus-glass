@@ -14,6 +14,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.65;
 
 export default function HomeScreen() {
+  const router = useRouter();
   const {
     trendingMovies,
     popularMovies,
