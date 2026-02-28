@@ -232,6 +232,39 @@ class TorrentIndexers:
         return hashes
     
     @staticmethod
+    def _get_mediafusion_hashes(
+        imdb_id: Optional[str],
+        title: Optional[str],
+        content_type: str,
+        year: Optional[int],
+        season: Optional[int],
+        episode: Optional[int]
+    ) -> Dict[str, Dict]:
+        """Get hashes from Mediafusion"""
+        hashes = {}
+        
+        if not imdb_id:
+            return hashes
+        
+        try:
+            # Mediafusion uses standard Stremio addon format
+            url = TorrentIndexers._build_stremio_url(
+                TorrentIndexers.MEDIAFUSION_URL,
+                imdb_id, content_type, season, episode
+            )
+            
+            response = requests.get(url, timeout=15)
+            if response.status_code == 200:
+                hashes = TorrentIndexers._parse_stremio_response(response.json(), "Mediafusion")
+                logger.info(f"Mediafusion: Found {len(hashes)} hashes")
+        except Exception as e:
+            logger.error(f"Mediafusion error: {e}")
+        
+        return hashes
+        
+        return hashes
+    
+    @staticmethod
     def _extract_quality(title: str) -> str:
         """Extract quality from title"""
         title_upper = title.upper()
