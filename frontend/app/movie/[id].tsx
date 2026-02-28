@@ -96,11 +96,6 @@ export default function MovieDetailScreen() {
         errorLogService.info(`Getting cached stream for "${torrent.title}"`, 'MovieDetail');
       } else {
         errorLogService.info(`Starting download for "${torrent.title}" (not cached)`, 'MovieDetail');
-        Alert.alert(
-          'Downloading...',
-          'This torrent is not cached. Real-Debrid will download it first. This may take a moment.',
-          [{ text: 'OK' }]
-        );
       }
       
       // Get direct stream URL from Real-Debrid
