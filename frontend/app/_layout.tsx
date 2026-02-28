@@ -53,55 +53,36 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home',
-            headerShown: false,
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="home" size={size} color={color} />
-            ),
+            title: 'HOME',
+            tabBarIcon: () => null,
           }}
         />
         <Tabs.Screen
           name="tv-guide"
           options={{
-            title: 'TV Guide',
-            headerShown: true,
-            headerTitle: 'TV Guide',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="tv" size={size} color={color} />
-            ),
+            title: 'TV GUIDE',
+            tabBarIcon: () => null,
           }}
         />
         <Tabs.Screen
           name="movies"
           options={{
-            title: 'Movies',
-            headerShown: true,
-            headerTitle: 'Movies',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="film" size={size} color={color} />
-            ),
+            title: 'MOVIES',
+            tabBarIcon: () => null,
           }}
         />
         <Tabs.Screen
           name="search"
           options={{
-            title: 'Search',
-            headerShown: true,
-            headerTitle: 'Search',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="search" size={size} color={color} />
-            ),
+            title: 'SEARCH',
+            tabBarIcon: () => null,
           }}
         />
         <Tabs.Screen
           name="settings"
           options={{
-            title: 'Settings',
-            headerShown: true,
-            headerTitle: 'Settings',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="settings" size={size} color={color} />
-            ),
+            title: 'SETTINGS',
+            tabBarIcon: () => null,
           }}
         />
       </Tabs>
