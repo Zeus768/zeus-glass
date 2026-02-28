@@ -8,6 +8,8 @@
     "scheme": "zeusglass",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "owner": "Zeus768",
+    "description": "Premium IPTV and Streaming Platform",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zeusglass.app",
