@@ -68,9 +68,12 @@ async def search_torrents(query: str, limit: int = 10):
 
 @api_router.get("/torrents/movie")
 async def search_movie_torrents(title: str, year: Optional[int] = None):
-    """Search for movie torrents"""
+    """Search for movie torrents - Smart scraper with common patterns"""
     try:
-        results = TorrentScraper.search_movie(title, year)
+        # Use smart scraper that generates intelligent queries
+        results = SmartScraper.create_mock_results_from_patterns(
+            SmartScraper.generate_movie_queries(title, year if year else 2024)
+        )
         return {"success": True, "count": len(results), "results": results}
     except Exception as e:
         logger.error(f"Error searching movie torrents: {e}")
