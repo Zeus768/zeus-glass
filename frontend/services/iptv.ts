@@ -87,7 +87,8 @@ export const iptvService = {
         channels.push(channel);
       }
 
-      return channels;
+      // Apply parental controls filter
+      return parentalControlService.filterContent(channels);
     } catch (error) {
       console.error('Error fetching live channels:', error);
       return [];
