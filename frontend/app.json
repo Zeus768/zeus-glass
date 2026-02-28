@@ -50,7 +50,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#0A0E27"
         }
-      ]
+      ],
+      "expo-mail-composer"
     ],
     "experiments": {
       "typedRoutes": true

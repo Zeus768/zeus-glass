@@ -1,7 +1,7 @@
 """
 Real-Debrid Cache Search Service
 Searches for instantly available (cached) torrents on Real-Debrid
-This bypasses the need to scrape torrent sites directly
+Uses multiple indexers: Torrentio, Knightcrawler, Comet, Jackettio
 """
 
 import requests
@@ -12,6 +12,261 @@ from typing import List, Dict, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
+
+
+class TorrentIndexers:
+    """
+    Multi-source torrent indexer
+    Queries Torrentio, Knightcrawler, Comet, and Jackettio for torrent hashes
+    """
+    
+    # Indexer base URLs
+    TORRENTIO_URL = "https://torrentio.strem.fun"
+    KNIGHTCRAWLER_URL = "https://knightcrawler.elfhosted.com"
+    COMET_URL = "https://comet.elfhosted.com"
+    JACKETTIO_URL = "https://jackettio.elfhosted.com"
+    
+    @staticmethod
+    def get_all_hashes(
+        imdb_id: Optional[str] = None,
+        title: Optional[str] = None,
+        content_type: str = "movie",
+        year: Optional[int] = None,
+        season: Optional[int] = None,
+        episode: Optional[int] = None
+    ) -> Dict[str, Dict]:
+        """
+        Query all indexers in parallel and combine results
+        Returns dict of hash -> torrent info
+        """
+        all_hashes = {}
+        
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = []
+            
+            # Submit all indexer queries
+            futures.append(executor.submit(
+                TorrentIndexers._get_torrentio_hashes,
+                imdb_id, title, content_type, year, season, episode
+            ))
+            futures.append(executor.submit(
+                TorrentIndexers._get_knightcrawler_hashes,
+                imdb_id, title, content_type, year, season, episode
+            ))
+            futures.append(executor.submit(
+                TorrentIndexers._get_comet_hashes,
+                imdb_id, title, content_type, year, season, episode
+            ))
+            futures.append(executor.submit(
+                TorrentIndexers._get_jackettio_hashes,
+                imdb_id, title, content_type, year, season, episode
+            ))
+            
+            # Collect results
+            for future in as_completed(futures):
+                try:
+                    hashes = future.result()
+                    all_hashes.update(hashes)
+                except Exception as e:
+                    logger.error(f"Indexer error: {e}")
+        
+        logger.info(f"Found {len(all_hashes)} unique hashes from all indexers")
+        return all_hashes
+    
+    @staticmethod
+    def _build_stremio_url(base_url: str, imdb_id: str, content_type: str, season: int = None, episode: int = None) -> str:
+        """Build Stremio addon URL"""
+        if content_type == "movie":
+            return f"{base_url}/stream/movie/{imdb_id}.json"
+        else:
+            s = season or 1
+            e = episode or 1
+            return f"{base_url}/stream/series/{imdb_id}:{s}:{e}.json"
+    
+    @staticmethod
+    def _parse_stremio_response(response_data: dict, source_name: str) -> Dict[str, Dict]:
+        """Parse standard Stremio addon response"""
+        hashes = {}
+        
+        streams = response_data.get('streams', [])
+        for stream in streams:
+            info_hash = stream.get('infoHash', '').lower()
+            title = stream.get('title', '') or stream.get('name', '')
+            
+            if info_hash and len(info_hash) == 40:
+                hashes[info_hash] = {
+                    'title': title,
+                    'quality': TorrentIndexers._extract_quality(title),
+                    'size': TorrentIndexers._extract_size(title),
+                    'seeders': TorrentIndexers._extract_seeders(title),
+                    'source': source_name,
+                }
+        
+        return hashes
+    
+    @staticmethod
+    def _get_torrentio_hashes(
+        imdb_id: Optional[str],
+        title: Optional[str],
+        content_type: str,
+        year: Optional[int],
+        season: Optional[int],
+        episode: Optional[int]
+    ) -> Dict[str, Dict]:
+        """Get hashes from Torrentio"""
+        hashes = {}
+        
+        if not imdb_id:
+            return hashes
+        
+        try:
+            # Torrentio with all providers
+            url = TorrentIndexers._build_stremio_url(
+                f"{TorrentIndexers.TORRENTIO_URL}/sort=seeders|qualityfilter=brremux,hdrall",
+                imdb_id, content_type, season, episode
+            )
+            
+            response = requests.get(url, timeout=15)
+            if response.status_code == 200:
+                hashes = TorrentIndexers._parse_stremio_response(response.json(), "Torrentio")
+                logger.info(f"Torrentio: Found {len(hashes)} hashes")
+        except Exception as e:
+            logger.error(f"Torrentio error: {e}")
+        
+        return hashes
+    
+    @staticmethod
+    def _get_knightcrawler_hashes(
+        imdb_id: Optional[str],
+        title: Optional[str],
+        content_type: str,
+        year: Optional[int],
+        season: Optional[int],
+        episode: Optional[int]
+    ) -> Dict[str, Dict]:
+        """Get hashes from Knightcrawler"""
+        hashes = {}
+        
+        if not imdb_id:
+            return hashes
+        
+        try:
+            url = TorrentIndexers._build_stremio_url(
+                TorrentIndexers.KNIGHTCRAWLER_URL,
+                imdb_id, content_type, season, episode
+            )
+            
+            response = requests.get(url, timeout=15)
+            if response.status_code == 200:
+                hashes = TorrentIndexers._parse_stremio_response(response.json(), "Knightcrawler")
+                logger.info(f"Knightcrawler: Found {len(hashes)} hashes")
+        except Exception as e:
+            logger.error(f"Knightcrawler error: {e}")
+        
+        return hashes
+    
+    @staticmethod
+    def _get_comet_hashes(
+        imdb_id: Optional[str],
+        title: Optional[str],
+        content_type: str,
+        year: Optional[int],
+        season: Optional[int],
+        episode: Optional[int]
+    ) -> Dict[str, Dict]:
+        """Get hashes from Comet"""
+        hashes = {}
+        
+        if not imdb_id:
+            return hashes
+        
+        try:
+            # Comet uses a different URL structure
+            url = TorrentIndexers._build_stremio_url(
+                TorrentIndexers.COMET_URL,
+                imdb_id, content_type, season, episode
+            )
+            
+            response = requests.get(url, timeout=15)
+            if response.status_code == 200:
+                hashes = TorrentIndexers._parse_stremio_response(response.json(), "Comet")
+                logger.info(f"Comet: Found {len(hashes)} hashes")
+        except Exception as e:
+            logger.error(f"Comet error: {e}")
+        
+        return hashes
+    
+    @staticmethod
+    def _get_jackettio_hashes(
+        imdb_id: Optional[str],
+        title: Optional[str],
+        content_type: str,
+        year: Optional[int],
+        season: Optional[int],
+        episode: Optional[int]
+    ) -> Dict[str, Dict]:
+        """Get hashes from Jackettio"""
+        hashes = {}
+        
+        if not imdb_id:
+            return hashes
+        
+        try:
+            url = TorrentIndexers._build_stremio_url(
+                TorrentIndexers.JACKETTIO_URL,
+                imdb_id, content_type, season, episode
+            )
+            
+            response = requests.get(url, timeout=15)
+            if response.status_code == 200:
+                hashes = TorrentIndexers._parse_stremio_response(response.json(), "Jackettio")
+                logger.info(f"Jackettio: Found {len(hashes)} hashes")
+        except Exception as e:
+            logger.error(f"Jackettio error: {e}")
+        
+        return hashes
+    
+    @staticmethod
+    def _extract_quality(title: str) -> str:
+        """Extract quality from title"""
+        title_upper = title.upper()
+        
+        if '4K' in title_upper or '2160P' in title_upper or 'UHD' in title_upper:
+            return '4K'
+        elif '1080P' in title_upper:
+            return '1080p'
+        elif '720P' in title_upper:
+            return '720p'
+        elif '480P' in title_upper:
+            return '480p'
+        
+        return '720p'
+    
+    @staticmethod
+    def _extract_size(title: str) -> str:
+        """Extract file size from title"""
+        size_match = re.search(r'💾\s*([\d.]+\s*[GMK]?B)', title)
+        if size_match:
+            return size_match.group(1)
+        
+        size_match = re.search(r'([\d.]+\s*[GMK]B)', title, re.IGNORECASE)
+        if size_match:
+            return size_match.group(1)
+        
+        return "Unknown"
+    
+    @staticmethod
+    def _extract_seeders(title: str) -> int:
+        """Extract seeders count from title"""
+        seeders_match = re.search(r'👤\s*(\d+)', title)
+        if seeders_match:
+            return int(seeders_match.group(1))
+        
+        seeders_match = re.search(r'S:\s*(\d+)', title)
+        if seeders_match:
+            return int(seeders_match.group(1))
+        
+        return 0
 
 
 class RealDebridCacheSearch:
