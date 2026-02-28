@@ -1,22 +1,36 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Zeus Glass",
+    "slug": "zeus-glass",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
-    "userInterfaceStyle": "automatic",
+    "scheme": "zeusglass",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zeusglass.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Scan QR codes to authorize services",
+        "NSPhotoLibraryUsageDescription": "Select images for your profile"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000"
+        "backgroundColor": "#0A0E27"
       },
+      "package": "com.zeusglass.app",
+      "permissions": [
+        "INTERNET",
+        "CAMERA"
+      ],
       "edgeToEdgeEnabled": true
+    },
+    "androidTv": {
+      "banner": "./assets/images/tv-banner.png",
+      "icon": "./assets/images/icon.png"
     },
     "web": {
       "bundler": "metro",
@@ -25,18 +39,24 @@
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
       [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#000"
+          "backgroundColor": "#0A0E27"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "tmdbApiKey": "f15af109700aab95d564acda15bdcd97",
+      "traktClientId": "4cb0f37f73fc75a20dee4176591d04845a4f942cb386a7e9e33a2e9fb480593e",
+      "traktClientSecret": "f7ab784c37688345eb0585b342b6b153a499926eed7b84c89df24789bf5ddf09"
     }
   }
 }
