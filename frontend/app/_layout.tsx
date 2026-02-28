@@ -282,6 +282,43 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
+      
+      {/* Donation Modal */}
+      <DonationModal visible={showDonation} onClose={() => setShowDonation(false)} />
     </>
   );
 }
+
+const headerStyles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    paddingBottom: 12,
+  },
+  appName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    letterSpacing: 2,
+  },
+  donateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 221, 0, 0.15)',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFDD00',
+    gap: 6,
+  },
+  donateBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFDD00',
+  },
+});
