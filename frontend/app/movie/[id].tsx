@@ -46,11 +46,14 @@ export default function MovieDetailScreen() {
     setLoadingLinks(true);
     setShowLinksModal(true);
     try {
-      // In a real app, you would fetch links from debrid services based on IMDB ID
-      // For now, using mock data
-      const links = await realDebridService.getStreamLinks('mock-imdb-id', 'movie');
-      const allDebridLinks = await allDebridService.getStreamLinks('mock-imdb-id', 'movie');
-      const premiumizeLinks = await premiumizeService.getStreamLinks('mock-imdb-id', 'movie');
+      if (!movie) return;
+      
+      const year = movie.release_date ? parseInt(movie.release_date.split('-')[0]) : undefined;
+      
+      // Fetch real torrent links from Real-Debrid
+      const links = await realDebridService.getStreamLinks('', 'movie', movie.title, year);
+      const allDebridLinks = await allDebridService.getStreamLinks('', 'movie');
+      const premiumizeLinks = await premiumizeService.getStreamLinks('', 'movie');
       
       setStreamLinks([...links, ...allDebridLinks, ...premiumizeLinks]);
     } catch (error) {
