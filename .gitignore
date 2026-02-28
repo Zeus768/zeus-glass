@@ -1,29 +1,48 @@
 # Dependencies
 node_modules/
+*/node_modules/
 **/node_modules/
 
 # Python
 __pycache__/
+*/__pycache__/
 **/__pycache__/
 *.pyc
 *.pyo
+*.pyd
+.Python
+venv/
+.venv/
+
+# Environment
 .env
+.env.local
+*.local
 
 # Expo
 .expo/
 **/.expo/
 dist/
 web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*.sublime-*
 
 # OS
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+ehthumbs.db
 
 # Logs
 *.log
@@ -40,7 +59,9 @@ build/
 # Testing
 coverage/
 .nyc_output/
+test_reports/
 
 # Misc
-*.local
 .cache/
+tmp/
+temp/
