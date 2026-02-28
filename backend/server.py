@@ -175,6 +175,122 @@ async def rd_get_torrents(token: str):
         logger.error(f"Error getting torrents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ============================================
+# DEBRID CACHE SEARCH - Main Streaming Feature
+# ============================================
+
+@api_router.get("/debrid/cache/search/movie")
+async def search_cached_movie(
+    title: str,
+    token: str,
+    year: Optional[int] = None,
+    imdb_id: Optional[str] = None
+):
+    """
+    Search for cached movie torrents on Real-Debrid
+    This is the main endpoint for finding instant-play movies
+    """
+    try:
+        results = RealDebridCacheSearch.search_cached_torrents(
+            query=title,
+            token=token,
+            content_type="movie",
+            year=year
+        )
+        return {
+            "success": True,
+            "count": len(results),
+            "results": results,
+            "source": "Real-Debrid Cache"
+        }
+    except Exception as e:
+        logger.error(f"Error searching cached movie: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/debrid/cache/search/tv")
+async def search_cached_tv(
+    title: str,
+    token: str,
+    season: int = 1,
+    episode: int = 1,
+    imdb_id: Optional[str] = None
+):
+    """
+    Search for cached TV show torrents on Real-Debrid
+    """
+    try:
+        results = RealDebridCacheSearch.search_cached_torrents(
+            query=title,
+            token=token,
+            content_type="tv",
+            season=season,
+            episode=episode
+        )
+        return {
+            "success": True,
+            "count": len(results),
+            "results": results,
+            "source": "Real-Debrid Cache"
+        }
+    except Exception as e:
+        logger.error(f"Error searching cached TV: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/debrid/cache/stream")
+async def get_stream_link(
+    hash: str,
+    token: str,
+    file_id: Optional[str] = None
+):
+    """
+    Get direct stream link for a cached torrent
+    This adds the torrent to RD and returns the streaming URL
+    """
+    try:
+        stream_url = RealDebridCacheSearch.add_and_get_stream_link(
+            info_hash=hash,
+            token=token,
+            file_id=file_id
+        )
+        
+        if stream_url:
+            return {
+                "success": True,
+                "stream_url": stream_url
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Could not get stream link")
+    except Exception as e:
+        logger.error(f"Error getting stream link: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/debrid/alldebrid/cache/check")
+async def check_alldebrid_cache(hashes: str, apikey: str):
+    """Check which torrents are cached on AllDebrid"""
+    try:
+        hash_list = hashes.split(',')
+        cached = AllDebridCacheSearch.check_instant_availability(hash_list, apikey)
+        return {"success": True, "cached": cached}
+    except Exception as e:
+        logger.error(f"Error checking AllDebrid cache: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/debrid/premiumize/cache/check")
+async def check_premiumize_cache(hashes: str, apikey: str):
+    """Check which torrents are cached on Premiumize"""
+    try:
+        hash_list = hashes.split(',')
+        cached = PremiumizeCacheSearch.check_instant_availability(hash_list, apikey)
+        return {"success": True, "cached": cached}
+    except Exception as e:
+        logger.error(f"Error checking Premiumize cache: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the router in the main app
 app.include_router(api_router)
 
