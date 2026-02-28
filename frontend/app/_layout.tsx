@@ -5,6 +5,7 @@ import { theme } from '../constants/theme';
 import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
 import { Platform, StatusBar } from 'react-native';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 
 export default function TabLayout() {
   const loadAllAccounts = useAuthStore((state) => state.loadAllAccounts);
@@ -27,26 +28,26 @@ export default function TabLayout() {
           tabBarInactiveTintColor: theme.colors.textMuted,
           tabBarStyle: {
             backgroundColor: theme.colors.surface,
-            borderTopColor: theme.colors.border,
-            borderTopWidth: 1,
-            height: Platform.OS === 'ios' ? 88 : 64,
-            paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-            paddingTop: 8,
-          },
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '600',
-          },
-          headerStyle: {
-            backgroundColor: theme.colors.surface,
             borderBottomColor: theme.colors.border,
             borderBottomWidth: 1,
+            height: 56,
+            elevation: 0,
+            shadowOpacity: 0,
           },
-          headerTintColor: theme.colors.text,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-            fontSize: 20,
+          tabBarLabelStyle: {
+            fontSize: 14,
+            fontWeight: '600',
+            textTransform: 'uppercase',
           },
+          tabBarItemStyle: {
+            paddingTop: 8,
+          },
+          tabBarIndicatorStyle: {
+            backgroundColor: theme.colors.primary,
+            height: 3,
+          },
+          tabBarPosition: 'top',
+          headerShown: false,
         }}
       >
         <Tabs.Screen
