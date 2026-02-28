@@ -272,60 +272,51 @@ export default function MovieDetailScreen() {
             {loadingLinks ? (
               <View style={styles.modalLoading}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Finding streams...</Text>
+                <Text style={styles.loadingText}>Searching Real-Debrid cache...</Text>
+              </View>
+            ) : cachedTorrents.length === 0 ? (
+              <View style={styles.modalLoading}>
+                <Ionicons name="cloud-offline" size={48} color={theme.colors.textSecondary} />
+                <Text style={styles.loadingText}>No cached streams found</Text>
+                <Text style={styles.noLinksSubtext}>
+                  This content is not available in Real-Debrid cache.
+                </Text>
               </View>
             ) : (
               <ScrollView style={styles.modalScroll}>
-                {QUALITY_OPTIONS.map((option) => (
-                  groupedLinks[option.value]?.length > 0 && (
-                    <View key={option.value} style={styles.qualitySection}>
-                      <Text style={styles.qualityTitle}>{option.label}</Text>
-                      {groupedLinks[option.value].map((link, index) => (
+                {qualityOptions.map((quality) => (
+                  groupedTorrents[quality]?.length > 0 && (
+                    <View key={quality} style={styles.qualitySection}>
+                      <Text style={styles.qualityTitle}>{quality}</Text>
+                      {groupedTorrents[quality].map((torrent, index) => (
                         <Pressable 
                           key={index} 
-                          style={styles.linkCard}
-                          onPress={async () => {
-                            setShowLinksModal(false);
-                            setLoadingLinks(true);
-                            
-                            try {
-                              // Use Real-Debrid to get direct link
-                              const directLink = await realDebridService.addMagnetAndGetLink(
-                                link.url,
-                                movie?.title || 'Movie'
-                              );
-                              
-                              if (directLink) {
-                                // Navigate to player
-                                router.push({
-                                  pathname: '/player',
-                                  params: {
-                                    url: directLink,
-                                    title: movie?.title || 'Movie'
-                                  }
-                                });
-                              } else {
-                                alert('Failed to get streaming link. Make sure you are logged into Real-Debrid.');
-                              }
-                            } catch (error) {
-                              console.error('Error getting stream:', error);
-                              alert('Error: ' + (error as Error).message);
-                            } finally {
-                              setLoadingLinks(false);
-                            }
-                          }}
+                          style={[
+                            styles.linkCard,
+                            selectedTorrent?.hash === torrent.hash && gettingStream && styles.linkCardActive
+                          ]}
+                          onPress={() => handlePlayTorrent(torrent)}
+                          disabled={gettingStream}
                         >
                           <View style={styles.linkInfo}>
-                            <Text style={styles.linkSource}>{link.source.toUpperCase()}</Text>
-                            {link.size && <Text style={styles.linkSize}>{link.size}</Text>}
-                            {link.seeders && (
+                            <View style={styles.cachedBadge}>
+                              <Ionicons name="flash" size={12} color="#000" />
+                              <Text style={styles.cachedText}>CACHED</Text>
+                            </View>
+                            <Text style={styles.linkSource}>{torrent.source.toUpperCase()}</Text>
+                            {torrent.size && <Text style={styles.linkSize}>{torrent.size}</Text>}
+                            {torrent.seeders > 0 && (
                               <View style={styles.seedersContainer}>
                                 <Ionicons name="people" size={14} color={theme.colors.success} />
-                                <Text style={styles.seedersText}>{link.seeders}</Text>
+                                <Text style={styles.seedersText}>{torrent.seeders}</Text>
                               </View>
                             )}
                           </View>
-                          <Ionicons name="play-circle" size={32} color={link.isPremium ? theme.colors.gold : theme.colors.primary} />
+                          {selectedTorrent?.hash === torrent.hash && gettingStream ? (
+                            <ActivityIndicator size="small" color={theme.colors.gold} />
+                          ) : (
+                            <Ionicons name="play-circle" size={32} color={theme.colors.gold} />
+                          )}
                         </Pressable>
                       ))}
                     </View>
