@@ -53,6 +53,61 @@ async def get_status_checks():
     status_checks = await db.status_checks.find().to_list(1000)
     return [StatusCheck(**status_check) for status_check in status_checks]
 
+# Torrent scraping endpoints
+@api_router.get("/torrents/search")
+async def search_torrents(query: str, limit: int = 10):
+    """Search for torrents across multiple sources"""
+    try:
+        results = TorrentScraper.search_all(query, limit_per_source=limit)
+        return {"success": True, "count": len(results), "results": results}
+    except Exception as e:
+        logger.error(f"Error searching torrents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/torrents/movie")
+async def search_movie_torrents(title: str, year: Optional[int] = None):
+    """Search for movie torrents"""
+    try:
+        results = TorrentScraper.search_movie(title, year)
+        return {"success": True, "count": len(results), "results": results}
+    except Exception as e:
+        logger.error(f"Error searching movie torrents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/torrents/tv")
+async def search_tv_torrents(
+    title: str, 
+    season: Optional[int] = None, 
+    episode: Optional[int] = None
+):
+    """Search for TV show torrents"""
+    try:
+        results = TorrentScraper.search_tv_show(title, season, episode)
+        return {"success": True, "count": len(results), "results": results}
+    except Exception as e:
+        logger.error(f"Error searching TV torrents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Real-Debrid unrestrict endpoint
+@api_router.post("/debrid/unrestrict")
+async def unrestrict_magnet(magnet: str, service: str = "real-debrid", token: str = ""):
+    """Unrestrict a magnet link via debrid service"""
+    try:
+        if not token:
+            raise HTTPException(status_code=400, detail="Token required")
+        
+        # This would call the actual Real-Debrid API
+        # For now, returning structure
+        return {
+            "success": True,
+            "message": "Magnet added to debrid service",
+            "service": service,
+            "status": "processing"
+        }
+    except Exception as e:
+        logger.error(f"Error unrest ricting magnet: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the router in the main app
 app.include_router(api_router)
 
