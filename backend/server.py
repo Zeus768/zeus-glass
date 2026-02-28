@@ -89,24 +89,85 @@ async def search_tv_torrents(
         logger.error(f"Error searching TV torrents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Real-Debrid unrestrict endpoint
-@api_router.post("/debrid/unrestrict")
-async def unrestrict_magnet(magnet: str, service: str = "real-debrid", token: str = ""):
-    """Unrestrict a magnet link via debrid service"""
+# Torrentio endpoints (better indexer, no VPN needed)
+@api_router.get("/torrents/torrentio/movie")
+async def torrentio_movie(imdb_id: str = None, title: str = None, year: int = None):
+    """Search for movie via Torrentio indexer"""
     try:
-        if not token:
-            raise HTTPException(status_code=400, detail="Token required")
-        
-        # This would call the actual Real-Debrid API
-        # For now, returning structure
-        return {
-            "success": True,
-            "message": "Magnet added to debrid service",
-            "service": service,
-            "status": "processing"
-        }
+        results = TorrentioIndexer.search_movie(imdb_id=imdb_id, title=title, year=year)
+        return {"success": True, "count": len(results), "results": results, "source": "Torrentio"}
     except Exception as e:
-        logger.error(f"Error unrest ricting magnet: {e}")
+        logger.error(f"Error searching Torrentio movie: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/torrents/torrentio/tv")
+async def torrentio_tv(imdb_id: str = None, title: str = None, season: int = 1, episode: int = 1):
+    """Search for TV show via Torrentio indexer"""
+    try:
+        results = TorrentioIndexer.search_tv(imdb_id=imdb_id, title=title, season=season, episode=episode)
+        return {"success": True, "count": len(results), "results": results, "source": "Torrentio"}
+    except Exception as e:
+        logger.error(f"Error searching Torrentio TV: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Real-Debrid full integration
+@api_router.post("/debrid/real-debrid/add-magnet")
+async def rd_add_magnet(magnet: str, token: str):
+    """Add magnet to Real-Debrid"""
+    try:
+        result = RealDebridIntegration.add_magnet(magnet, token)
+        if result:
+            return {"success": True, "data": result}
+        else:
+            raise HTTPException(status_code=400, detail="Failed to add magnet")
+    except Exception as e:
+        logger.error(f"Error adding magnet to RD: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/debrid/real-debrid/select-files")
+async def rd_select_files(torrent_id: str, file_ids: str, token: str):
+    """Select files from Real-Debrid torrent"""
+    try:
+        success = RealDebridIntegration.select_files(torrent_id, file_ids, token)
+        return {"success": success}
+    except Exception as e:
+        logger.error(f"Error selecting files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/debrid/real-debrid/torrent-info")
+async def rd_torrent_info(torrent_id: str, token: str):
+    """Get torrent info from Real-Debrid"""
+    try:
+        info = RealDebridIntegration.get_torrent_info(torrent_id, token)
+        if info:
+            return {"success": True, "data": info}
+        else:
+            raise HTTPException(status_code=404, detail="Torrent not found")
+    except Exception as e:
+        logger.error(f"Error getting torrent info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/debrid/real-debrid/unrestrict")
+async def rd_unrestrict(link: str, token: str):
+    """Unrestrict a link via Real-Debrid"""
+    try:
+        result = RealDebridIntegration.unrestrict_link(link, token)
+        if result:
+            return {"success": True, "data": result}
+        else:
+            raise HTTPException(status_code=400, detail="Failed to unrestrict")
+    except Exception as e:
+        logger.error(f"Error unrestricting: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/debrid/real-debrid/torrents")
+async def rd_get_torrents(token: str):
+    """Get all user torrents from Real-Debrid"""
+    try:
+        torrents = RealDebridIntegration.get_all_torrents(token)
+        return {"success": True, "count": len(torrents), "torrents": torrents}
+    except Exception as e:
+        logger.error(f"Error getting torrents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Include the router in the main app
