@@ -383,3 +383,157 @@ export const premiumizeService = {
     return [];
   },
 };
+
+// ============================================
+// DEBRID CACHE SEARCH SERVICE
+// Main streaming feature - searches for cached torrents
+// ============================================
+
+export const debridCacheService = {
+  // Search for cached movie torrents on Real-Debrid
+  searchCachedMovie: async (
+    title: string,
+    year?: number,
+    imdbId?: string
+  ): Promise<CachedTorrent[]> => {
+    try {
+      const token = await realDebridService.getToken();
+      if (!token) {
+        errorLogService.warn('No Real-Debrid token for cache search', 'DebridCache');
+        return [];
+      }
+
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const params = new URLSearchParams({
+        title,
+        token,
+      });
+      
+      if (year) params.append('year', year.toString());
+      if (imdbId) params.append('imdb_id', imdbId);
+
+      const response = await axios.get(
+        `${backendUrl}/api/debrid/cache/search/movie?${params.toString()}`
+      );
+
+      if (response.data.success) {
+        errorLogService.info(
+          `Found ${response.data.count} cached torrents for "${title}"`,
+          'DebridCache'
+        );
+        return response.data.results || [];
+      }
+
+      return [];
+    } catch (error: any) {
+      errorLogService.error(
+        `Cache search failed: ${error.message}`,
+        'DebridCache',
+        error
+      );
+      return [];
+    }
+  },
+
+  // Search for cached TV show torrents
+  searchCachedTV: async (
+    title: string,
+    season: number = 1,
+    episode: number = 1,
+    imdbId?: string
+  ): Promise<CachedTorrent[]> => {
+    try {
+      const token = await realDebridService.getToken();
+      if (!token) {
+        errorLogService.warn('No Real-Debrid token for TV cache search', 'DebridCache');
+        return [];
+      }
+
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const params = new URLSearchParams({
+        title,
+        token,
+        season: season.toString(),
+        episode: episode.toString(),
+      });
+      
+      if (imdbId) params.append('imdb_id', imdbId);
+
+      const response = await axios.get(
+        `${backendUrl}/api/debrid/cache/search/tv?${params.toString()}`
+      );
+
+      if (response.data.success) {
+        errorLogService.info(
+          `Found ${response.data.count} cached torrents for "${title}" S${season}E${episode}`,
+          'DebridCache'
+        );
+        return response.data.results || [];
+      }
+
+      return [];
+    } catch (error: any) {
+      errorLogService.error(
+        `TV cache search failed: ${error.message}`,
+        'DebridCache',
+        error
+      );
+      return [];
+    }
+  },
+
+  // Get direct stream URL from cached torrent
+  getStreamUrl: async (
+    hash: string,
+    fileId?: string
+  ): Promise<string | null> => {
+    try {
+      const token = await realDebridService.getToken();
+      if (!token) {
+        errorLogService.error('No Real-Debrid token for streaming', 'DebridCache');
+        return null;
+      }
+
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const params = new URLSearchParams({
+        hash,
+        token,
+      });
+      
+      if (fileId) params.append('file_id', fileId);
+
+      const response = await axios.get(
+        `${backendUrl}/api/debrid/cache/stream?${params.toString()}`
+      );
+
+      if (response.data.success && response.data.stream_url) {
+        errorLogService.info('Got stream URL from Real-Debrid', 'DebridCache');
+        return response.data.stream_url;
+      }
+
+      return null;
+    } catch (error: any) {
+      errorLogService.error(
+        `Failed to get stream URL: ${error.message}`,
+        'DebridCache',
+        error
+      );
+      return null;
+    }
+  },
+
+  // Convert cached torrents to StreamLink format
+  convertToStreamLinks: (
+    cachedTorrents: CachedTorrent[],
+    source: 'real-debrid' | 'alldebrid' | 'premiumize' = 'real-debrid'
+  ): StreamLink[] => {
+    return cachedTorrents.map(torrent => ({
+      quality: torrent.quality,
+      url: torrent.hash, // We'll use hash to get actual URL later
+      source,
+      size: torrent.size,
+      seeders: torrent.seeders,
+      isPremium: true,
+    }));
+  },
+};
