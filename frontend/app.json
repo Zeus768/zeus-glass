@@ -61,6 +61,7 @@
       "traktClientSecret": "f7ab784c37688345eb0585b342b6b153a499926eed7b84c89df24789bf5ddf09",
       "router": {},
       "eas": {
+        "projectId": "edd69901-6e43-4552-b8f9-f3e76d355ab7"
       }
     }
   }
