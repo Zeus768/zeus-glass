@@ -9,7 +9,8 @@ import {
   PREMIUMIZE_CLIENT_ID,
   STORAGE_KEYS,
 } from '../config/constants';
-import { DebridAccount, StreamLink } from '../types';
+import { DebridAccount, StreamLink, CachedTorrent } from '../types';
+import { errorLogService } from './errorLogService';
 
 // Real-Debrid Service
 export const realDebridService = {
