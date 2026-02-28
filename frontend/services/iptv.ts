@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 import { STORAGE_KEYS } from '../config/constants';
 import { IPTVConfig, IPTVChannel, EPGProgram, VODItem } from '../types';
 
-// Mock IPTV Service (simulating Xtreme Codes API)
+// Real Xtreme Codes IPTV Service
 export const iptvService = {
   saveConfig: async (config: IPTVConfig): Promise<void> => {
     await AsyncStorage.setItem(STORAGE_KEYS.IPTV_CONFIG, JSON.stringify(config));
@@ -17,147 +18,206 @@ export const iptvService = {
     await AsyncStorage.removeItem(STORAGE_KEYS.IPTV_CONFIG);
   },
 
-  // Mock authentication
+  // Real Xtreme Codes authentication
   authenticate: async (domain: string, username: string, password: string): Promise<boolean> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Mock success for any credentials
-        resolve(true);
-      }, 1000);
-    });
+    try {
+      // Clean domain (remove http/https if present)
+      let cleanDomain = domain.replace(/^https?:\/\//, '');
+      
+      // Test authentication by getting user info
+      const response = await axios.get(
+        `http://${cleanDomain}/player_api.php`,
+        {
+          params: {
+            username: username,
+            password: password,
+          },
+          timeout: 10000,
+        }
+      );
+
+      // If we get user_info, authentication is successful
+      if (response.data && response.data.user_info) {
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('IPTV authentication error:', error);
+      return false;
+    }
   },
 
-  // Mock get live channels
+  // Get live channels from Xtreme Codes
   getLiveChannels: async (): Promise<IPTVChannel[]> => {
-    return [
-      {
-        id: 'bbc_one',
-        name: 'BBC One',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/BBC_One_logo_2021.svg/200px-BBC_One_logo_2021.svg.png',
-        category: 'Entertainment',
-        stream_url: 'mock://stream/bbc-one',
-        epg: [
-          {
-            id: 'epg1',
-            title: 'House of the Dragon',
-            description: 'The reign of House Targaryen begins.',
-            start: new Date().toISOString(),
-            end: new Date(Date.now() + 3600000).toISOString(),
-            channel_id: 'bbc_one',
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) {
+        return [];
+      }
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '');
+      
+      const response = await axios.get(
+        `http://${cleanDomain}/player_api.php`,
+        {
+          params: {
+            username: config.username,
+            password: config.password,
+            action: 'get_live_streams',
           },
-        ],
-      },
-      {
-        id: 'bbc_two',
-        name: 'BBC Two',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/BBC_Two_logo_2021.svg/200px-BBC_Two_logo_2021.svg.png',
-        category: 'Entertainment',
-        stream_url: 'mock://stream/bbc-two',
-        epg: [
-          {
-            id: 'epg2',
-            title: 'The Last of Us',
-            description: 'Post-apocalyptic drama series.',
-            start: new Date().toISOString(),
-            end: new Date(Date.now() + 3600000).toISOString(),
-            channel_id: 'bbc_two',
-          },
-        ],
-      },
-      {
-        id: 'itv',
-        name: 'ITV',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/ITV_logo_2019.svg/200px-ITV_logo_2019.svg.png',
-        category: 'Entertainment',
-        stream_url: 'mock://stream/itv',
-        epg: [
-          {
-            id: 'epg3',
-            title: 'Succession',
-            description: 'Drama about a media dynasty.',
-            start: new Date().toISOString(),
-            end: new Date(Date.now() + 3600000).toISOString(),
-            channel_id: 'itv',
-          },
-        ],
-      },
-      {
-        id: 'sky_sports',
-        name: 'Sky Sports Premier League',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e2/Sky_Sports_Premier_League_2017_logo.svg/200px-Sky_Sports_Premier_League_2017_logo.svg.png',
-        category: 'Sports',
-        stream_url: 'mock://stream/sky-sports',
-        epg: [
-          {
-            id: 'epg4',
-            title: 'Premier League Live',
-            description: 'Live football coverage.',
-            start: new Date().toISOString(),
-            end: new Date(Date.now() + 7200000).toISOString(),
-            channel_id: 'sky_sports',
-          },
-        ],
-      },
-      {
-        id: 'sky_news',
-        name: 'Sky News',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/2/20/Sky_News_logo_2023.svg/200px-Sky_News_logo_2023.svg.png',
-        category: 'News',
-        stream_url: 'mock://stream/sky-news',
-        epg: [
-          {
-            id: 'epg5',
-            title: 'Breaking News',
-            description: 'Latest news and updates.',
-            start: new Date().toISOString(),
-            end: new Date(Date.now() + 1800000).toISOString(),
-            channel_id: 'sky_news',
-          },
-        ],
-      },
-    ];
+          timeout: 15000,
+        }
+      );
+
+      const streams = response.data || [];
+      const channels: IPTVChannel[] = [];
+
+      // Convert to our format (limit to 50 for performance)
+      for (const stream of streams.slice(0, 50)) {
+        const channel: IPTVChannel = {
+          id: stream.stream_id?.toString() || stream.num?.toString(),
+          name: stream.name || 'Unknown Channel',
+          logo: stream.stream_icon || '',
+          category: stream.category_name || 'Uncategorized',
+          stream_url: `http://${cleanDomain}/live/${config.username}/${config.password}/${stream.stream_id}.ts`,
+          epg: [], // EPG loaded separately
+        };
+        channels.push(channel);
+      }
+
+      return channels;
+    } catch (error) {
+      console.error('Error fetching live channels:', error);
+      return [];
+    }
   },
 
-  // Mock get VOD
+  // Get VOD content from Xtreme Codes
   getVODContent: async (): Promise<VODItem[]> => {
-    return [
-      {
-        id: 'vod1',
-        name: 'Dune: Part Two',
-        description: 'Epic sci-fi sequel',
-        poster: 'https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
-        category: 'Movies',
-        stream_url: 'mock://vod/dune-2',
-        duration: 155,
-        year: '2024',
-      },
-      {
-        id: 'vod2',
-        name: 'Oppenheimer',
-        description: 'Biographical thriller',
-        poster: 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
-        category: 'Movies',
-        stream_url: 'mock://vod/oppenheimer',
-        duration: 180,
-        year: '2023',
-      },
-    ];
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) {
+        return [];
+      }
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '');
+      
+      const response = await axios.get(
+        `http://${cleanDomain}/player_api.php`,
+        {
+          params: {
+            username: config.username,
+            password: config.password,
+            action: 'get_vod_streams',
+          },
+          timeout: 15000,
+        }
+      );
+
+      const streams = response.data || [];
+      const vodItems: VODItem[] = [];
+
+      // Convert to our format (limit to 50 for performance)
+      for (const stream of streams.slice(0, 50)) {
+        const vodItem: VODItem = {
+          id: stream.stream_id?.toString() || stream.num?.toString(),
+          name: stream.name || 'Unknown',
+          description: stream.plot || stream.description || '',
+          poster: stream.stream_icon || stream.cover || '',
+          backdrop: stream.backdrop_path?.[0] || '',
+          category: stream.category_name || 'Movies',
+          stream_url: `http://${cleanDomain}/movie/${config.username}/${config.password}/${stream.stream_id}.${stream.container_extension || 'mp4'}`,
+          duration: stream.duration ? parseInt(stream.duration) : undefined,
+          year: stream.releasedate || stream.year || '',
+        };
+        vodItems.push(vodItem);
+      }
+
+      return vodItems;
+    } catch (error) {
+      console.error('Error fetching VOD content:', error);
+      return [];
+    }
   },
 
-  // Mock get account info
+  // Get account info from Xtreme Codes
   getAccountInfo: async (): Promise<{ username: string; expiryDate: string; daysLeft: number } | null> => {
-    const config = await iptvService.getConfig();
-    if (!config || !config.enabled) return null;
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) return null;
 
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 180); // 6 months
-    const daysLeft = 180;
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '');
+      
+      const response = await axios.get(
+        `http://${cleanDomain}/player_api.php`,
+        {
+          params: {
+            username: config.username,
+            password: config.password,
+          },
+          timeout: 10000,
+        }
+      );
 
-    return {
-      username: config.username,
-      expiryDate: expiryDate.toISOString(),
-      daysLeft,
-    };
+      const userInfo = response.data?.user_info;
+      if (!userInfo) return null;
+
+      const expiryTimestamp = parseInt(userInfo.exp_date) * 1000;
+      const expiryDate = new Date(expiryTimestamp);
+      const now = new Date();
+      const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      return {
+        username: userInfo.username || config.username,
+        expiryDate: expiryDate.toISOString(),
+        daysLeft: Math.max(0, daysLeft),
+      };
+    } catch (error) {
+      console.error('Error fetching IPTV account info:', error);
+      return null;
+    }
+  },
+
+  // Get EPG for a channel
+  getEPG: async (channelId: string): Promise<EPGProgram[]> => {
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) return [];
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '');
+      
+      const response = await axios.get(
+        `http://${cleanDomain}/player_api.php`,
+        {
+          params: {
+            username: config.username,
+            password: config.password,
+            action: 'get_simple_data_table',
+            stream_id: channelId,
+          },
+          timeout: 10000,
+        }
+      );
+
+      const epgData = response.data?.epg_listings || [];
+      const programs: EPGProgram[] = [];
+
+      for (const epg of epgData.slice(0, 10)) {
+        programs.push({
+          id: epg.id || `${channelId}-${epg.start}`,
+          title: epg.title || 'Program',
+          description: epg.description || '',
+          start: new Date(parseInt(epg.start) * 1000).toISOString(),
+          end: new Date(parseInt(epg.end) * 1000).toISOString(),
+          channel_id: channelId,
+        });
+      }
+
+      return programs;
+    } catch (error) {
+      console.error('Error fetching EPG:', error);
+      return [];
+    }
   },
 };
