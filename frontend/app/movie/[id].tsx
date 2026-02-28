@@ -207,7 +207,40 @@ export default function MovieDetailScreen() {
                     <View key={option.value} style={styles.qualitySection}>
                       <Text style={styles.qualityTitle}>{option.label}</Text>
                       {groupedLinks[option.value].map((link, index) => (
-                        <Pressable key={index} style={styles.linkCard}>
+                        <Pressable 
+                          key={index} 
+                          style={styles.linkCard}
+                          onPress={async () => {
+                            setShowLinksModal(false);
+                            setLoadingLinks(true);
+                            
+                            try {
+                              // Use Real-Debrid to get direct link
+                              const directLink = await realDebridService.addMagnetAndGetLink(
+                                link.url,
+                                movie?.title || 'Movie'
+                              );
+                              
+                              if (directLink) {
+                                // Navigate to player
+                                router.push({
+                                  pathname: '/player',
+                                  params: {
+                                    url: directLink,
+                                    title: movie?.title || 'Movie'
+                                  }
+                                });
+                              } else {
+                                alert('Failed to get streaming link. Make sure you are logged into Real-Debrid.');
+                              }
+                            } catch (error) {
+                              console.error('Error getting stream:', error);
+                              alert('Error: ' + (error as Error).message);
+                            } finally {
+                              setLoadingLinks(false);
+                            }
+                          }}
+                        >
                           <View style={styles.linkInfo}>
                             <Text style={styles.linkSource}>{link.source.toUpperCase()}</Text>
                             {link.size && <Text style={styles.linkSize}>{link.size}</Text>}
