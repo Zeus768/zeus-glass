@@ -58,7 +58,11 @@
     "extra": {
       "tmdbApiKey": "f15af109700aab95d564acda15bdcd97",
       "traktClientId": "4cb0f37f73fc75a20dee4176591d04845a4f942cb386a7e9e33a2e9fb480593e",
-      "traktClientSecret": "f7ab784c37688345eb0585b342b6b153a499926eed7b84c89df24789bf5ddf09"
+      "traktClientSecret": "f7ab784c37688345eb0585b342b6b153a499926eed7b84c89df24789bf5ddf09",
+      "router": {},
+      "eas": {
+        "projectId": "zeus-glass"
+      }
     }
   }
 }
