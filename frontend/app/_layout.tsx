@@ -105,6 +105,13 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="catch-up"
+          options={{
+            title: 'CATCH UP',
+            tabBarIcon: () => null,
+          }}
+        />
+        <Tabs.Screen
           name="settings"
           options={{
             title: 'SETTINGS',
