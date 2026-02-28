@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime
 from torrent_scraper import TorrentScraper
 from torrentio_indexer import TorrentioIndexer, RealDebridIntegration
+from smart_scraper import SmartScraper
 
 
 ROOT_DIR = Path(__file__).parent
