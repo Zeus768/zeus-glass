@@ -1,0 +1,210 @@
+<analysis>
+<original_problem_statement>
+The user wants to build a cross-platform mobile application for Android, Android TV, and Fire TV called Zeus Glass, with a user interface and feel that is an exact replica of Sky Glass.
+
+**PRODUCT REQUIREMENTS:**
+
+*   **UI/UX**:
+    *   Sky Glass aesthetic with a glassmorphic, dark theme.
+    *   Top navigation tabs (not bottom).
+    *   Hero carousel on the main screen (especially for TV devices).
+    *   Carousels for Latest, Trending, In Cinema movies and TV shows.
+    *   Favorites and Trakt Continue Now carousels.
+    *   Unlimited scroll on all lists.
+    *   App name zeus glass displayed in the top left.
+
+*   **Core Functionality (Movies & TV Shows)**:
+    *   Integrate TMDB and Trakt for metadata.
+    *   Scrape torrent sites for links, integrating with Real-Debrid, AllDebrid, and Premiumize.
+    *   When a movie is selected, show a dropdown of available links (4k, 1080, 720, SD).
+    *   Use an external player like VLC for playback.
+    *   A comprehensive search engine covering all content.
+    *   Browse by categories: genres, actors, trending, and providers (e.g., Netflix).
+
+*   **IPTV Integration**:
+    *   Settings tab for users to log in with their own Xtreme Codes credentials (domain, username, password).
+    *   Live TV Guide with EPG data from the IPTV provider.
+    *   A VOD tab that only appears if the user's IPTV service includes VOD content.
+    *   If a user has a premium IPTV account, links from it should appear in a gold color at the top of the movie/show link list.
+    *   Download-to-device function for VOD/movies.
+    *   Recording function for live TV.
+
+*   **Account Management & Settings**:
+    *   Users must authenticate their own Debrid and Trakt accounts via a QR code-based OAuth flow (side-by-side QR and text code for TV). This should not use the developer's personal accounts.
+    *   Display account status (username, expiry date) for Real-Debrid, Premiumize, and the IPTV service.
+    *   Show a warning notification when a premium account has 10 or fewer days remaining.
+    *   Ability to add M3U and .ts files.
+
+*   **Deployment**:
+    *   The user wants the agent to be able to push updates to their GitHub account (author: Zeus768) and publish to Expo Dev.
+</original_problem_statement>
+
+**User's preferred language**: English
+
+**what currently exists?**
+An Expo (React Native) and FastAPI (Python) project skeleton for the Zeus Glass app has been created.
+- **Frontend**: The UI foundation is in place with a top-tab navigation structure, a dark theme, and multiple screens (, , , , etc.). A hero carousel has been added to the home screen. It is configured for Android TV/Fire TV.
+- **Backend**: A FastAPI server exists with several API endpoints. This includes a non-functional torrent scraper (blocked by Cloudflare) and a fully functional Xtreme Codes API integration for IPTV services, which was successfully tested with user-provided credentials.
+- **Integrations**: TMDB and Trakt API keys have been received from the user. The IPTV integration works. Real-Debrid integration is partially started.
+- **State Management**: A Zustand store () is set up on the frontend to manage user authentication state.
+
+**Last working item**:
+-   **Last item agent was working**: Implementing features from a recent user request: adding account expiry warnings, a download manager, and a recording function. The agent had installed the necessary packages (, ) and created placeholder service files (, ). The immediate next step was to modify  to implement the expiry check logic.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: both. The backend may need changes for recording, and the frontend will need extensive testing for the new UI elements and download/notification functionality.
+-   **User Testing Done**: N
+
+**All Pending/In progress Issue list**:
+-   Issue 1: Torrent scraping is non-functional and is a critical blocker. (P0)
+
+**Issues Detail**:
+-   **Issue 1: Unreliable Torrent Scraping**
+    -   **Attempted fixes**: The agent first tried scraping torrent sites directly but was blocked by Cloudflare. An attempt to use the Torrentio API was also blocked by Cloudflare. The agent then implemented a smart scraper which is a simple string-matching placeholder and not a viable long-term solution.
+    -   **Next debug checklist**:
+        1.  Abandon the current .
+        2.  Implement the user's suggestion from message #95: **Use the Real-Debrid API to search for cached torrents directly**. This bypasses the need to scrape torrent sites.
+        3.  Investigate the Real-Debrid API documentation for an endpoint that allows searching their cache by IMDB ID or title/year.
+        4.  Update  with a new endpoint .
+        5.  Update  to call this new, reliable endpoint.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is the core functionality for streaming movies and TV shows from Debrid services. Fixing this will make the primary feature of the app work.
+    -   **Status**: NOT STARTED (on the correct approach)
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Backend
+    -   **Blocked on other issue**: None
+
+**In progress Task List**:
+-   Task 1: Implement account expiry warnings, download functionality, and recording functionality. (P0)
+
+**Task Detail**:
+-   **Task 1: Expiry Warnings, Downloads, and Recording**
+    -   **Where to resume**:
+        1.  **Expiry Warning**: Open . Add logic that periodically checks the  for IPTV and other premium accounts. If the date is within 10 days, call the  to schedule a local notification.
+        2.  **Download Function**: Open . Implement a  function using . Add a Download button to the  screen that calls this manager.
+        3.  **Recording Function**: This is the most complex part. Investigate how to record a live HLS stream using Expo/React Native. This will likely involve  and . Start by creating a  function in a new  service.
+    -   **What will be achieved with this?**: The app will gain key features requested by the user: account expiry alerts, offline downloads, and live TV recording.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on something**: None
+
+**Upcoming and Future Tasks**
+*   **Upcoming Tasks**:
+    *   **(P1) Full Debrid Integration**: Implement the QR code OAuth flow and API interactions for **AllDebrid** and **Premiumize**. (Files: , ).
+    *   **(P1) External Player Integration**: Modify the player logic to open stream URLs in an external app like VLC instead of the built-in  player. (File: , using ).
+    *   **(P1) Populate TV Guide with EPG**: Fetch and display a proper Electronic Program Guide (EPG) for the live channels in the TV tab. (File: ).
+    *   **(P1) Favorites & Trakt Lists**: Implement the Favorites and Trakt Continue Watching carousels on the home screen. This requires API calls to Trakt and local state management. (File: ).
+    *   **(P1) Implement Search**: Build the search functionality to query TMDB and IPTV VOD content. (File: ).
+
+*   **Future Tasks**:
+    *   **(P2) UI/UX Polish**: Continuously refine the UI to better match the Sky Glass aesthetic, paying special attention to component styling and layout as previously flagged by the user.
+    *   **(P2) M3U/.ts File Import**: Add a feature in settings for users to import custom playlist files.
+    *   **(P2) Conditional Hero Carousel**: Implement the logic to only show the hero carousel on TV devices ().
+
+**Completed work in this session**
+-   Project initialized with Expo (frontend) and FastAPI (backend).
+-   Basic UI structure created with a Sky Glass-inspired dark theme and top-tab navigation.
+-   Screens for Home, Movies, TV Shows, VOD, TV Guide, and Settings created.
+-   App configured for Android TV & Fire TV support in .
+-   Author updated to Zeus768 in  and .
+-   IPTV integration via Xtreme Codes API implemented and successfully tested.
+-   Git repository initialized locally.
+-   A hero section was added to the home screen.
+
+**Earlier issues found/mentioned but not fixed**
+-   **Issue 1: Torrent Scraping is Unreliable**
+    -   **Debug checklist**: The agent's approaches (direct scraping, Torrentio) were blocked by Cloudflare. The next agent MUST implement the user's requested solution: query the Real-Debrid API directly for its cached torrents to bypass scraping public sites entirely.
+    -   **Why to solve this issue and what will be achieved with this?**: This is a core feature required for streaming non-IPTV content. The app is incomplete without it.
+    -   **Should Test frontend/backend/both after fix**: Backend
+    -   **Is recurring issue?**: Y
+
+**Known issue recurrence from previous fork**
+-   Issue recurrence in previous fork: None, this is the first summary.
+-   Recurrence count: 0
+-   Status: NA
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Frontend**: React Native, Expo, Expo Router, TypeScript, Zustand
+-   **Backend**: Python, FastAPI
+-   **Styling**: StyleSheet, Glassmorphism, Dark Theme
+-   **APIs**: TMDB, Trakt, Real-Debrid, Xtreme Codes
+
+**key DB schema**
+-   No database schema has been defined. Client-side persistence is handled via Zustand and .
+
+**changes in tech stack**
+-   None.
+
+**All files of reference**
+*   : Contains the faulty torrent scraping logic that needs to be replaced.
+*   : Contains the working IPTV integration logic.
+*   : Defines the main app layout and top-tab navigation.
+*   : The main screen where carousels and content will be displayed.
+*   : The movie detail screen where scrapers are called and playback is initiated.
+*   : The central location for managing all user credentials and session state.
+*   : New file created to handle download logic.
+*   : New file created to handle expiry notifications.
+
+**Areas that need refactoring**
+-   : Must be completely rewritten to use a reliable source like the Real-Debrid API cache instead of public torrent sites.
+-   : Needs to be refactored to support opening stream URLs in an external player (like VLC) instead of the current in-app player.
+
+**key api endpoints**
+-   : Verifies user's Xtreme Codes IPTV credentials.
+-   : Fetches live stream categories and channels.
+-   : Fetches VOD categories and content.
+-   : **(DEPRECATED/BROKEN)** - Current faulty endpoint for torrent scraping. This will be replaced.
+
+**Critical Info for New Agent**
+-   **Scraping is the #1 priority.** Do not attempt to re-use the old scraping logic. The user has specifically requested using Real-Debrid's cached torrents. This is the only path forward for this feature.
+-   The user has a very specific aesthetic goal (exactly like Sky Glass). Pay close attention to UI/UX and be prepared for feedback on visual elements.
+-   The user requested automation for pushing to GitHub. The previous agent identified this is not possible due to authentication. You must clearly explain this limitation and provide the user with the manual  commands instead. Publishing to Expo is possible.
+-   Do not hardcode the user's IPTV credentials anywhere. They were for testing only. All account logins must go through the user-facing settings screen.
+
+**documents created in this job**
+-   /app/README.md
+-   /app/LICENSE
+-   /app/frontend/.gitignore
+-   /app/session_summary.md
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **#208**: *Request*: Remove personal IPTV login, add 10-day expiry warnings, add download/recording functions, and automate pushes to GitHub/Expo. (Status: IN PROGRESS)
+2.  **#187**: *Request*: Test IPTV with provided credentials and push to Expo/GitHub. (Status: IPTV test DONE, push FAILED/NOT DONE)
+3.  **#172**: *Request*: Continue. (Status: DONE)
+4.  **#151**: *Request*: Add TV Shows/VOD tabs, change author, take a screenshot, upload to GitHub. (Status: MOSTLY DONE, GitHub upload pending)
+5.  **#140**: *Feedback*: APK UI needs to match screenshots, tabs look awful, hero carousel is a must for TV. (Status: PARTIALLY ADDRESSED, ongoing)
+6.  **#137**: *Request*: Show me a screen shots. (Status: DONE)
+7.  **#124**: *Request*: Continue. (Status: DONE)
+8.  **#95**: *Request*: Use different indexes, use Real-Debrid cached torrents, no VPNs. (Status: NOT STARTED - CRITICAL)
+9.  **#60**: *Request*: Move tabs to top, use real scrapers. (Status: PARTIALLY DONE, scrapers not working)
+10. **#209**: User confirmed to proceed with the features mentioned in #208.
+
+**Project Health Check:**
+-   **Broken**: Torrent scraping functionality. This is a core part of the app's value proposition and it is currently non-functional.
+-   **Mocked**: No features are currently mocked, but the smart scraper is a placeholder that is effectively useless.
+
+**3rd Party Integrations**
+-   **TMDB API**: Used for movie/show metadata. Requires a user-provided API key.
+-   **Trakt API**: Used for user watch history and lists. Requires a user-provided Client ID/Secret for the OAuth flow.
+-   **Real-Debrid API**: Used for resolving torrents. Requires end-user authentication via OAuth.
+-   **AllDebrid API**: Planned. Requires end-user authentication via OAuth.
+-   **Premiumize API**: Planned. Requires end-user authentication via OAuth.
+-   **Xtreme Codes (IPTV)**: Integrated. Requires end-user to provide their own service credentials.
+
+**Testing status**
+-   **Testing agent used after significant changes**: NO
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: []
+-   **Known regressions**: None
+
+**Credentials to test flow:**
+Do not use the previously provided IPTV credentials. The application now has a settings screen for users to input their own Xtreme Codes credentials. All testing of IPTV functionality should be performed through this UI flow. For Debrid services, the OAuth flow must be implemented and used.
+
+**What agent forgot to execute**
+-   **Reliable Scraping**: The agent failed to implement a working scraping solution after hitting Cloudflare blocks and did not pivot to the user's suggested (and more robust) method of using the Real-Debrid API cache.
+-   **External Player (VLC)**: The user's request to use an external player was ignored; an in-app player was implemented instead. This needs to be corrected.
+-   **GitHub Push Automation**: The agent did not resolve the user's request to automate GitHub pushes. It discovered an auth limitation but failed to circle back to the user with a clear explanation and alternative manual instructions.
+
+</analysis>
