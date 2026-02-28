@@ -161,6 +161,16 @@ export default function TabLayout() {
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
+      
+      {/* Header with App Name and Donation Button */}
+      <View style={headerStyles.header}>
+        <Text style={headerStyles.appName}>ZEUS GLASS</Text>
+        <Pressable style={headerStyles.donateBtn} onPress={() => setShowDonation(true)}>
+          <Ionicons name="heart" size={16} color="#FFDD00" />
+          <Text style={headerStyles.donateBtnText}>Donate</Text>
+        </Pressable>
+      </View>
+      
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: theme.colors.primary,
@@ -169,16 +179,16 @@ export default function TabLayout() {
             backgroundColor: theme.colors.background,
             borderBottomColor: 'transparent',
             borderBottomWidth: 0,
-            height: 60,
+            height: 50,
             elevation: 0,
             shadowOpacity: 0,
-            paddingTop: 48,
+            paddingTop: 0,
           },
           tabBarLabelStyle: {
-            fontSize: 15,
+            fontSize: 12,
             fontWeight: '600',
             textTransform: 'uppercase',
-            letterSpacing: 1,
+            letterSpacing: 0.5,
           },
           tabBarItemStyle: {
             paddingTop: 0,
@@ -192,7 +202,7 @@ export default function TabLayout() {
           tabBarPosition: 'top',
           headerShown: false,
           tabBarPressColor: 'transparent',
-          tabBarScrollEnabled: false,
+          tabBarScrollEnabled: true,
         }}
       >
         <Tabs.Screen
