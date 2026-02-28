@@ -78,16 +78,60 @@ export const realDebridService = {
     }
   },
 
-  // Mock torrent links fetching (would need actual torrent scraping)
-  getStreamLinks: async (imdbId: string, type: 'movie' | 'tv'): Promise<StreamLink[]> => {
-    // This would integrate with actual torrent APIs
-    // For now, returning mock data
-    return [
-      { quality: '2160p', url: 'mock-url-4k', source: 'real-debrid', size: '15.2 GB', seeders: 150 },
-      { quality: '1080p', url: 'mock-url-1080p', source: 'real-debrid', size: '5.8 GB', seeders: 320 },
-      { quality: '720p', url: 'mock-url-720p', source: 'real-debrid', size: '2.1 GB', seeders: 180 },
-      { quality: '480p', url: 'mock-url-sd', source: 'real-debrid', size: '800 MB', seeders: 90 },
-    ];
+  // Get stream links from torrents + debrid
+  getStreamLinks: async (imdbId: string, type: 'movie' | 'tv', title: string, year?: number): Promise<StreamLink[]> => {
+    try {
+      const token = await realDebridService.getToken();
+      if (!token) {
+        console.log('No Real-Debrid token, returning empty links');
+        return [];
+      }
+
+      // Use backend torrent scraper
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const endpoint = type === 'movie' 
+        ? `${backendUrl}/api/torrents/movie?title=${encodeURIComponent(title)}${year ? `&year=${year}` : ''}`
+        : `${backendUrl}/api/torrents/tv?title=${encodeURIComponent(title)}`;
+
+      const response = await axios.get(endpoint);
+      
+      if (!response.data.success || !response.data.results) {
+        return [];
+      }
+
+      const torrents = response.data.results;
+      const streamLinks: StreamLink[] = [];
+
+      // Convert torrents to stream links
+      // Group by quality and take best seeders
+      const qualityGroups: { [key: string]: any } = {};
+      
+      torrents.forEach((torrent: any) => {
+        const quality = torrent.quality || '720p';
+        if (!qualityGroups[quality] || torrent.seeders > qualityGroups[quality].seeders) {
+          qualityGroups[quality] = torrent;
+        }
+      });
+
+      // Convert to stream links
+      Object.entries(qualityGroups).forEach(([quality, torrent]) => {
+        streamLinks.push({
+          quality,
+          url: torrent.magnet,
+          source: 'real-debrid',
+          size: torrent.size,
+          seeders: torrent.seeders,
+        });
+      });
+
+      return streamLinks.sort((a, b) => {
+        const qualityOrder: { [key: string]: number } = { '2160p': 1, '1080p': 2, '720p': 3, '480p': 4 };
+        return (qualityOrder[a.quality] || 999) - (qualityOrder[b.quality] || 999);
+      });
+    } catch (error) {
+      console.error('Error fetching Real-Debrid stream links:', error);
+      return [];
+    }
   },
 };
 
