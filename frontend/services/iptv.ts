@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { STORAGE_KEYS } from '../config/constants';
 import { IPTVConfig, IPTVChannel, EPGProgram, VODItem } from '../types';
+import { parentalControlService } from './parentalControlService';
 
 // Real Xtreme Codes IPTV Service
 export const iptvService = {
