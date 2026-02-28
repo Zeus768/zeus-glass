@@ -21,9 +21,11 @@ export default function MovieDetailScreen() {
   
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
-  const [streamLinks, setStreamLinks] = useState<StreamLink[]>([]);
+  const [cachedTorrents, setCachedTorrents] = useState<CachedTorrent[]>([]);
   const [showLinksModal, setShowLinksModal] = useState(false);
   const [loadingLinks, setLoadingLinks] = useState(false);
+  const [selectedTorrent, setSelectedTorrent] = useState<CachedTorrent | null>(null);
+  const [gettingStream, setGettingStream] = useState(false);
 
   useEffect(() => {
     if (id) {
