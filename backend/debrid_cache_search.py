@@ -25,6 +25,7 @@ class TorrentIndexers:
     KNIGHTCRAWLER_URL = "https://knightcrawler.elfhosted.com"
     COMET_URL = "https://comet.elfhosted.com"
     JACKETTIO_URL = "https://jackettio.elfhosted.com"
+    MEDIAFUSION_URL = "https://mediafusion.elfhosted.com"
     
     @staticmethod
     def get_all_hashes(
@@ -41,7 +42,7 @@ class TorrentIndexers:
         """
         all_hashes = {}
         
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
             futures = []
             
             # Submit all indexer queries
@@ -59,6 +60,10 @@ class TorrentIndexers:
             ))
             futures.append(executor.submit(
                 TorrentIndexers._get_jackettio_hashes,
+                imdb_id, title, content_type, year, season, episode
+            ))
+            futures.append(executor.submit(
+                TorrentIndexers._get_mediafusion_hashes,
                 imdb_id, title, content_type, year, season, episode
             ))
             
