@@ -134,11 +134,23 @@ export default function MovieDetailScreen() {
     }
   };
 
-  const groupLinksByQuality = (links: StreamLink[]) => {
-    const grouped: { [key: string]: StreamLink[] } = {};
-    QUALITY_OPTIONS.forEach(option => {
-      grouped[option.value] = links.filter(link => link.quality === option.value);
+  const groupTorrentsByQuality = (torrents: CachedTorrent[]) => {
+    const grouped: { [key: string]: CachedTorrent[] } = {
+      '4K': [],
+      '1080p': [],
+      '720p': [],
+      '480p': [],
+    };
+    
+    torrents.forEach(torrent => {
+      const quality = torrent.quality || '720p';
+      if (grouped[quality]) {
+        grouped[quality].push(torrent);
+      } else {
+        grouped['720p'].push(torrent);
+      }
     });
+    
     return grouped;
   };
 
