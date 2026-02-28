@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { tmdbService } from '../../services/tmdb';
-import { realDebridService, allDebridService, premiumizeService } from '../../services/debrid';
+import { debridCacheService, realDebridService } from '../../services/debrid';
 import { useContentStore } from '../../store/contentStore';
-import { Movie, StreamLink } from '../../types';
+import { Movie, CachedTorrent } from '../../types';
 import { QUALITY_OPTIONS } from '../../config/constants';
+import { errorLogService } from '../../services/errorLogService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
