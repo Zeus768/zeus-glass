@@ -328,15 +328,16 @@ class RealDebridCacheSearch:
         year: Optional[int] = None,
         season: Optional[int] = None,
         episode: Optional[int] = None,
-        imdb_id: Optional[str] = None
+        imdb_id: Optional[str] = None,
+        include_uncached: bool = True
     ) -> List[Dict]:
         """
-        Main search function - finds cached torrents on Real-Debrid
+        Main search function - finds torrents and checks Real-Debrid cache
         
         Flow:
         1. Get torrent hashes from all indexers (Torrentio, Knightcrawler, Comet, Jackettio, Mediafusion)
         2. Check which ones are cached on Real-Debrid
-        3. Return cached torrents with quality info
+        3. Return ALL torrents, with cached ones marked and prioritized
         """
         results = []
         
@@ -358,42 +359,58 @@ class RealDebridCacheSearch:
             logger.info(f"Got {len(hashes)} hashes, checking Real-Debrid cache...")
             
             # Check cache availability on Real-Debrid
-            cached_info = RealDebridCacheSearch._check_instant_availability(
-                list(hashes.keys()), token
-            )
+            cached_info = {}
+            if token and token != 'test':
+                cached_info = RealDebridCacheSearch._check_instant_availability(
+                    list(hashes.keys()), token
+                )
             
             logger.info(f"Found {len(cached_info)} cached torrents on Real-Debrid")
             
-            # Process cached results
-            for info_hash, cache_data in cached_info.items():
-                if info_hash in hashes:
-                    torrent_info = hashes[info_hash]
-                    
-                    # Get the best file from cache
-                    best_file = RealDebridCacheSearch._get_best_file(cache_data)
-                    if best_file:
-                        result = {
-                            'hash': info_hash,
-                            'title': torrent_info.get('title', query),
-                            'quality': torrent_info.get('quality', '720p'),
-                            'size': torrent_info.get('size', 'Unknown'),
-                            'seeders': torrent_info.get('seeders', 0),
-                            'source': torrent_info.get('source', 'Real-Debrid Cache'),
-                            'cached': True,
-                            'file_id': best_file.get('id'),
-                            'filename': best_file.get('filename', ''),
-                            'filesize': best_file.get('filesize', 0),
-                            'magnet': f"magnet:?xt=urn:btih:{info_hash}",
-                        }
-                        results.append(result)
+            # Process ALL results - both cached and uncached
+            for info_hash, torrent_info in hashes.items():
+                is_cached = info_hash in cached_info
+                best_file = None
+                
+                if is_cached:
+                    best_file = RealDebridCacheSearch._get_best_file(cached_info[info_hash])
+                
+                result = {
+                    'hash': info_hash,
+                    'title': torrent_info.get('title', query),
+                    'quality': torrent_info.get('quality', '720p'),
+                    'size': torrent_info.get('size', 'Unknown'),
+                    'seeders': torrent_info.get('seeders', 0),
+                    'source': torrent_info.get('source', 'Unknown'),
+                    'cached': is_cached,
+                    'file_id': best_file.get('id') if best_file else None,
+                    'filename': best_file.get('filename', '') if best_file else '',
+                    'filesize': best_file.get('filesize', 0) if best_file else 0,
+                    'magnet': f"magnet:?xt=urn:btih:{info_hash}",
+                }
+                results.append(result)
             
-            # Sort by quality
-            results = RealDebridCacheSearch._sort_by_quality(results)
+            # Sort: cached first, then by quality, then by seeders
+            results = RealDebridCacheSearch._sort_results(results)
             
         except Exception as e:
             logger.error(f"Error in cache search: {e}")
         
         return results
+    
+    @staticmethod
+    def _sort_results(results: List[Dict]) -> List[Dict]:
+        """Sort results: cached first, then by quality, then by seeders"""
+        quality_order = {'4K': 0, '2160p': 0, '1080p': 1, '720p': 2, '480p': 3}
+        
+        return sorted(
+            results,
+            key=lambda x: (
+                0 if x.get('cached') else 1,  # Cached first
+                quality_order.get(x.get('quality', '720p'), 999),  # Then by quality
+                -x.get('seeders', 0)  # Then by seeders (descending)
+            )
+        )
     
     @staticmethod
     def _build_query(
