@@ -61,7 +61,6 @@
       "traktClientSecret": "f7ab784c37688345eb0585b342b6b153a499926eed7b84c89df24789bf5ddf09",
       "router": {},
       "eas": {
-        "projectId": "zeus-glass"
       }
     }
   }
