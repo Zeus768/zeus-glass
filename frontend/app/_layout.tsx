@@ -11,6 +11,7 @@ export default function TabLayout() {
   const loadAllAccounts = useAuthStore((state) => state.loadAllAccounts);
   const loadHomeContent = useContentStore((state) => state.loadHomeContent);
   const loadFavorites = useContentStore((state) => state.loadFavorites);
+  const iptvConfig = useAuthStore((state) => state.iptvConfig);
 
   useEffect(() => {
     // Load all data on app start
@@ -18,6 +19,9 @@ export default function TabLayout() {
     loadHomeContent();
     loadFavorites();
   }, []);
+
+  // Check if IPTV is enabled and active
+  const showVODTab = iptvConfig && iptvConfig.enabled;
 
   return (
     <>
