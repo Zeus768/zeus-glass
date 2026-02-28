@@ -136,7 +136,8 @@ export const iptvService = {
         vodItems.push(vodItem);
       }
 
-      return vodItems;
+      // Apply parental controls filter
+      return parentalControlService.filterContent(vodItems);
     } catch (error) {
       console.error('Error fetching VOD content:', error);
       return [];
