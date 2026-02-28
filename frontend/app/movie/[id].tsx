@@ -272,18 +272,35 @@ export default function MovieDetailScreen() {
             {loadingLinks ? (
               <View style={styles.modalLoading}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Searching Real-Debrid cache...</Text>
+                <Text style={styles.loadingText}>Searching 5 indexers...</Text>
+                <Text style={styles.loadingSubtext}>Torrentio • Knightcrawler • Comet • Jackettio • Mediafusion</Text>
               </View>
             ) : cachedTorrents.length === 0 ? (
               <View style={styles.modalLoading}>
                 <Ionicons name="cloud-offline" size={48} color={theme.colors.textSecondary} />
-                <Text style={styles.loadingText}>No cached streams found</Text>
+                <Text style={styles.loadingText}>No streams found</Text>
                 <Text style={styles.noLinksSubtext}>
-                  This content is not available in Real-Debrid cache.
+                  No torrents found for this content.
                 </Text>
               </View>
             ) : (
               <ScrollView style={styles.modalScroll}>
+                {/* Stats bar */}
+                <View style={styles.statsBar}>
+                  <View style={styles.statItem}>
+                    <Ionicons name="flash" size={16} color={theme.colors.gold} />
+                    <Text style={styles.statText}>
+                      {cachedTorrents.filter(t => t.cached).length} Cached
+                    </Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Ionicons name="cloud-download" size={16} color={theme.colors.primary} />
+                    <Text style={styles.statText}>
+                      {cachedTorrents.filter(t => !t.cached).length} Available
+                    </Text>
+                  </View>
+                </View>
+                
                 {qualityOptions.map((quality) => (
                   groupedTorrents[quality]?.length > 0 && (
                     <View key={quality} style={styles.qualitySection}>
@@ -293,29 +310,49 @@ export default function MovieDetailScreen() {
                           key={index} 
                           style={[
                             styles.linkCard,
+                            !torrent.cached && styles.linkCardUncached,
                             selectedTorrent?.hash === torrent.hash && gettingStream && styles.linkCardActive
                           ]}
                           onPress={() => handlePlayTorrent(torrent)}
                           disabled={gettingStream}
                         >
                           <View style={styles.linkInfo}>
-                            <View style={styles.cachedBadge}>
-                              <Ionicons name="flash" size={12} color="#000" />
-                              <Text style={styles.cachedText}>CACHED</Text>
-                            </View>
-                            <Text style={styles.linkSource}>{torrent.source.toUpperCase()}</Text>
-                            {torrent.size && <Text style={styles.linkSize}>{torrent.size}</Text>}
+                            {torrent.cached ? (
+                              <View style={styles.cachedBadge}>
+                                <Ionicons name="flash" size={12} color="#000" />
+                                <Text style={styles.cachedText}>CACHED</Text>
+                              </View>
+                            ) : (
+                              <View style={styles.uncachedBadge}>
+                                <Ionicons name="cloud-download" size={12} color={theme.colors.text} />
+                                <Text style={styles.uncachedText}>DOWNLOAD</Text>
+                              </View>
+                            )}
+                            <Text style={[styles.linkSource, !torrent.cached && styles.linkSourceUncached]}>
+                              {torrent.source.toUpperCase()}
+                            </Text>
+                            {torrent.size && (
+                              <Text style={[styles.linkSize, !torrent.cached && styles.linkSizeUncached]}>
+                                {torrent.size}
+                              </Text>
+                            )}
                             {torrent.seeders > 0 && (
                               <View style={styles.seedersContainer}>
-                                <Ionicons name="people" size={14} color={theme.colors.success} />
-                                <Text style={styles.seedersText}>{torrent.seeders}</Text>
+                                <Ionicons name="people" size={14} color={torrent.cached ? theme.colors.success : theme.colors.textSecondary} />
+                                <Text style={[styles.seedersText, !torrent.cached && styles.seedersTextUncached]}>
+                                  {torrent.seeders}
+                                </Text>
                               </View>
                             )}
                           </View>
                           {selectedTorrent?.hash === torrent.hash && gettingStream ? (
-                            <ActivityIndicator size="small" color={theme.colors.gold} />
+                            <ActivityIndicator size="small" color={torrent.cached ? theme.colors.gold : theme.colors.primary} />
                           ) : (
-                            <Ionicons name="play-circle" size={32} color={theme.colors.gold} />
+                            <Ionicons 
+                              name="play-circle" 
+                              size={32} 
+                              color={torrent.cached ? theme.colors.gold : theme.colors.primary} 
+                            />
                           )}
                         </Pressable>
                       ))}
