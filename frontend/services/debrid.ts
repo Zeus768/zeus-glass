@@ -205,11 +205,9 @@ export const allDebridService = {
   },
 
   getStreamLinks: async (imdbId: string, type: 'movie' | 'tv'): Promise<StreamLink[]> => {
-    return [
-      { quality: '2160p', url: 'mock-url-4k', source: 'alldebrid', size: '14.8 GB', seeders: 140 },
-      { quality: '1080p', url: 'mock-url-1080p', source: 'alldebrid', size: '5.5 GB', seeders: 300 },
-      { quality: '720p', url: 'mock-url-720p', source: 'alldebrid', size: '2.0 GB', seeders: 170 },
-    ];
+    // AllDebrid would use same torrent scraping but different unrestrict API
+    // For now returning empty to avoid duplicates with Real-Debrid
+    return [];
   },
 };
 
