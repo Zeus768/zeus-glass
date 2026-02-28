@@ -310,18 +310,15 @@ class TorrentIndexers:
 class RealDebridCacheSearch:
     """
     Real-Debrid Cache Search
-    Uses the Real-Debrid API to find cached torrents
+    Uses the Real-Debrid API to find cached torrents from multiple indexers:
+    - Torrentio
+    - Knightcrawler
+    - Comet
+    - Jackettio
+    - Mediafusion
     """
     
     BASE_URL = "https://api.real-debrid.com/rest/1.0"
-    
-    # Known torrent hash databases (public APIs that return hashes)
-    HASH_SOURCES = [
-        # BTDigg API format
-        "https://btdig.com/search?q={query}&order=0",
-        # solidtorrents
-        "https://solidtorrents.to/api/v1/search?q={query}",
-    ]
     
     @staticmethod
     def search_cached_torrents(
@@ -330,37 +327,42 @@ class RealDebridCacheSearch:
         content_type: str = "movie",
         year: Optional[int] = None,
         season: Optional[int] = None,
-        episode: Optional[int] = None
+        episode: Optional[int] = None,
+        imdb_id: Optional[str] = None
     ) -> List[Dict]:
         """
         Main search function - finds cached torrents on Real-Debrid
         
         Flow:
-        1. Get torrent hashes from multiple sources
+        1. Get torrent hashes from all indexers (Torrentio, Knightcrawler, Comet, Jackettio, Mediafusion)
         2. Check which ones are cached on Real-Debrid
         3. Return cached torrents with quality info
         """
         results = []
         
         try:
-            # Build search query
-            search_query = RealDebridCacheSearch._build_query(
-                query, content_type, year, season, episode
-            )
-            
-            # Get hashes from Torrentio first (most reliable)
-            hashes = RealDebridCacheSearch._get_hashes_from_torrentio(
-                query, content_type, year, season, episode
+            # Get hashes from all indexers
+            hashes = TorrentIndexers.get_all_hashes(
+                imdb_id=imdb_id,
+                title=query,
+                content_type=content_type,
+                year=year,
+                season=season,
+                episode=episode
             )
             
             if not hashes:
-                logger.warning(f"No hashes found for query: {search_query}")
+                logger.warning(f"No hashes found for query: {query}")
                 return []
+            
+            logger.info(f"Got {len(hashes)} hashes, checking Real-Debrid cache...")
             
             # Check cache availability on Real-Debrid
             cached_info = RealDebridCacheSearch._check_instant_availability(
                 list(hashes.keys()), token
             )
+            
+            logger.info(f"Found {len(cached_info)} cached torrents on Real-Debrid")
             
             # Process cached results
             for info_hash, cache_data in cached_info.items():
