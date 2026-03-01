@@ -253,12 +253,19 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
 const styles = StyleSheet.create({
   blurContainer: {
     flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   modalContainer: {
-    width: SCREEN_WIDTH * 0.9,
-    maxWidth: 600,
+    width: '100%',
+    maxWidth: 500,
+  },
+  modalContainerTV: {
+    maxWidth: 900,
   },
   modal: {
     backgroundColor: theme.colors.card,
@@ -266,6 +273,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     overflow: 'hidden',
+  },
+  modalTV: {
+    borderRadius: 24,
+    borderWidth: 2,
   },
   header: {
     flexDirection: 'row',
@@ -275,10 +286,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
+  headerTV: {
+    padding: 30,
+  },
   title: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    fontSize: 18,
+    fontWeight: 'bold',
     color: theme.colors.text,
+  },
+  titleTV: {
+    fontSize: 32,
   },
   closeButton: {
     padding: theme.spacing.sm,
@@ -286,24 +303,41 @@ const styles = StyleSheet.create({
   content: {
     padding: theme.spacing.lg,
   },
+  contentTV: {
+    padding: 40,
+  },
   loadingContainer: {
     padding: theme.spacing.xxl,
     alignItems: 'center',
   },
+  loadingContainerTV: {
+    padding: 60,
+  },
   loadingText: {
     marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.md,
+    fontSize: 14,
     color: theme.colors.textSecondary,
+  },
+  loadingTextTV: {
+    fontSize: 22,
+    marginTop: 20,
   },
   errorContainer: {
     padding: theme.spacing.xxl,
     alignItems: 'center',
   },
+  errorContainerTV: {
+    padding: 60,
+  },
   errorText: {
     marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.md,
+    fontSize: 14,
     color: theme.colors.error,
     textAlign: 'center',
+  },
+  errorTextTV: {
+    fontSize: 22,
+    marginTop: 20,
   },
   retryButton: {
     marginTop: theme.spacing.lg,
@@ -312,36 +346,62 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.md,
   },
+  retryButtonTV: {
+    paddingHorizontal: 40,
+    paddingVertical: 18,
+    marginTop: 30,
+  },
   retryButtonText: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
+    fontSize: 14,
+    fontWeight: '600',
     color: theme.colors.text,
   },
+  retryButtonTextTV: {
+    fontSize: 20,
+  },
   instructions: {
-    fontSize: theme.fontSize.md,
+    fontSize: 14,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: theme.spacing.lg,
+  },
+  instructionsTV: {
+    fontSize: 22,
+    marginBottom: 30,
   },
   authContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    marginVertical: theme.spacing.lg,
+    marginVertical: theme.spacing.md,
+  },
+  authContainerStacked: {
+    flexDirection: 'column',
   },
   qrContainer: {
     alignItems: 'center',
     flex: 1,
   },
+  qrContainerStacked: {
+    marginBottom: 20,
+  },
   qrWrapper: {
-    padding: theme.spacing.md,
+    padding: 16,
     backgroundColor: 'white',
-    borderRadius: theme.borderRadius.md,
+    borderRadius: 12,
+  },
+  qrWrapperTV: {
+    padding: 24,
+    borderRadius: 20,
   },
   qrLabel: {
-    marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.sm,
+    marginTop: 12,
+    fontSize: 12,
     color: theme.colors.textSecondary,
+  },
+  qrLabelTV: {
+    fontSize: 18,
+    marginTop: 20,
   },
   divider: {
     width: 1,
@@ -349,32 +409,71 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.border,
     marginHorizontal: theme.spacing.lg,
   },
+  dividerTV: {
+    height: 350,
+    marginHorizontal: 40,
+  },
+  dividerHorizontal: {
+    width: '80%',
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: 20,
+  },
   codeContainer: {
     alignItems: 'center',
     flex: 1,
   },
+  codeContainerStacked: {
+    marginTop: 10,
+  },
   codeLabel: {
-    fontSize: theme.fontSize.md,
+    fontSize: 14,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  codeLabelTV: {
+    fontSize: 22,
+    marginBottom: 15,
   },
   codeBadge: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.md,
     marginBottom: theme.spacing.md,
   },
+  codeBadgeTV: {
+    paddingHorizontal: 40,
+    paddingVertical: 20,
+    marginBottom: 20,
+  },
   codeText: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text,
-    letterSpacing: 4,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+    letterSpacing: 6,
+  },
+  codeTextTV: {
+    fontSize: 42,
+    letterSpacing: 10,
+  },
+  urlLabel: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginBottom: 8,
+  },
+  urlLabelTV: {
+    fontSize: 18,
+    marginBottom: 12,
   },
   urlText: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
+    fontSize: 12,
+    color: theme.colors.primary,
     textAlign: 'center',
+    fontWeight: '500',
+  },
+  urlTextTV: {
+    fontSize: 20,
   },
   statusContainer: {
     flexDirection: 'row',
@@ -385,9 +484,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceLight,
     borderRadius: theme.borderRadius.md,
   },
+  statusContainerTV: {
+    marginTop: 30,
+    padding: 20,
+  },
   statusText: {
     marginLeft: theme.spacing.md,
-    fontSize: theme.fontSize.md,
+    fontSize: 14,
     color: theme.colors.textSecondary,
+  },
+  statusTextTV: {
+    fontSize: 22,
+    marginLeft: 20,
   },
 });
