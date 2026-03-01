@@ -52,7 +52,14 @@
           "backgroundColor": "#0A0E27"
         }
       ],
-      "expo-mail-composer"
+      "expo-mail-composer",
+      [
+        "@react-native-tvos/config-tv",
+        {
+          "isTV": true,
+          "showVerboseWarnings": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
