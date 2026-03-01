@@ -121,21 +121,23 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
           </Pressable>
         )}
       </View>
-      <FlatList
-        ref={flatListRef}
-        data={data}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ width: CARD_SPACING }} />}
-        getItemLayout={getItemLayout}
-        initialNumToRender={isTV ? 10 : 6}
-        maxToRenderPerBatch={isTV ? 8 : 5}
-        windowSize={isTV ? 7 : 5}
-        removeClippedSubviews={true}
-      />
+      <View style={styles.listWrapper}>
+        <FlatList
+          ref={flatListRef}
+          data={data}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={() => <View style={{ width: CARD_SPACING }} />}
+          getItemLayout={getItemLayout}
+          initialNumToRender={isTV ? 10 : 6}
+          maxToRenderPerBatch={isTV ? 8 : 5}
+          windowSize={isTV ? 7 : 5}
+          removeClippedSubviews={true}
+        />
+      </View>
     </View>
   );
 };
