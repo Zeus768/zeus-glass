@@ -72,6 +72,8 @@ function CustomTabBar() {
               activeOpacity={0.7}
               {...(Platform.isTV && index === 0 && { hasTVPreferredFocus: true })}
             >
+              {/* Focus glow effect */}
+              {isFocused && <View style={tabBarStyles.focusGlow} />}
               <Text style={[
                 tabBarStyles.tabText,
                 isActive && tabBarStyles.tabTextActive,
@@ -102,16 +104,33 @@ const tabBarStyles = StyleSheet.create({
   tab: {
     paddingHorizontal: isTV ? 28 : 16,
     paddingVertical: isTV ? 12 : 8,
-    borderRadius: 4,
+    borderRadius: isTV ? 12 : 8,
     position: 'relative',
+    borderWidth: 3,
+    borderColor: 'transparent',
   },
   tabActive: {
-    // Active state styling
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
   },
   tabFocused: {
-    backgroundColor: 'rgba(0, 217, 255, 0.2)',
-    borderWidth: 2,
-    borderColor: theme.colors.focus,
+    backgroundColor: theme.colors.primary,
+    borderColor: '#FFFFFF',
+    transform: [{ scale: 1.1 }],
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  focusGlow: {
+    position: 'absolute',
+    top: -5,
+    left: -5,
+    right: -5,
+    bottom: -5,
+    backgroundColor: theme.colors.primary,
+    borderRadius: isTV ? 16 : 12,
+    opacity: 0.3,
   },
   tabText: {
     fontSize: isTV ? 20 : 14,
@@ -124,7 +143,8 @@ const tabBarStyles = StyleSheet.create({
     color: theme.colors.primary,
   },
   tabTextFocused: {
-    color: theme.colors.primary,
+    color: '#000000',
+    fontWeight: '900',
   },
   activeIndicator: {
     position: 'absolute',
