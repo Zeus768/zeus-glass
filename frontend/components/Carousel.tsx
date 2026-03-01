@@ -48,6 +48,9 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress }) => 
         hasTVPreferredFocus: index === 0,
       })}
     >
+      {/* FOCUS HIGHLIGHT - Big glowing border */}
+      {isFocused && <View style={styles.focusHighlight} />}
+      
       <View style={[styles.imageContainer, isFocused && styles.imageContainerFocused]}>
         {imageUrl ? (
           <Image
@@ -69,19 +72,20 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress }) => 
             </Text>
           </View>
         </View>
-        {/* Focus Play Indicator */}
+        {/* Focus Play Indicator - BIG and OBVIOUS */}
         {isFocused && (
           <View style={styles.focusPlayOverlay}>
             <View style={styles.playCircle}>
               <Text style={styles.playIcon}>▶</Text>
             </View>
+            <Text style={styles.focusLabel}>PRESS TO PLAY</Text>
           </View>
         )}
       </View>
       <Text style={[styles.title, isFocused && styles.titleFocused]} numberOfLines={2}>
         {displayTitle}
       </Text>
-      {year && <Text style={styles.year}>{year}</Text>}
+      {year && <Text style={[styles.year, isFocused && styles.yearFocused]}>{year}</Text>}
     </Pressable>
   );
 };
