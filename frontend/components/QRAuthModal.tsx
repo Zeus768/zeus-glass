@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Dimensions, Platform, ScrollView } from 'react-native';
 import { BlurView } from 'expo-blur';
 import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,9 @@ import { theme } from '../constants/theme';
 import { realDebridService, allDebridService, premiumizeService } from '../services/debrid';
 import { traktService } from '../services/trakt';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isTV = Platform.isTV || SCREEN_WIDTH > 1200;
+const isSmallScreen = SCREEN_WIDTH < 400;
 
 type ServiceType = 'real-debrid' | 'alldebrid' | 'premiumize' | 'trakt';
 
