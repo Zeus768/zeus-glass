@@ -33,10 +33,6 @@ export default function HomeScreen() {
   const [heroMovie, setHeroMovie] = useState<any>(null);
   const [heroFocused, setHeroFocused] = useState(false);
 
-  // Debug log
-  console.log('[HomeScreen] trendingMovies:', trendingMovies.length);
-  console.log('[HomeScreen] popularMovies:', popularMovies.length);
-
   useEffect(() => {
     if (trendingMovies.length > 0 && !heroMovie) {
       setHeroMovie(trendingMovies[0]);
