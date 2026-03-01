@@ -1,9 +1,14 @@
 import Constants from 'expo-constants';
 
 // API Configuration
-export const TMDB_API_KEY = Constants.expoConfig?.extra?.tmdbApiKey || '';
-export const TRAKT_CLIENT_ID = Constants.expoConfig?.extra?.traktClientId || '';
-export const TRAKT_CLIENT_SECRET = Constants.expoConfig?.extra?.traktClientSecret || '';
+// Fallback keys for development/web
+const FALLBACK_TMDB_KEY = 'f15af109700aab95d564acda15bdcd97';
+const FALLBACK_TRAKT_CLIENT_ID = '4cb0f37f73fc75a20dee4176591d04845a4f942cb386a7e9e33a2e9fb480593e';
+const FALLBACK_TRAKT_CLIENT_SECRET = 'f7ab784c37688345eb0585b342b6b153a499926eed7b84c89df24789bf5ddf09';
+
+export const TMDB_API_KEY = Constants.expoConfig?.extra?.tmdbApiKey || FALLBACK_TMDB_KEY;
+export const TRAKT_CLIENT_ID = Constants.expoConfig?.extra?.traktClientId || FALLBACK_TRAKT_CLIENT_ID;
+export const TRAKT_CLIENT_SECRET = Constants.expoConfig?.extra?.traktClientSecret || FALLBACK_TRAKT_CLIENT_SECRET;
 
 export const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
