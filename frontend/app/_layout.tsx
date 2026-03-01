@@ -232,9 +232,23 @@ export default function TabLayout() {
   const [showDonation, setShowDonation] = useState(false);
 
   useEffect(() => {
-    loadAllAccounts();
-    loadHomeContent();
-    loadFavorites();
+    const init = async () => {
+      console.log('[_layout] Initializing app...');
+      try {
+        await loadAllAccounts().catch(e => console.log('[_layout] Account load error:', e));
+      } catch {}
+      try {
+        console.log('[_layout] Loading home content...');
+        await loadHomeContent();
+        console.log('[_layout] Home content loaded');
+      } catch (e) {
+        console.error('[_layout] Home content error:', e);
+      }
+      try {
+        await loadFavorites();
+      } catch {}
+    };
+    init();
   }, []);
 
   // Tab bar height based on device
