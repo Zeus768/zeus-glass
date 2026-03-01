@@ -13,7 +13,7 @@ import {
   Clipboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../constants/theme';
+import { theme, isTV } from '../constants/theme';
 import { QRAuthModal } from '../components/QRAuthModal';
 import { useAuthStore } from '../store/authStore';
 import { iptvService } from '../services/iptv';
