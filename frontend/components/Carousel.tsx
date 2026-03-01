@@ -1,5 +1,5 @@
-import React, { useRef, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform, FlatList } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { theme, isTV } from '../constants/theme';
 import { Movie, TVShow } from '../types';
@@ -40,6 +40,7 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress }) => 
       onBlur={() => setIsFocused(false)}
       style={[
         styles.card,
+        index > 0 && { marginLeft: CARD_SPACING },
         isFocused && styles.cardFocused,
       ]}
       data-testid={`carousel-item-${item.id}`}
@@ -87,7 +88,6 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress }) => 
 
 export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => {
   const router = useRouter();
-  const flatListRef = useRef<FlatList>(null);
 
   const handlePress = useCallback((item: Movie | TVShow) => {
     if (isMovie(item)) {
@@ -96,18 +96,6 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
       router.push(`/tv/${item.id}`);
     }
   }, [router]);
-
-  const renderItem = useCallback(({ item, index }: { item: Movie | TVShow; index: number }) => (
-    <CarouselItem item={item} index={index} onPress={handlePress} />
-  ), [handlePress]);
-
-  const keyExtractor = useCallback((item: Movie | TVShow) => item.id.toString(), []);
-
-  const getItemLayout = useCallback((_: any, index: number) => ({
-    length: CARD_WIDTH + CARD_SPACING,
-    offset: (CARD_WIDTH + CARD_SPACING) * index,
-    index,
-  }), []);
 
   if (!data || data.length === 0) return null;
 
@@ -121,23 +109,20 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
           </Pressable>
         )}
       </View>
-      <View style={styles.listWrapper}>
-        <FlatList
-          ref={flatListRef}
-          data={data}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={{ width: CARD_SPACING }} />}
-          getItemLayout={getItemLayout}
-          initialNumToRender={isTV ? 10 : 6}
-          maxToRenderPerBatch={isTV ? 8 : 5}
-          windowSize={isTV ? 7 : 5}
-          removeClippedSubviews={true}
-        />
-      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+      >
+        {data.map((item, index) => (
+          <CarouselItem
+            key={item.id}
+            item={item}
+            index={index}
+            onPress={handlePress}
+          />
+        ))}
+      </ScrollView>
     </View>
   );
 };
@@ -164,9 +149,6 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '600',
   },
-  listWrapper: {
-    height: CARD_HEIGHT + (isTV ? 80 : 50), // Card height + space for title/year
-  },
   listContent: {
     paddingHorizontal: isTV ? 50 : 16,
   },
@@ -187,11 +169,6 @@ const styles = StyleSheet.create({
   },
   imageContainerFocused: {
     borderColor: theme.colors.focus,
-    shadowColor: theme.colors.focus,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 20,
-    elevation: 15,
   },
   image: {
     width: '100%',
