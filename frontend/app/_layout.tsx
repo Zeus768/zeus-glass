@@ -1,15 +1,59 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
-import { Platform, StatusBar, View, Text, Pressable, Modal, StyleSheet, Linking, Dimensions, TVFocusGuideView } from 'react-native';
+import { 
+  Platform, 
+  StatusBar, 
+  View, 
+  Text, 
+  Pressable, 
+  Modal, 
+  StyleSheet, 
+  Linking, 
+  Dimensions, 
+  TVFocusGuideView,
+  useTVEventHandler,
+  ScrollView,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const isTV = Platform.isTV || SCREEN_WIDTH > 1200;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isTV = Platform.isTV || SCREEN_WIDTH > 900;
+
+// Focusable Button Component for TV
+const FocusableButton = ({ 
+  onPress, 
+  style, 
+  focusedStyle,
+  children,
+  ...props 
+}: any) => {
+  const [isFocused, setIsFocused] = useState(false);
+  
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      style={[
+        style,
+        isFocused && { 
+          borderWidth: 3, 
+          borderColor: theme.colors.primary,
+          transform: [{ scale: 1.05 }],
+        },
+        isFocused && focusedStyle,
+      ]}
+      {...props}
+    >
+      {children}
+    </Pressable>
+  );
+};
 
 // Donation Modal Component
 function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -21,12 +65,12 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={donationStyles.overlay}>
         <View style={[donationStyles.modal, isTV && donationStyles.modalTV]}>
-          <Pressable style={donationStyles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={isTV ? 32 : 24} color={theme.colors.text} />
-          </Pressable>
+          <FocusableButton style={donationStyles.closeButton} onPress={onClose}>
+            <Ionicons name="close" size={isTV ? 40 : 28} color={theme.colors.text} />
+          </FocusableButton>
           
           <View style={[donationStyles.coffeeIcon, isTV && donationStyles.coffeeIconTV]}>
-            <Text style={[donationStyles.coffeeEmoji, isTV && { fontSize: 60 }]}>☕</Text>
+            <Text style={[donationStyles.coffeeEmoji, isTV && { fontSize: 80 }]}>☕</Text>
           </View>
           
           <Text style={[donationStyles.title, isTV && donationStyles.titleTV]}>Support Zeus Glass</Text>
@@ -37,19 +81,22 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
           {/* QR Code */}
           <View style={[donationStyles.qrContainer, isTV && donationStyles.qrContainerTV]}>
             <Image 
-              source={{ uri: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://buymeacoffee.com/zeus768' }}
+              source={{ uri: 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https://buymeacoffee.com/zeus768' }}
               style={[donationStyles.qrCode, isTV && donationStyles.qrCodeTV]}
               contentFit="contain"
             />
-            <Text style={[donationStyles.qrText, isTV && { fontSize: 16 }]}>Scan to donate</Text>
+            <Text style={[donationStyles.qrText, isTV && { fontSize: 20 }]}>Scan to donate</Text>
           </View>
           
-          <Pressable style={[donationStyles.donateButton, isTV && donationStyles.donateButtonTV]} onPress={handleDonate}>
-            <Ionicons name="heart" size={isTV ? 28 : 20} color="#000" />
-            <Text style={[donationStyles.donateButtonText, isTV && { fontSize: 20 }]}>Buy Me a Coffee</Text>
-          </Pressable>
+          <FocusableButton 
+            style={[donationStyles.donateButton, isTV && donationStyles.donateButtonTV]} 
+            onPress={handleDonate}
+          >
+            <Ionicons name="heart" size={isTV ? 32 : 22} color="#000" />
+            <Text style={[donationStyles.donateButtonText, isTV && { fontSize: 24 }]}>Buy Me a Coffee</Text>
+          </FocusableButton>
           
-          <Text style={[donationStyles.thankYou, isTV && { fontSize: 16 }]}>Thank you for your support! 💛</Text>
+          <Text style={[donationStyles.thankYou, isTV && { fontSize: 18 }]}>Thank you for your support! 💛</Text>
         </View>
       </View>
     </Modal>
@@ -59,117 +106,122 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
 const donationStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modal: {
     width: '90%',
-    maxWidth: 380,
+    maxWidth: 420,
     backgroundColor: theme.colors.card,
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 24,
+    padding: 28,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: theme.colors.gold,
   },
   modalTV: {
-    maxWidth: 600,
-    padding: 40,
+    maxWidth: 700,
+    padding: 50,
+    borderRadius: 32,
+    borderWidth: 3,
   },
   closeButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    padding: 8,
+    top: 16,
+    right: 16,
+    padding: 10,
     zIndex: 10,
+    borderRadius: 20,
   },
   coffeeIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: '#FFDD00',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   coffeeIconTV: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 24,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    marginBottom: 30,
   },
   coffeeEmoji: {
-    fontSize: 40,
+    fontSize: 50,
   },
   title: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: 'bold',
     color: theme.colors.text,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   titleTV: {
-    fontSize: 32,
-    marginBottom: 12,
+    fontSize: 42,
+    marginBottom: 16,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 10,
+    marginBottom: 24,
+    paddingHorizontal: 12,
   },
   subtitleTV: {
-    fontSize: 18,
-    marginBottom: 30,
+    fontSize: 22,
+    marginBottom: 36,
   },
   qrContainer: {
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   qrContainerTV: {
-    padding: 24,
-    marginBottom: 30,
+    padding: 30,
+    marginBottom: 36,
+    borderRadius: 20,
   },
   qrCode: {
-    width: 180,
-    height: 180,
+    width: 200,
+    height: 200,
   },
   qrCodeTV: {
-    width: 280,
-    height: 280,
+    width: 320,
+    height: 320,
   },
   qrText: {
-    marginTop: 8,
-    fontSize: 12,
+    marginTop: 12,
+    fontSize: 14,
     color: '#333',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   donateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFDD00',
-    paddingVertical: 14,
-    paddingHorizontal: 28,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
     borderRadius: 30,
-    gap: 8,
-    marginBottom: 16,
+    gap: 10,
+    marginBottom: 20,
   },
   donateButtonTV: {
-    paddingVertical: 18,
-    paddingHorizontal: 40,
-    marginBottom: 24,
+    paddingVertical: 22,
+    paddingHorizontal: 50,
+    marginBottom: 28,
+    borderRadius: 40,
   },
   donateButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#000',
   },
   thankYou: {
-    fontSize: 12,
+    fontSize: 14,
     color: theme.colors.textSecondary,
   },
 });
@@ -187,17 +239,25 @@ export default function TabLayout() {
     loadFavorites();
   }, []);
 
+  // Tab bar height based on device
+  const tabBarHeight = isTV ? 80 : 55;
+  const tabFontSize = isTV ? 20 : 14;
+  const headerPaddingTop = isTV ? 20 : Platform.OS === 'ios' ? 50 : 35;
+
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
       
       {/* Header with App Name and Donation Button */}
-      <View style={[headerStyles.header, isTV && headerStyles.headerTV]}>
+      <View style={[headerStyles.header, { paddingTop: headerPaddingTop }, isTV && headerStyles.headerTV]}>
         <Text style={[headerStyles.appName, isTV && headerStyles.appNameTV]}>ZEUS GLASS</Text>
-        <Pressable style={[headerStyles.donateBtn, isTV && headerStyles.donateBtnTV]} onPress={() => setShowDonation(true)}>
-          <Ionicons name="heart" size={isTV ? 24 : 16} color="#FFDD00" />
+        <FocusableButton 
+          style={[headerStyles.donateBtn, isTV && headerStyles.donateBtnTV]} 
+          onPress={() => setShowDonation(true)}
+        >
+          <Ionicons name="heart" size={isTV ? 28 : 18} color="#FFDD00" />
           <Text style={[headerStyles.donateBtnText, isTV && headerStyles.donateBtnTextTV]}>Donate</Text>
-        </Pressable>
+        </FocusableButton>
       </View>
       
       <Tabs
@@ -206,33 +266,32 @@ export default function TabLayout() {
           tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarStyle: {
             backgroundColor: theme.colors.background,
-            borderBottomColor: 'transparent',
-            borderBottomWidth: 0,
-            height: isTV ? 70 : 50,
+            borderBottomColor: theme.colors.border,
+            borderBottomWidth: 1,
+            height: tabBarHeight,
             elevation: 0,
             shadowOpacity: 0,
-            paddingTop: 0,
           },
           tabBarLabelStyle: {
-            fontSize: isTV ? 18 : 13,
+            fontSize: tabFontSize,
             fontWeight: '700',
             textTransform: 'uppercase',
-            letterSpacing: isTV ? 1 : 0.5,
+            letterSpacing: isTV ? 1.5 : 0.8,
+            marginBottom: isTV ? 12 : 6,
           },
           tabBarItemStyle: {
-            paddingTop: 0,
-            paddingBottom: isTV ? 12 : 8,
-            minWidth: isTV ? 150 : 80,
+            paddingVertical: isTV ? 10 : 6,
+            minWidth: isTV ? 180 : 90,
           },
           tabBarIndicatorStyle: {
             backgroundColor: theme.colors.primary,
-            height: 3,
+            height: isTV ? 4 : 3,
             borderRadius: 2,
           },
           tabBarPosition: 'top',
           headerShown: false,
-          tabBarPressColor: 'transparent',
           tabBarScrollEnabled: true,
+          tabBarAllowFontScaling: true,
         }}
       >
         <Tabs.Screen
@@ -280,7 +339,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="vod"
           options={{
-            title: 'VOD-P',
+            title: 'VOD',
             tabBarIcon: () => null,
           }}
         />
@@ -293,41 +352,16 @@ export default function TabLayout() {
         />
         
         {/* Hidden screens */}
-        <Tabs.Screen
-          name="movie/[id]"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="player"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="+html"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="+not-found"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="tv/[id]"
-          options={{
-            href: null,
-          }}
-        />
+        <Tabs.Screen name="movie/[id]" options={{ href: null }} />
+        <Tabs.Screen name="player" options={{ href: null }} />
+        <Tabs.Screen name="+html" options={{ href: null }} />
+        <Tabs.Screen name="+not-found" options={{ href: null }} />
+        <Tabs.Screen name="tv/[id]" options={{ href: null }} />
       </Tabs>
       
       {/* Donation Modal */}
       <DonationModal visible={showDonation} onClose={() => setShowDonation(false)} />
-    </>
+    </View>
   );
 }
 
@@ -337,48 +371,47 @@ const headerStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: theme.colors.background,
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    paddingHorizontal: 20,
     paddingBottom: 12,
   },
   headerTV: {
-    paddingHorizontal: 40,
-    paddingTop: 30,
+    paddingHorizontal: 50,
     paddingBottom: 20,
   },
   appName: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: theme.colors.primary,
     letterSpacing: 2,
   },
   appNameTV: {
-    fontSize: 32,
-    letterSpacing: 3,
+    fontSize: 40,
+    letterSpacing: 4,
   },
   donateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 221, 0, 0.15)',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 25,
+    borderWidth: 2,
     borderColor: '#FFDD00',
-    gap: 6,
+    gap: 8,
   },
   donateBtnTV: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 30,
-    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 30,
+    borderRadius: 35,
+    gap: 12,
+    borderWidth: 3,
   },
   donateBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#FFDD00',
   },
   donateBtnTextTV: {
-    fontSize: 18,
+    fontSize: 22,
   },
 });
