@@ -165,79 +165,86 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
       onRequestClose={onClose}
     >
       <BlurView intensity={80} style={styles.blurContainer}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modal}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>Authorize {serviceNames[service]}</Text>
-              <Pressable onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={theme.colors.text} />
-              </Pressable>
-            </View>
-
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Generating authorization code...</Text>
-              </View>
-            ) : error ? (
-              <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
-                <Text style={styles.errorText}>{error}</Text>
-                <Pressable style={styles.retryButton} onPress={initializeAuth}>
-                  <Text style={styles.retryButtonText}>Retry</Text>
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <View style={[styles.modalContainer, isTV && styles.modalContainerTV]}>
+            <View style={[styles.modal, isTV && styles.modalTV]}>
+              {/* Header */}
+              <View style={[styles.header, isTV && styles.headerTV]}>
+                <Text style={[styles.title, isTV && styles.titleTV]}>Authorize {serviceNames[service]}</Text>
+                <Pressable onPress={onClose} style={styles.closeButton}>
+                  <Ionicons name="close" size={isTV ? 36 : 24} color={theme.colors.text} />
                 </Pressable>
               </View>
-            ) : (
-              <View style={styles.content}>
-                {/* Instructions */}
-                <Text style={styles.instructions}>
-                  Scan the QR code with your phone or enter the code manually:
-                </Text>
 
-                {/* Side by side: QR Code and User Code */}
-                <View style={styles.authContainer}>
-                  {/* QR Code */}
-                  <View style={styles.qrContainer}>
-                    <View style={styles.qrWrapper}>
-                      <QRCode
-                        value={verificationUrl}
-                        size={180}
-                        backgroundColor="white"
-                        color="black"
-                      />
-                    </View>
-                    <Text style={styles.qrLabel}>Scan with Phone</Text>
-                  </View>
-
-                  {/* Divider */}
-                  <View style={styles.divider} />
-
-                  {/* User Code */}
-                  <View style={styles.codeContainer}>
-                    <Text style={styles.codeLabel}>Enter Code:</Text>
-                    <View style={styles.codeBadge}>
-                      <Text style={styles.codeText}>{userCode}</Text>
-                    </View>
-                    <Text style={styles.urlText} numberOfLines={2}>
-                      {verificationUrl}
-                    </Text>
-                  </View>
+              {loading ? (
+                <View style={[styles.loadingContainer, isTV && styles.loadingContainerTV]}>
+                  <ActivityIndicator size="large" color={theme.colors.primary} />
+                  <Text style={[styles.loadingText, isTV && styles.loadingTextTV]}>Generating authorization code...</Text>
                 </View>
+              ) : error ? (
+                <View style={[styles.errorContainer, isTV && styles.errorContainerTV]}>
+                  <Ionicons name="alert-circle" size={isTV ? 72 : 48} color={theme.colors.error} />
+                  <Text style={[styles.errorText, isTV && styles.errorTextTV]}>{error}</Text>
+                  <Pressable style={[styles.retryButton, isTV && styles.retryButtonTV]} onPress={initializeAuth}>
+                    <Text style={[styles.retryButtonText, isTV && styles.retryButtonTextTV]}>Retry</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={[styles.content, isTV && styles.contentTV]}>
+                  {/* Instructions */}
+                  <Text style={[styles.instructions, isTV && styles.instructionsTV]}>
+                    Scan the QR code or enter the code at the URL below:
+                  </Text>
 
-                {/* Status */}
-                {polling && (
-                  <View style={styles.statusContainer}>
-                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                    <Text style={styles.statusText}>
-                      Waiting for authorization...
-                    </Text>
+                  {/* Responsive layout: Stack on mobile, side-by-side on tablet/TV */}
+                  <View style={[styles.authContainer, isSmallScreen && styles.authContainerStacked]}>
+                    {/* QR Code */}
+                    <View style={[styles.qrContainer, isSmallScreen && styles.qrContainerStacked]}>
+                      <View style={[styles.qrWrapper, isTV && styles.qrWrapperTV]}>
+                        <QRCode
+                          value={verificationUrl}
+                          size={isTV ? 300 : isSmallScreen ? 150 : 180}
+                          backgroundColor="white"
+                          color="black"
+                        />
+                      </View>
+                      <Text style={[styles.qrLabel, isTV && styles.qrLabelTV]}>Scan with Phone</Text>
+                    </View>
+
+                    {/* Divider - horizontal on mobile, vertical on larger screens */}
+                    {isSmallScreen ? (
+                      <View style={styles.dividerHorizontal} />
+                    ) : (
+                      <View style={[styles.divider, isTV && styles.dividerTV]} />
+                    )}
+
+                    {/* User Code */}
+                    <View style={[styles.codeContainer, isSmallScreen && styles.codeContainerStacked]}>
+                      <Text style={[styles.codeLabel, isTV && styles.codeLabelTV]}>Enter this code:</Text>
+                      <View style={[styles.codeBadge, isTV && styles.codeBadgeTV]}>
+                        <Text style={[styles.codeText, isTV && styles.codeTextTV]}>{userCode}</Text>
+                      </View>
+                      <Text style={[styles.urlLabel, isTV && styles.urlLabelTV]}>at this URL:</Text>
+                      <Text style={[styles.urlText, isTV && styles.urlTextTV]} numberOfLines={2}>
+                        {verificationUrl}
+                      </Text>
+                    </View>
                   </View>
-                )}
-              </View>
-            )}
+
+                  {/* Status */}
+                  {polling && (
+                    <View style={[styles.statusContainer, isTV && styles.statusContainerTV]}>
+                      <ActivityIndicator size={isTV ? "large" : "small"} color={theme.colors.primary} />
+                      <Text style={[styles.statusText, isTV && styles.statusTextTV]}>
+                        Waiting for authorization...
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </BlurView>
     </Modal>
   );
