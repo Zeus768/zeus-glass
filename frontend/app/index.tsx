@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, RefreshControl } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, RefreshControl, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { theme } from '../constants/theme';
+import { theme, isTV } from '../constants/theme';
 import { Carousel } from '../components/Carousel';
 import { useContentStore } from '../store/contentStore';
 import { tmdbService } from '../services/tmdb';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const HERO_HEIGHT = SCREEN_HEIGHT * 0.65;
+const HERO_HEIGHT = isTV ? SCREEN_HEIGHT * 0.75 : SCREEN_HEIGHT * 0.65;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -31,6 +31,7 @@ export default function HomeScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [heroMovie, setHeroMovie] = useState<any>(null);
+  const [heroFocused, setHeroFocused] = useState(false);
 
   useEffect(() => {
     if (trendingMovies.length > 0 && !heroMovie) {
@@ -38,7 +39,7 @@ export default function HomeScreen() {
     }
   }, [trendingMovies]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
       loadHomeContent(),
@@ -46,10 +47,16 @@ export default function HomeScreen() {
       loadFavorites(),
     ]);
     setRefreshing(false);
-  };
+  }, [loadHomeContent, loadContinueWatching, loadFavorites]);
+
+  const handleWatchNow = useCallback(() => {
+    if (heroMovie) {
+      router.push(`/movie/${heroMovie.id}`);
+    }
+  }, [heroMovie, router]);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} data-testid="home-screen">
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -72,52 +79,47 @@ export default function HomeScreen() {
             <LinearGradient
               colors={['transparent', 'rgba(10, 14, 39, 0.8)', theme.colors.background]}
               style={styles.heroGradient}
-              locations={[0, 0.6, 1]}
+              locations={[0, 0.5, 1]}
             />
             <SafeAreaView style={styles.heroContent} edges={['top']}>
-              {/* Top Bar with Logo */}
-              <View style={styles.header}>
-                <Text style={styles.appName}>ZEUS GLASS</Text>
-                <View style={styles.headerRight}>
-                  <Ionicons name="time-outline" size={20} color={theme.colors.text} />
-                  <Text style={styles.timeText}>00:30</Text>
-                </View>
-              </View>
-
               {/* Featured Content */}
               <View style={styles.heroInfo}>
                 <View style={styles.trendingBadge}>
-                  <Ionicons name="star" size={14} color={theme.colors.primary} />
+                  <Ionicons name="star" size={isTV ? 20 : 14} color={theme.colors.primary} />
                   <Text style={styles.trendingText}>Trending Now</Text>
                 </View>
                 <Text style={styles.heroTitle} numberOfLines={2}>{heroMovie.title}</Text>
-                <Text style={styles.heroDescription} numberOfLines={3}>
+                <Text style={styles.heroDescription} numberOfLines={isTV ? 4 : 3}>
                   {heroMovie.overview}
                 </Text>
 
-                {/* Channel Badge (like Sky Atlantic) */}
+                {/* Channel Badge */}
                 <View style={styles.channelBadge}>
                   <Text style={styles.channelText}>ZEUS</Text>
                   <View style={styles.ratingBox}>
-                    <Text style={styles.ratingBoxText}>18</Text>
+                    <Text style={styles.ratingBoxText}>{Math.round(heroMovie.vote_average)}</Text>
                   </View>
                 </View>
 
                 {/* Buttons */}
                 <View style={styles.heroButtons}>
                   <Pressable 
-                    style={styles.watchButton}
-                    onPress={() => router.push(`/movie/${heroMovie.id}`)}
+                    style={[styles.watchButton, heroFocused && styles.watchButtonFocused]}
+                    onPress={handleWatchNow}
+                    onFocus={() => setHeroFocused(true)}
+                    onBlur={() => setHeroFocused(false)}
+                    data-testid="hero-watch-now"
+                    {...(Platform.isTV && { hasTVPreferredFocus: true })}
                   >
-                    <Ionicons name="play" size={20} color={theme.colors.background} />
+                    <Ionicons name="play" size={isTV ? 28 : 20} color={theme.colors.background} />
                     <Text style={styles.watchButtonText}>Watch Now</Text>
                   </Pressable>
-                  <Pressable style={styles.addButton}>
-                    <Ionicons name="add" size={20} color={theme.colors.text} />
+                  <Pressable style={styles.addButton} data-testid="hero-playlist">
+                    <Ionicons name="add" size={isTV ? 28 : 20} color={theme.colors.text} />
                     <Text style={styles.addButtonText}>Playlist</Text>
                   </Pressable>
-                  <Pressable style={styles.infoButton}>
-                    <Ionicons name="information-circle-outline" size={20} color={theme.colors.text} />
+                  <Pressable style={styles.infoButton} data-testid="hero-info">
+                    <Ionicons name="information-circle-outline" size={isTV ? 28 : 20} color={theme.colors.text} />
                   </Pressable>
                 </View>
               </View>
@@ -171,129 +173,113 @@ const styles = StyleSheet.create({
   },
   heroContent: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    paddingBottom: theme.spacing.xl,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
-  },
-  appName: {
-    fontSize: 20,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.primary,
-    letterSpacing: 2,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  timeText: {
-    fontSize: 16,
-    color: theme.colors.text,
-    fontWeight: theme.fontWeight.semibold,
+    justifyContent: 'flex-end',
+    paddingBottom: isTV ? 60 : 32,
   },
   heroInfo: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: isTV ? 60 : 24,
+    maxWidth: isTV ? 800 : '100%',
   },
   trendingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.primary,
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: isTV ? 18 : 12,
+    paddingVertical: isTV ? 10 : 6,
     borderRadius: theme.borderRadius.sm,
-    marginBottom: theme.spacing.md,
+    marginBottom: isTV ? 24 : 16,
   },
   trendingText: {
-    marginLeft: 6,
-    fontSize: 13,
-    fontWeight: theme.fontWeight.bold,
+    marginLeft: isTV ? 10 : 6,
+    fontSize: isTV ? 18 : 13,
+    fontWeight: '700',
     color: theme.colors.background,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   heroTitle: {
-    fontSize: 42,
-    fontWeight: theme.fontWeight.bold,
+    fontSize: isTV ? 64 : 42,
+    fontWeight: '700',
     color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-    lineHeight: 48,
+    marginBottom: isTV ? 20 : 12,
+    lineHeight: isTV ? 72 : 48,
   },
   heroDescription: {
-    fontSize: 15,
+    fontSize: isTV ? 22 : 15,
     color: theme.colors.textSecondary,
-    lineHeight: 22,
-    marginBottom: theme.spacing.md,
+    lineHeight: isTV ? 32 : 22,
+    marginBottom: isTV ? 24 : 16,
   },
   channelBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-    gap: 8,
+    marginBottom: isTV ? 32 : 20,
+    gap: isTV ? 16 : 8,
   },
   channelText: {
-    fontSize: 14,
-    fontWeight: theme.fontWeight.semibold,
+    fontSize: isTV ? 20 : 14,
+    fontWeight: '600',
     color: theme.colors.textSecondary,
   },
   ratingBox: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: isTV ? 14 : 8,
+    paddingVertical: isTV ? 6 : 2,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   ratingBoxText: {
-    fontSize: 12,
-    fontWeight: theme.fontWeight.bold,
+    fontSize: isTV ? 16 : 12,
+    fontWeight: '700',
     color: theme.colors.text,
   },
   heroButtons: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
+    gap: isTV ? 24 : 16,
     alignItems: 'center',
   },
   watchButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.text,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: theme.borderRadius.md,
-    gap: 8,
+    paddingHorizontal: isTV ? 42 : 28,
+    paddingVertical: isTV ? 20 : 14,
+    borderRadius: isTV ? 16 : 12,
+    gap: isTV ? 12 : 8,
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  watchButtonFocused: {
+    borderColor: theme.colors.focus,
+    backgroundColor: theme.colors.primary,
   },
   watchButtonText: {
-    fontSize: 16,
-    fontWeight: theme.fontWeight.bold,
+    fontSize: isTV ? 24 : 16,
+    fontWeight: '700',
     color: theme.colors.background,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: theme.borderRadius.md,
-    gap: 8,
+    paddingHorizontal: isTV ? 32 : 20,
+    paddingVertical: isTV ? 20 : 14,
+    borderRadius: isTV ? 16 : 12,
+    gap: isTV ? 12 : 8,
   },
   addButtonText: {
-    fontSize: 16,
-    fontWeight: theme.fontWeight.semibold,
+    fontSize: isTV ? 22 : 16,
+    fontWeight: '600',
     color: theme.colors.text,
   },
   infoButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    padding: 14,
-    borderRadius: theme.borderRadius.md,
+    padding: isTV ? 20 : 14,
+    borderRadius: isTV ? 16 : 12,
   },
   carouselsContainer: {
-    paddingVertical: theme.spacing.xl,
+    paddingVertical: isTV ? 40 : 24,
   },
 });
