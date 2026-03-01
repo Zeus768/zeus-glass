@@ -137,9 +137,6 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
   );
 };
 
-// Calculate total card height including title and year text
-const TOTAL_CARD_HEIGHT = CARD_HEIGHT + (isTV ? 70 : 50);
-
 const styles = StyleSheet.create({
   container: {
     marginBottom: isTV ? 40 : 24,
@@ -174,9 +171,22 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
+    position: 'relative',
   },
   cardFocused: {
-    transform: [{ scale: isTV ? 1.08 : 1.02 }],
+    transform: [{ scale: isTV ? 1.15 : 1.05 }],
+    zIndex: 100,
+  },
+  focusHighlight: {
+    position: 'absolute',
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    backgroundColor: theme.colors.primary,
+    borderRadius: isTV ? 24 : 16,
+    opacity: 0.3,
+    zIndex: -1,
   },
   imageContainer: {
     width: CARD_WIDTH,
@@ -184,11 +194,17 @@ const styles = StyleSheet.create({
     borderRadius: isTV ? 16 : 12,
     overflow: 'hidden',
     marginBottom: isTV ? 12 : 8,
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: 'transparent',
   },
   imageContainerFocused: {
-    borderColor: theme.colors.focus,
+    borderColor: theme.colors.primary,
+    borderWidth: isTV ? 6 : 4,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 30,
+    elevation: 30,
   },
   image: {
     width: '100%',
@@ -222,23 +238,35 @@ const styles = StyleSheet.create({
   },
   focusPlayOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 217, 255, 0.25)',
+    backgroundColor: 'rgba(0, 217, 255, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   playCircle: {
-    width: isTV ? 70 : 50,
-    height: isTV ? 70 : 50,
-    borderRadius: isTV ? 35 : 25,
+    width: isTV ? 80 : 50,
+    height: isTV ? 80 : 50,
+    borderRadius: isTV ? 40 : 25,
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
   },
   playIcon: {
     color: '#000',
-    fontSize: isTV ? 28 : 20,
+    fontSize: isTV ? 32 : 20,
     fontWeight: 'bold',
-    marginLeft: isTV ? 4 : 2,
+    marginLeft: isTV ? 6 : 2,
+  },
+  focusLabel: {
+    marginTop: isTV ? 12 : 8,
+    color: '#FFFFFF',
+    fontSize: isTV ? 16 : 10,
+    fontWeight: '900',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+    letterSpacing: 1,
   },
   title: {
     fontSize: isTV ? 18 : 14,
@@ -248,9 +276,13 @@ const styles = StyleSheet.create({
   },
   titleFocused: {
     color: theme.colors.primary,
+    fontWeight: '800',
   },
   year: {
     fontSize: isTV ? 16 : 12,
     color: theme.colors.textSecondary,
+  },
+  yearFocused: {
+    color: theme.colors.primary,
   },
 });
