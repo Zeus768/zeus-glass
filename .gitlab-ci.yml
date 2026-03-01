@@ -1,0 +1,67 @@
+image: node:20
+
+variables:
+  ANDROID_COMPILE_SDK: "34"
+  ANDROID_BUILD_TOOLS: "34.0.0"
+  ANDROID_SDK_TOOLS: "11076708"
+
+stages:
+  - setup
+  - build
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - frontend/node_modules/
+    - .gradle/
+
+before_script:
+  - apt-get update -qq && apt-get install -y -qq openjdk-17-jdk wget unzip
+  - export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+  - export PATH=$PATH:$JAVA_HOME/bin
+  # Install Android SDK
+  - wget -q https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip -O android-sdk.zip
+  - mkdir -p /opt/android-sdk/cmdline-tools
+  - unzip -q android-sdk.zip -d /opt/android-sdk/cmdline-tools
+  - mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
+  - export ANDROID_HOME=/opt/android-sdk
+  - export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+  - yes | sdkmanager --licenses || true
+  - sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" "build-tools;${ANDROID_BUILD_TOOLS}" "platform-tools"
+
+install_dependencies:
+  stage: setup
+  script:
+    - cd frontend
+    - npm install -g yarn expo-cli eas-cli
+    - yarn install --frozen-lockfile
+  artifacts:
+    paths:
+      - frontend/node_modules/
+    expire_in: 1 hour
+
+build_android_apk:
+  stage: build
+  dependencies:
+    - install_dependencies
+  script:
+    - cd frontend
+    - npm install -g yarn expo-cli
+    - yarn install
+    # Generate native Android project
+    - npx expo prebuild --platform android --clean
+    # Build APK
+    - cd android
+    - chmod +x gradlew
+    - ./gradlew assembleRelease --no-daemon
+    - cd ..
+    # Move APK to artifacts
+    - mkdir -p ../build-output
+    - cp android/app/build/outputs/apk/release/*.apk ../build-output/zeus-glass.apk || cp android/app/build/outputs/apk/debug/*.apk ../build-output/zeus-glass.apk
+  artifacts:
+    paths:
+      - build-output/zeus-glass.apk
+    expire_in: 1 week
+  only:
+    - main
+    - master
