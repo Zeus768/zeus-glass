@@ -1,16 +1,14 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, Pressable, ScrollView } from 'react-native';
+import React, { useRef, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, Platform, FlatList } from 'react-native';
 import { Image } from 'expo-image';
-import { FlashList } from '@shopify/flash-list';
-import { theme } from '../constants/theme';
+import { theme, isTV } from '../constants/theme';
 import { Movie, TVShow } from '../types';
 import { tmdbService } from '../services/tmdb';
 import { useRouter } from 'expo-router';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = 150;
-const CARD_HEIGHT = 220;
-const CARD_SPACING = 12;
+const CARD_WIDTH = isTV ? theme.tv.cardWidth : theme.mobile.cardWidth;
+const CARD_HEIGHT = isTV ? theme.tv.cardHeight : theme.mobile.cardHeight;
+const CARD_SPACING = isTV ? theme.tv.carouselItemSpacing : theme.mobile.carouselItemSpacing;
 
 interface CarouselProps {
   title: string;
@@ -18,84 +16,125 @@ interface CarouselProps {
   onSeeAll?: () => void;
 }
 
-const isMovie = (item: Movie | TVShow): item is Movie => {
-  return 'title' in item;
+const isMovie = (item: Movie | TVShow): item is Movie => 'title' in item;
+
+interface CarouselItemProps {
+  item: Movie | TVShow;
+  index: number;
+  onPress: (item: Movie | TVShow) => void;
+}
+
+const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  
+  const imageUrl = tmdbService.getImageUrl(item.poster_path, 'w342');
+  const displayTitle = isMovie(item) ? item.title : item.name;
+  const year = isMovie(item)
+    ? item.release_date?.split('-')[0]
+    : item.first_air_date?.split('-')[0];
+
+  return (
+    <Pressable
+      onPress={() => onPress(item)}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      style={[
+        styles.card,
+        isFocused && styles.cardFocused,
+      ]}
+      data-testid={`carousel-item-${item.id}`}
+      {...(Platform.isTV && {
+        hasTVPreferredFocus: index === 0,
+      })}
+    >
+      <View style={[styles.imageContainer, isFocused && styles.imageContainerFocused]}>
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.image}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <View style={[styles.image, styles.placeholderImage]}>
+            <Text style={styles.placeholderText}>No Image</Text>
+          </View>
+        )}
+        {/* Rating Badge */}
+        <View style={styles.overlay}>
+          <View style={styles.ratingBadge}>
+            <Text style={styles.ratingText}>
+              {item.vote_average.toFixed(1)}
+            </Text>
+          </View>
+        </View>
+        {/* Focus Play Indicator */}
+        {isFocused && (
+          <View style={styles.focusPlayOverlay}>
+            <View style={styles.playCircle}>
+              <Text style={styles.playIcon}>▶</Text>
+            </View>
+          </View>
+        )}
+      </View>
+      <Text style={[styles.title, isFocused && styles.titleFocused]} numberOfLines={2}>
+        {displayTitle}
+      </Text>
+      {year && <Text style={styles.year}>{year}</Text>}
+    </Pressable>
+  );
 };
 
 export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => {
   const router = useRouter();
+  const flatListRef = useRef<FlatList>(null);
 
-  const handlePress = (item: Movie | TVShow) => {
+  const handlePress = useCallback((item: Movie | TVShow) => {
     if (isMovie(item)) {
       router.push(`/movie/${item.id}`);
     } else {
       router.push(`/tv/${item.id}`);
     }
-  };
+  }, [router]);
 
-  const renderItem = ({ item }: { item: Movie | TVShow }) => {
-    const imageUrl = tmdbService.getImageUrl(item.poster_path, 'w342');
-    const displayTitle = isMovie(item) ? item.title : item.name;
-    const year = isMovie(item)
-      ? item.release_date?.split('-')[0]
-      : item.first_air_date?.split('-')[0];
+  const renderItem = useCallback(({ item, index }: { item: Movie | TVShow; index: number }) => (
+    <CarouselItem item={item} index={index} onPress={handlePress} />
+  ), [handlePress]);
 
-    return (
-      <Pressable
-        onPress={() => handlePress(item)}
-        style={({ pressed }) => [
-          styles.card,
-          pressed && styles.cardPressed,
-        ]}
-      >
-        <View style={styles.imageContainer}>
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.image}
-              contentFit="cover"
-              transition={200}
-            />
-          ) : (
-            <View style={[styles.image, styles.placeholderImage]}>
-              <Text style={styles.placeholderText}>No Image</Text>
-            </View>
-          )}
-          <View style={styles.overlay}>
-            <View style={styles.ratingBadge}>
-              <Text style={styles.ratingText}>
-                ⭐ {item.vote_average.toFixed(1)}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <Text style={styles.title} numberOfLines={2}>
-          {displayTitle}
-        </Text>
-        {year && <Text style={styles.year}>{year}</Text>}
-      </Pressable>
-    );
-  };
+  const keyExtractor = useCallback((item: Movie | TVShow) => item.id.toString(), []);
+
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: CARD_WIDTH + CARD_SPACING,
+    offset: (CARD_WIDTH + CARD_SPACING) * index,
+    index,
+  }), []);
+
+  if (!data || data.length === 0) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} data-testid={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{title}</Text>
         {onSeeAll && (
-          <Pressable onPress={onSeeAll}>
+          <Pressable onPress={onSeeAll} data-testid={`see-all-${title.toLowerCase().replace(/\s+/g, '-')}`}>
             <Text style={styles.seeAll}>See All</Text>
           </Pressable>
         )}
       </View>
-      <FlashList
+      <FlatList
+        ref={flatListRef}
         data={data}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={keyExtractor}
         horizontal
         showsHorizontalScrollIndicator={false}
-        estimatedItemSize={CARD_WIDTH}
-        ItemSeparatorComponent={() => <View style={{ width: CARD_SPACING }} />}
         contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={{ width: CARD_SPACING }} />}
+        getItemLayout={getItemLayout}
+        initialNumToRender={isTV ? 10 : 6}
+        maxToRenderPerBatch={isTV ? 8 : 5}
+        windowSize={isTV ? 7 : 5}
+        removeClippedSubviews={true}
       />
     </View>
   );
@@ -103,40 +142,51 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: isTV ? 40 : 24,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    paddingHorizontal: isTV ? 50 : 16,
+    marginBottom: isTV ? 20 : 12,
   },
   headerTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    fontSize: isTV ? 32 : 20,
+    fontWeight: '700',
     color: theme.colors.text,
+    letterSpacing: isTV ? 1 : 0,
   },
   seeAll: {
-    fontSize: theme.fontSize.md,
+    fontSize: isTV ? 20 : 14,
     color: theme.colors.primary,
-    fontWeight: theme.fontWeight.semibold,
+    fontWeight: '600',
   },
   listContent: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: isTV ? 50 : 16,
   },
   card: {
     width: CARD_WIDTH,
   },
-  cardPressed: {
-    opacity: 0.7,
+  cardFocused: {
+    transform: [{ scale: isTV ? 1.08 : 1.02 }],
   },
   imageContainer: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: isTV ? 16 : 12,
     overflow: 'hidden',
-    marginBottom: theme.spacing.sm,
+    marginBottom: isTV ? 12 : 8,
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  imageContainerFocused: {
+    borderColor: theme.colors.focus,
+    shadowColor: theme.colors.focus,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 15,
   },
   image: {
     width: '100%',
@@ -149,33 +199,56 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: theme.colors.textMuted,
-    fontSize: theme.fontSize.sm,
+    fontSize: isTV ? 18 : 12,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
-    padding: theme.spacing.sm,
+    padding: isTV ? 12 : 8,
   },
   ratingBadge: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.sm,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    paddingHorizontal: isTV ? 12 : 8,
+    paddingVertical: isTV ? 6 : 4,
+    borderRadius: isTV ? 8 : 6,
   },
   ratingText: {
-    color: theme.colors.text,
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.gold,
+    fontSize: isTV ? 16 : 12,
+    fontWeight: '700',
+  },
+  focusPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 217, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playCircle: {
+    width: isTV ? 70 : 50,
+    height: isTV ? 70 : 50,
+    borderRadius: isTV ? 35 : 25,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playIcon: {
+    color: '#000',
+    fontSize: isTV ? 28 : 20,
+    fontWeight: 'bold',
+    marginLeft: isTV ? 4 : 2,
   },
   title: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
+    fontSize: isTV ? 18 : 14,
+    fontWeight: '600',
     color: theme.colors.text,
-    marginBottom: 2,
+    marginBottom: 4,
+  },
+  titleFocused: {
+    color: theme.colors.primary,
   },
   year: {
-    fontSize: theme.fontSize.xs,
+    fontSize: isTV ? 16 : 12,
     color: theme.colors.textSecondary,
   },
 });
