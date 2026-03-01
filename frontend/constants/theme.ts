@@ -1,3 +1,9 @@
+import { Platform, Dimensions } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+export const isTV = Platform.isTV || SCREEN_WIDTH > 1200;
+export const isTablet = SCREEN_WIDTH > 768 && !isTV;
+
 // Zeus Glass Theme - Sky Glass Inspired
 export const theme = {
   colors: {
@@ -16,6 +22,7 @@ export const theme = {
     success: '#10B981',
     error: '#EF4444',
     warning: '#F59E0B',
+    focus: '#00D9FF', // Focus color for TV navigation
     gradient: {
       start: '#0A0E27',
       end: '#1A1F3F',
@@ -41,19 +48,33 @@ export const theme = {
     xl: 24,
   },
   fontSize: {
-    xs: 12,
-    sm: 14,
-    md: 16,
-    lg: 20,
-    xl: 24,
-    xxl: 32,
-    huge: 48,
+    xs: isTV ? 16 : 12,
+    sm: isTV ? 18 : 14,
+    md: isTV ? 22 : 16,
+    lg: isTV ? 28 : 20,
+    xl: isTV ? 36 : 24,
+    xxl: isTV ? 48 : 32,
+    huge: isTV ? 64 : 48,
   },
   fontWeight: {
     normal: '400' as const,
     medium: '500' as const,
     semibold: '600' as const,
     bold: '700' as const,
+  },
+  // TV-specific settings
+  tv: {
+    focusBorderWidth: 4,
+    focusScale: 1.08,
+    cardWidth: 220,
+    cardHeight: 330,
+    carouselItemSpacing: 20,
+  },
+  // Mobile settings
+  mobile: {
+    cardWidth: 150,
+    cardHeight: 220,
+    carouselItemSpacing: 12,
   },
 };
 
