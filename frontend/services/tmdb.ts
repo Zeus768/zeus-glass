@@ -17,23 +17,23 @@ export const tmdbService = {
   },
 
   // Movies
-  getTrendingMovies: async (): Promise<Movie[]> => {
-    const response = await tmdbApi.get('/trending/movie/week');
+  getTrendingMovies: async (page: number = 1): Promise<Movie[]> => {
+    const response = await tmdbApi.get('/trending/movie/week', { params: { page } });
     return response.data.results;
   },
 
-  getPopularMovies: async (): Promise<Movie[]> => {
-    const response = await tmdbApi.get('/movie/popular');
+  getPopularMovies: async (page: number = 1): Promise<Movie[]> => {
+    const response = await tmdbApi.get('/movie/popular', { params: { page } });
     return response.data.results;
   },
 
-  getNowPlayingMovies: async (): Promise<Movie[]> => {
-    const response = await tmdbApi.get('/movie/now_playing');
+  getNowPlayingMovies: async (page: number = 1): Promise<Movie[]> => {
+    const response = await tmdbApi.get('/movie/now_playing', { params: { page } });
     return response.data.results;
   },
 
-  getUpcomingMovies: async (): Promise<Movie[]> => {
-    const response = await tmdbApi.get('/movie/upcoming');
+  getUpcomingMovies: async (page: number = 1): Promise<Movie[]> => {
+    const response = await tmdbApi.get('/movie/upcoming', { params: { page } });
     return response.data.results;
   },
 
@@ -42,26 +42,33 @@ export const tmdbService = {
     return response.data;
   },
 
-  getMoviesByGenre: async (genreId: number): Promise<Movie[]> => {
+  getMoviesByGenre: async (genreId: number, page: number = 1): Promise<Movie[]> => {
     const response = await tmdbApi.get('/discover/movie', {
-      params: { with_genres: genreId },
+      params: { with_genres: genreId, page },
     });
     return response.data.results;
   },
 
   // TV Shows
-  getTrendingTVShows: async (): Promise<TVShow[]> => {
-    const response = await tmdbApi.get('/trending/tv/week');
+  getTrendingTVShows: async (page: number = 1): Promise<TVShow[]> => {
+    const response = await tmdbApi.get('/trending/tv/week', { params: { page } });
     return response.data.results;
   },
 
-  getPopularTVShows: async (): Promise<TVShow[]> => {
-    const response = await tmdbApi.get('/tv/popular');
+  getPopularTVShows: async (page: number = 1): Promise<TVShow[]> => {
+    const response = await tmdbApi.get('/tv/popular', { params: { page } });
     return response.data.results;
   },
 
-  getOnTheAirTVShows: async (): Promise<TVShow[]> => {
-    const response = await tmdbApi.get('/tv/on_the_air');
+  getOnTheAirTVShows: async (page: number = 1): Promise<TVShow[]> => {
+    const response = await tmdbApi.get('/tv/on_the_air', { params: { page } });
+    return response.data.results;
+  },
+
+  getTVShowsByGenre: async (genreId: number, page: number = 1): Promise<TVShow[]> => {
+    const response = await tmdbApi.get('/discover/tv', {
+      params: { with_genres: genreId, page },
+    });
     return response.data.results;
   },
 
