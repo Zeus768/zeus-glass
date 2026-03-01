@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../constants/theme';
+import { theme, isTV } from '../constants/theme';
 import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
 import { 
@@ -13,16 +13,12 @@ import {
   Modal, 
   StyleSheet, 
   Linking, 
-  Dimensions, 
-  TVFocusGuideView,
-  useTVEventHandler,
+  Dimensions,
   ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const isTV = Platform.isTV || SCREEN_WIDTH > 900;
 
 // Focusable Button Component for TV
 const FocusableButton = ({ 
@@ -30,6 +26,7 @@ const FocusableButton = ({
   style, 
   focusedStyle,
   children,
+  testID,
   ...props 
 }: any) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -43,11 +40,12 @@ const FocusableButton = ({
         style,
         isFocused && { 
           borderWidth: 3, 
-          borderColor: theme.colors.primary,
+          borderColor: theme.colors.focus,
           transform: [{ scale: 1.05 }],
         },
         isFocused && focusedStyle,
       ]}
+      data-testid={testID}
       {...props}
     >
       {children}
@@ -65,7 +63,7 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={donationStyles.overlay}>
         <View style={[donationStyles.modal, isTV && donationStyles.modalTV]}>
-          <FocusableButton style={donationStyles.closeButton} onPress={onClose}>
+          <FocusableButton style={donationStyles.closeButton} onPress={onClose} testID="close-donation-modal">
             <Ionicons name="close" size={isTV ? 40 : 28} color={theme.colors.text} />
           </FocusableButton>
           
@@ -91,12 +89,13 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
           <FocusableButton 
             style={[donationStyles.donateButton, isTV && donationStyles.donateButtonTV]} 
             onPress={handleDonate}
+            testID="donate-button"
           >
             <Ionicons name="heart" size={isTV ? 32 : 22} color="#000" />
             <Text style={[donationStyles.donateButtonText, isTV && { fontSize: 24 }]}>Buy Me a Coffee</Text>
           </FocusableButton>
           
-          <Text style={[donationStyles.thankYou, isTV && { fontSize: 18 }]}>Thank you for your support! 💛</Text>
+          <Text style={[donationStyles.thankYou, isTV && { fontSize: 18 }]}>Thank you for your support!</Text>
         </View>
       </View>
     </Modal>
@@ -230,7 +229,6 @@ export default function TabLayout() {
   const loadAllAccounts = useAuthStore((state) => state.loadAllAccounts);
   const loadHomeContent = useContentStore((state) => state.loadHomeContent);
   const loadFavorites = useContentStore((state) => state.loadFavorites);
-  const iptvConfig = useAuthStore((state) => state.iptvConfig);
   const [showDonation, setShowDonation] = useState(false);
 
   useEffect(() => {
@@ -240,9 +238,9 @@ export default function TabLayout() {
   }, []);
 
   // Tab bar height based on device
-  const tabBarHeight = isTV ? 80 : 55;
-  const tabFontSize = isTV ? 20 : 14;
-  const headerPaddingTop = isTV ? 20 : Platform.OS === 'ios' ? 50 : 35;
+  const tabBarHeight = isTV ? 90 : 55;
+  const tabFontSize = isTV ? 22 : 14;
+  const headerPaddingTop = isTV ? 30 : Platform.OS === 'ios' ? 50 : 35;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -254,6 +252,7 @@ export default function TabLayout() {
         <FocusableButton 
           style={[headerStyles.donateBtn, isTV && headerStyles.donateBtnTV]} 
           onPress={() => setShowDonation(true)}
+          testID="open-donation-modal"
         >
           <Ionicons name="heart" size={isTV ? 28 : 18} color="#FFDD00" />
           <Text style={[headerStyles.donateBtnText, isTV && headerStyles.donateBtnTextTV]}>Donate</Text>
@@ -277,15 +276,15 @@ export default function TabLayout() {
             fontWeight: '700',
             textTransform: 'uppercase',
             letterSpacing: isTV ? 1.5 : 0.8,
-            marginBottom: isTV ? 12 : 6,
+            marginBottom: isTV ? 16 : 6,
           },
           tabBarItemStyle: {
-            paddingVertical: isTV ? 10 : 6,
-            minWidth: isTV ? 180 : 90,
+            paddingVertical: isTV ? 14 : 6,
+            minWidth: isTV ? 200 : 90,
           },
           tabBarIndicatorStyle: {
             backgroundColor: theme.colors.primary,
-            height: isTV ? 4 : 3,
+            height: isTV ? 5 : 3,
             borderRadius: 2,
           },
           tabBarPosition: 'top',
@@ -353,10 +352,8 @@ export default function TabLayout() {
         
         {/* Hidden screens */}
         <Tabs.Screen name="movie/[id]" options={{ href: null }} />
-        <Tabs.Screen name="player" options={{ href: null }} />
-        <Tabs.Screen name="+html" options={{ href: null }} />
-        <Tabs.Screen name="+not-found" options={{ href: null }} />
         <Tabs.Screen name="tv/[id]" options={{ href: null }} />
+        <Tabs.Screen name="player" options={{ href: null }} />
       </Tabs>
       
       {/* Donation Modal */}
@@ -376,7 +373,7 @@ const headerStyles = StyleSheet.create({
   },
   headerTV: {
     paddingHorizontal: 50,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   appName: {
     fontSize: 24,
@@ -385,7 +382,7 @@ const headerStyles = StyleSheet.create({
     letterSpacing: 2,
   },
   appNameTV: {
-    fontSize: 40,
+    fontSize: 48,
     letterSpacing: 4,
   },
   donateBtn: {
@@ -400,8 +397,8 @@ const headerStyles = StyleSheet.create({
     gap: 8,
   },
   donateBtnTV: {
-    paddingVertical: 16,
-    paddingHorizontal: 30,
+    paddingVertical: 18,
+    paddingHorizontal: 36,
     borderRadius: 35,
     gap: 12,
     borderWidth: 3,
@@ -412,6 +409,6 @@ const headerStyles = StyleSheet.create({
     color: '#FFDD00',
   },
   donateBtnTextTV: {
-    fontSize: 22,
+    fontSize: 24,
   },
 });
