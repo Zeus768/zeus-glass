@@ -100,7 +100,19 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
   // Debug log
   console.log(`[Carousel] ${title}: ${data?.length || 0} items`);
 
-  if (!data || data.length === 0) return null;
+  // Return empty container when no data to avoid layout issues
+  if (!data || data.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{title}</Text>
+        </View>
+        <View style={styles.scrollWrapper}>
+          <Text style={{color: theme.colors.textMuted, paddingHorizontal: 50}}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container} data-testid={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
