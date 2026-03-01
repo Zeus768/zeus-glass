@@ -31,7 +31,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'ZeusGlass'
+rootProject.name = 'Zeus Glass'
 
 expoAutolinking.useExpoVersionCatalog()
 
