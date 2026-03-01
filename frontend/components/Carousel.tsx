@@ -97,21 +97,9 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
     }
   }, [router]);
 
-  // Debug log
-  console.log(`[Carousel] ${title}: ${data?.length || 0} items`);
-
   // Return empty container when no data to avoid layout issues
   if (!data || data.length === 0) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{title}</Text>
-        </View>
-        <View style={styles.scrollWrapper}>
-          <Text style={{color: theme.colors.textMuted, paddingHorizontal: 50}}>Loading...</Text>
-        </View>
-      </View>
-    );
+    return null;
   }
 
   return (
@@ -172,7 +160,6 @@ const styles = StyleSheet.create({
   },
   scrollWrapper: {
     height: TOTAL_CARD_HEIGHT,
-    backgroundColor: 'rgba(255,0,0,0.1)', // Debug: red tint to see area
   },
   scrollView: {
     flex: 1,
