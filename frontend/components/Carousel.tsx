@@ -112,20 +112,23 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
           </Pressable>
         )}
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      >
-        {data.map((item, index) => (
-          <CarouselItem
-            key={item.id}
-            item={item}
-            index={index}
-            onPress={handlePress}
-          />
-        ))}
-      </ScrollView>
+      <View style={styles.scrollWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          style={styles.scrollView}
+        >
+          {data.map((item, index) => (
+            <CarouselItem
+              key={item.id}
+              item={item}
+              index={index}
+              onPress={handlePress}
+            />
+          ))}
+        </ScrollView>
+      </View>
     </View>
   );
 };
