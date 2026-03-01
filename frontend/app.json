@@ -59,7 +59,8 @@
           "isTV": true,
           "showVerboseWarnings": false
         }
-      ]
+      ],
+      "./plugins/withAndroidTV"
     ],
     "experiments": {
       "typedRoutes": true
