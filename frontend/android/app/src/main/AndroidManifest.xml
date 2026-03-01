@@ -11,6 +11,18 @@
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  
+  <!-- TV Features - Required for Fire TV and Shield TV -->
+  <uses-feature android:name="android.software.leanback" android:required="false"/>
+  <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+  <uses-feature android:name="android.hardware.faketouch" android:required="false"/>
+  <uses-feature android:name="android.hardware.telephony" android:required="false"/>
+  <uses-feature android:name="android.hardware.camera" android:required="false"/>
+  <uses-feature android:name="android.hardware.nfc" android:required="false"/>
+  <uses-feature android:name="android.hardware.location.gps" android:required="false"/>
+  <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+  <uses-feature android:name="android.hardware.sensor" android:required="false"/>
+  
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -18,15 +30,49 @@
       <data android:scheme="https"/>
     </intent>
   </queries>
-  <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:theme="@style/AppTheme" android:supportsRtl="true" android:enableOnBackInvokedCallback="false" android:requestLegacyExternalStorage="true" android:fullBackupContent="@xml/secure_store_backup_rules" android:dataExtractionRules="@xml/secure_store_data_extraction_rules">
+  
+  <application 
+    android:name=".MainApplication" 
+    android:label="@string/app_name" 
+    android:icon="@mipmap/ic_launcher" 
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:banner="@mipmap/ic_launcher"
+    android:allowBackup="true" 
+    android:theme="@style/AppTheme" 
+    android:supportsRtl="true" 
+    android:enableOnBackInvokedCallback="false" 
+    android:requestLegacyExternalStorage="true" 
+    android:fullBackupContent="@xml/secure_store_backup_rules" 
+    android:dataExtractionRules="@xml/secure_store_data_extraction_rules">
+    
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
-    <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
+    
+    <!-- Main Activity - TV and Mobile Compatible -->
+    <activity 
+      android:name=".MainActivity" 
+      android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize" 
+      android:launchMode="singleTask" 
+      android:windowSoftInputMode="adjustResize" 
+      android:theme="@style/Theme.App.SplashScreen" 
+      android:exported="true"
+      android:resizeableActivity="true"
+      android:screenOrientation="unspecified">
+      
+      <!-- Standard Mobile Launcher -->
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
+      
+      <!-- Android TV / Fire TV / Shield TV Launcher -->
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+      </intent-filter>
+      
+      <!-- Deep linking -->
       <intent-filter>
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
