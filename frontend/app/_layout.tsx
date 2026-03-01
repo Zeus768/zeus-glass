@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
 import { useAuthStore } from '../store/authStore';
@@ -15,10 +15,127 @@ import {
   Linking, 
   Dimensions,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Tab configuration
+const TABS = [
+  { name: 'index', title: 'HOME', route: '/' },
+  { name: 'movies', title: 'MOVIES', route: '/movies' },
+  { name: 'tv-shows', title: 'TV SHOWS', route: '/tv-shows' },
+  { name: 'tv-guide', title: 'LIVE TV', route: '/tv-guide' },
+  { name: 'catch-up', title: 'CATCH UP', route: '/catch-up' },
+  { name: 'search', title: 'SEARCH', route: '/search' },
+  { name: 'vod', title: 'VOD', route: '/vod' },
+  { name: 'settings', title: 'SETTINGS', route: '/settings' },
+];
+
+// Custom Tab Bar Component
+function CustomTabBar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [focusedTab, setFocusedTab] = useState<string | null>(null);
+
+  const getActiveTab = () => {
+    if (pathname === '/') return 'index';
+    const tab = TABS.find(t => t.route === pathname || pathname.startsWith(t.route + '/'));
+    return tab?.name || 'index';
+  };
+
+  const activeTab = getActiveTab();
+
+  return (
+    <View style={tabBarStyles.container}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={tabBarStyles.scrollContent}
+      >
+        {TABS.map((tab, index) => {
+          const isActive = activeTab === tab.name;
+          const isFocused = focusedTab === tab.name;
+          
+          return (
+            <TouchableOpacity
+              key={tab.name}
+              onPress={() => router.push(tab.route as any)}
+              onFocus={() => setFocusedTab(tab.name)}
+              onBlur={() => setFocusedTab(null)}
+              style={[
+                tabBarStyles.tab,
+                isActive && tabBarStyles.tabActive,
+                isFocused && tabBarStyles.tabFocused,
+              ]}
+              activeOpacity={0.7}
+              {...(Platform.isTV && index === 0 && { hasTVPreferredFocus: true })}
+            >
+              <Text style={[
+                tabBarStyles.tabText,
+                isActive && tabBarStyles.tabTextActive,
+                isFocused && tabBarStyles.tabTextFocused,
+              ]}>
+                {tab.title}
+              </Text>
+              {isActive && <View style={tabBarStyles.activeIndicator} />}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+const tabBarStyles = StyleSheet.create({
+  container: {
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  scrollContent: {
+    paddingHorizontal: isTV ? 40 : 12,
+    paddingVertical: isTV ? 16 : 10,
+    gap: isTV ? 8 : 4,
+  },
+  tab: {
+    paddingHorizontal: isTV ? 28 : 16,
+    paddingVertical: isTV ? 12 : 8,
+    borderRadius: 4,
+    position: 'relative',
+  },
+  tabActive: {
+    // Active state styling
+  },
+  tabFocused: {
+    backgroundColor: 'rgba(0, 217, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: theme.colors.focus,
+  },
+  tabText: {
+    fontSize: isTV ? 20 : 14,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: isTV ? 1.5 : 0.8,
+  },
+  tabTextActive: {
+    color: theme.colors.primary,
+  },
+  tabTextFocused: {
+    color: theme.colors.primary,
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: isTV ? 28 : 16,
+    right: isTV ? 28 : 16,
+    height: isTV ? 4 : 3,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 2,
+  },
+});
 
 // Focusable Button Component for TV
 const FocusableButton = ({ 
@@ -246,118 +363,43 @@ export default function TabLayout() {
     init();
   }, []);
 
-  // Tab bar height based on device
-  const tabBarHeight = isTV ? 90 : 55;
-  const tabFontSize = isTV ? 22 : 14;
   const headerPaddingTop = isTV ? 30 : Platform.OS === 'ios' ? 50 : 35;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
       
       {/* Header with App Name and Donation Button */}
-      <View style={[headerStyles.header, { paddingTop: headerPaddingTop }, isTV && headerStyles.headerTV]}>
-        <Text style={[headerStyles.appName, isTV && headerStyles.appNameTV]}>ZEUS GLASS</Text>
+      <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+        <Text style={styles.appName}>ZEUS GLASS</Text>
         <FocusableButton 
-          style={[headerStyles.donateBtn, isTV && headerStyles.donateBtnTV]} 
+          style={styles.donateBtn} 
           onPress={() => setShowDonation(true)}
           testID="open-donation-modal"
         >
           <Ionicons name="heart" size={isTV ? 28 : 18} color="#FFDD00" />
-          <Text style={[headerStyles.donateBtnText, isTV && headerStyles.donateBtnTextTV]}>Donate</Text>
+          <Text style={styles.donateBtnText}>Donate</Text>
         </FocusableButton>
       </View>
       
+      {/* Custom Tab Bar - ALWAYS VISIBLE */}
+      <CustomTabBar />
+      
+      {/* Screen Content via Tabs (hidden tab bar) */}
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.textSecondary,
-          tabBarStyle: {
-            backgroundColor: theme.colors.background,
-            borderBottomColor: theme.colors.border,
-            borderBottomWidth: 1,
-            height: tabBarHeight,
-            elevation: 0,
-            shadowOpacity: 0,
-          },
-          tabBarLabelStyle: {
-            fontSize: tabFontSize,
-            fontWeight: '700',
-            textTransform: 'uppercase',
-            letterSpacing: isTV ? 1.5 : 0.8,
-            marginBottom: isTV ? 16 : 6,
-          },
-          tabBarItemStyle: {
-            paddingVertical: isTV ? 14 : 6,
-            minWidth: isTV ? 200 : 90,
-          },
-          tabBarIndicatorStyle: {
-            backgroundColor: theme.colors.primary,
-            height: isTV ? 5 : 3,
-            borderRadius: 2,
-          },
-          tabBarPosition: 'top',
           headerShown: false,
-          tabBarScrollEnabled: true,
-          tabBarAllowFontScaling: true,
+          tabBarStyle: { display: 'none' }, // Hide default tab bar
         }}
       >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'HOME',
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="movies"
-          options={{
-            title: 'MOVIES',
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="tv-shows"
-          options={{
-            title: 'TV SHOWS',
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="tv-guide"
-          options={{
-            title: 'LIVE TV',
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="catch-up"
-          options={{
-            title: 'CATCH UP',
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="search"
-          options={{
-            title: 'SEARCH',
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="vod"
-          options={{
-            title: 'VOD',
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="settings"
-          options={{
-            title: 'SETTINGS',
-            tabBarIcon: () => null,
-          }}
-        />
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="movies" />
+        <Tabs.Screen name="tv-shows" />
+        <Tabs.Screen name="tv-guide" />
+        <Tabs.Screen name="catch-up" />
+        <Tabs.Screen name="search" />
+        <Tabs.Screen name="vod" />
+        <Tabs.Screen name="settings" />
         
         {/* Hidden screens */}
         <Tabs.Screen name="movie/[id]" options={{ href: null }} />
@@ -371,53 +413,39 @@ export default function TabLayout() {
   );
 }
 
-const headerStyles = StyleSheet.create({
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: theme.colors.background,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  headerTV: {
-    paddingHorizontal: 50,
-    paddingBottom: 24,
+    paddingHorizontal: isTV ? 50 : 20,
+    paddingBottom: isTV ? 16 : 12,
   },
   appName: {
-    fontSize: 24,
+    fontSize: isTV ? 48 : 24,
     fontWeight: 'bold',
     color: theme.colors.primary,
-    letterSpacing: 2,
-  },
-  appNameTV: {
-    fontSize: 48,
-    letterSpacing: 4,
+    letterSpacing: isTV ? 4 : 2,
   },
   donateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 221, 0, 0.15)',
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 25,
-    borderWidth: 2,
+    paddingVertical: isTV ? 18 : 10,
+    paddingHorizontal: isTV ? 36 : 18,
+    borderRadius: isTV ? 35 : 25,
+    borderWidth: isTV ? 3 : 2,
     borderColor: '#FFDD00',
-    gap: 8,
-  },
-  donateBtnTV: {
-    paddingVertical: 18,
-    paddingHorizontal: 36,
-    borderRadius: 35,
-    gap: 12,
-    borderWidth: 3,
+    gap: isTV ? 12 : 8,
   },
   donateBtnText: {
-    fontSize: 14,
+    fontSize: isTV ? 24 : 14,
     fontWeight: '700',
     color: '#FFDD00',
-  },
-  donateBtnTextTV: {
-    fontSize: 24,
   },
 });
