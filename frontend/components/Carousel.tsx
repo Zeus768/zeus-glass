@@ -97,6 +97,9 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
     }
   }, [router]);
 
+  // Debug log
+  console.log(`[Carousel] ${title}: ${data?.length || 0} items`);
+
   if (!data || data.length === 0) return null;
 
   return (
