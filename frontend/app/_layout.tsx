@@ -4,10 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
-import { Platform, StatusBar, View, Text, Pressable, Modal, StyleSheet, Linking } from 'react-native';
+import { Platform, StatusBar, View, Text, Pressable, Modal, StyleSheet, Linking, Dimensions, TVFocusGuideView } from 'react-native';
 import { Image } from 'expo-image';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isTV = Platform.isTV || SCREEN_WIDTH > 1200;
 
 // Donation Modal Component
 function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -18,36 +20,36 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={donationStyles.overlay}>
-        <View style={donationStyles.modal}>
+        <View style={[donationStyles.modal, isTV && donationStyles.modalTV]}>
           <Pressable style={donationStyles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color={theme.colors.text} />
+            <Ionicons name="close" size={isTV ? 32 : 24} color={theme.colors.text} />
           </Pressable>
           
-          <View style={donationStyles.coffeeIcon}>
-            <Text style={donationStyles.coffeeEmoji}>☕</Text>
+          <View style={[donationStyles.coffeeIcon, isTV && donationStyles.coffeeIconTV]}>
+            <Text style={[donationStyles.coffeeEmoji, isTV && { fontSize: 60 }]}>☕</Text>
           </View>
           
-          <Text style={donationStyles.title}>Support Zeus Glass</Text>
-          <Text style={donationStyles.subtitle}>
+          <Text style={[donationStyles.title, isTV && donationStyles.titleTV]}>Support Zeus Glass</Text>
+          <Text style={[donationStyles.subtitle, isTV && donationStyles.subtitleTV]}>
             If you enjoy the app, consider buying me a coffee!
           </Text>
           
           {/* QR Code */}
-          <View style={donationStyles.qrContainer}>
+          <View style={[donationStyles.qrContainer, isTV && donationStyles.qrContainerTV]}>
             <Image 
-              source={{ uri: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://buymeacoffee.com/zeus768' }}
-              style={donationStyles.qrCode}
+              source={{ uri: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://buymeacoffee.com/zeus768' }}
+              style={[donationStyles.qrCode, isTV && donationStyles.qrCodeTV]}
               contentFit="contain"
             />
-            <Text style={donationStyles.qrText}>Scan to donate</Text>
+            <Text style={[donationStyles.qrText, isTV && { fontSize: 16 }]}>Scan to donate</Text>
           </View>
           
-          <Pressable style={donationStyles.donateButton} onPress={handleDonate}>
-            <Ionicons name="heart" size={20} color="#000" />
-            <Text style={donationStyles.donateButtonText}>Buy Me a Coffee</Text>
+          <Pressable style={[donationStyles.donateButton, isTV && donationStyles.donateButtonTV]} onPress={handleDonate}>
+            <Ionicons name="heart" size={isTV ? 28 : 20} color="#000" />
+            <Text style={[donationStyles.donateButtonText, isTV && { fontSize: 20 }]}>Buy Me a Coffee</Text>
           </Pressable>
           
-          <Text style={donationStyles.thankYou}>Thank you for your support! 💛</Text>
+          <Text style={[donationStyles.thankYou, isTV && { fontSize: 16 }]}>Thank you for your support! 💛</Text>
         </View>
       </View>
     </Modal>
@@ -62,14 +64,18 @@ const donationStyles = StyleSheet.create({
     alignItems: 'center',
   },
   modal: {
-    width: '85%',
-    maxWidth: 340,
+    width: '90%',
+    maxWidth: 380,
     backgroundColor: theme.colors.card,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: theme.colors.gold,
+  },
+  modalTV: {
+    maxWidth: 600,
+    padding: 40,
   },
   closeButton: {
     position: 'absolute',
@@ -87,6 +93,12 @@ const donationStyles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  coffeeIconTV: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 24,
+  },
   coffeeEmoji: {
     fontSize: 40,
   },
@@ -96,12 +108,20 @@ const donationStyles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: 8,
   },
+  titleTV: {
+    fontSize: 32,
+    marginBottom: 12,
+  },
   subtitle: {
     fontSize: 14,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
     paddingHorizontal: 10,
+  },
+  subtitleTV: {
+    fontSize: 18,
+    marginBottom: 30,
   },
   qrContainer: {
     backgroundColor: '#fff',
@@ -110,9 +130,17 @@ const donationStyles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  qrContainerTV: {
+    padding: 24,
+    marginBottom: 30,
+  },
   qrCode: {
-    width: 150,
-    height: 150,
+    width: 180,
+    height: 180,
+  },
+  qrCodeTV: {
+    width: 280,
+    height: 280,
   },
   qrText: {
     marginTop: 8,
@@ -129,6 +157,11 @@ const donationStyles = StyleSheet.create({
     borderRadius: 30,
     gap: 8,
     marginBottom: 16,
+  },
+  donateButtonTV: {
+    paddingVertical: 18,
+    paddingHorizontal: 40,
+    marginBottom: 24,
   },
   donateButtonText: {
     fontSize: 16,
@@ -149,25 +182,21 @@ export default function TabLayout() {
   const [showDonation, setShowDonation] = useState(false);
 
   useEffect(() => {
-    // Load all data on app start
     loadAllAccounts();
     loadHomeContent();
     loadFavorites();
   }, []);
-
-  // Check if IPTV is enabled and active
-  const showVODTab = iptvConfig && iptvConfig.enabled;
 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
       
       {/* Header with App Name and Donation Button */}
-      <View style={headerStyles.header}>
-        <Text style={headerStyles.appName}>ZEUS GLASS</Text>
-        <Pressable style={headerStyles.donateBtn} onPress={() => setShowDonation(true)}>
-          <Ionicons name="heart" size={16} color="#FFDD00" />
-          <Text style={headerStyles.donateBtnText}>Donate</Text>
+      <View style={[headerStyles.header, isTV && headerStyles.headerTV]}>
+        <Text style={[headerStyles.appName, isTV && headerStyles.appNameTV]}>ZEUS GLASS</Text>
+        <Pressable style={[headerStyles.donateBtn, isTV && headerStyles.donateBtnTV]} onPress={() => setShowDonation(true)}>
+          <Ionicons name="heart" size={isTV ? 24 : 16} color="#FFDD00" />
+          <Text style={[headerStyles.donateBtnText, isTV && headerStyles.donateBtnTextTV]}>Donate</Text>
         </Pressable>
       </View>
       
@@ -179,20 +208,21 @@ export default function TabLayout() {
             backgroundColor: theme.colors.background,
             borderBottomColor: 'transparent',
             borderBottomWidth: 0,
-            height: 50,
+            height: isTV ? 70 : 50,
             elevation: 0,
             shadowOpacity: 0,
             paddingTop: 0,
           },
           tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '600',
+            fontSize: isTV ? 18 : 13,
+            fontWeight: '700',
             textTransform: 'uppercase',
-            letterSpacing: 0.5,
+            letterSpacing: isTV ? 1 : 0.5,
           },
           tabBarItemStyle: {
             paddingTop: 0,
-            paddingBottom: 8,
+            paddingBottom: isTV ? 12 : 8,
+            minWidth: isTV ? 150 : 80,
           },
           tabBarIndicatorStyle: {
             backgroundColor: theme.colors.primary,
@@ -213,13 +243,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="tv-guide"
-          options={{
-            title: 'TV GUIDE',
-            tabBarIcon: () => null,
-          }}
-        />
-        <Tabs.Screen
           name="movies"
           options={{
             title: 'MOVIES',
@@ -233,19 +256,10 @@ export default function TabLayout() {
             tabBarIcon: () => null,
           }}
         />
-        {showVODTab && (
-          <Tabs.Screen
-            name="vod"
-            options={{
-              title: 'VOD',
-              tabBarIcon: () => null,
-            }}
-          />
-        )}
         <Tabs.Screen
-          name="search"
+          name="tv-guide"
           options={{
-            title: 'SEARCH',
+            title: 'LIVE TV',
             tabBarIcon: () => null,
           }}
         />
@@ -257,28 +271,56 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="search"
+          options={{
+            title: 'SEARCH',
+            tabBarIcon: () => null,
+          }}
+        />
+        <Tabs.Screen
+          name="vod"
+          options={{
+            title: 'VOD-P',
+            tabBarIcon: () => null,
+          }}
+        />
+        <Tabs.Screen
           name="settings"
           options={{
             title: 'SETTINGS',
             tabBarIcon: () => null,
           }}
         />
-        <Tabs.Screen
-          name="player"
-          options={{
-            href: null, // Hide from tabs
-          }}
-        />
+        
+        {/* Hidden screens */}
         <Tabs.Screen
           name="movie/[id]"
           options={{
-            href: null, // Hide from tabs
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="player"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="+html"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="+not-found"
+          options={{
+            href: null,
           }}
         />
         <Tabs.Screen
           name="tv/[id]"
           options={{
-            href: null, // Hide from tabs
+            href: null,
           }}
         />
       </Tabs>
@@ -299,11 +341,20 @@ const headerStyles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 40,
     paddingBottom: 12,
   },
+  headerTV: {
+    paddingHorizontal: 40,
+    paddingTop: 30,
+    paddingBottom: 20,
+  },
   appName: {
     fontSize: 20,
     fontWeight: 'bold',
     color: theme.colors.primary,
     letterSpacing: 2,
+  },
+  appNameTV: {
+    fontSize: 32,
+    letterSpacing: 3,
   },
   donateBtn: {
     flexDirection: 'row',
@@ -316,9 +367,18 @@ const headerStyles = StyleSheet.create({
     borderColor: '#FFDD00',
     gap: 6,
   },
+  donateBtnTV: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    gap: 10,
+  },
   donateBtnText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#FFDD00',
+  },
+  donateBtnTextTV: {
+    fontSize: 18,
   },
 });
