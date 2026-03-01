@@ -50,6 +50,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
   loadHomeContent: async () => {
     set({ loading: true });
     try {
+      console.log('[ContentStore] Loading home content...');
       const [trendingMovies, popularMovies, nowPlayingMovies, trendingTVShows, popularTVShows] =
         await Promise.all([
           tmdbService.getTrendingMovies(),
@@ -58,6 +59,9 @@ export const useContentStore = create<ContentState>((set, get) => ({
           tmdbService.getTrendingTVShows(),
           tmdbService.getPopularTVShows(),
         ]);
+
+      console.log('[ContentStore] Loaded trending movies:', trendingMovies.length);
+      console.log('[ContentStore] Loaded popular movies:', popularMovies.length);
 
       set({
         trendingMovies,
