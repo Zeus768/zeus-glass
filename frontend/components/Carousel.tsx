@@ -164,6 +164,9 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '600',
   },
+  listWrapper: {
+    height: CARD_HEIGHT + (isTV ? 80 : 50), // Card height + space for title/year
+  },
   listContent: {
     paddingHorizontal: isTV ? 50 : 16,
   },
