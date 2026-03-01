@@ -133,6 +133,9 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
   );
 };
 
+// Calculate total card height including title and year text
+const TOTAL_CARD_HEIGHT = CARD_HEIGHT + (isTV ? 70 : 50);
+
 const styles = StyleSheet.create({
   container: {
     marginBottom: isTV ? 40 : 24,
@@ -155,8 +158,15 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '600',
   },
+  scrollWrapper: {
+    height: TOTAL_CARD_HEIGHT,
+  },
+  scrollView: {
+    flex: 1,
+  },
   listContent: {
     paddingHorizontal: isTV ? 50 : 16,
+    alignItems: 'flex-start',
   },
   card: {
     width: CARD_WIDTH,
