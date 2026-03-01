@@ -233,17 +233,12 @@ export default function TabLayout() {
 
   useEffect(() => {
     const init = async () => {
-      console.log('[_layout] Initializing app...');
       try {
-        await loadAllAccounts().catch(e => console.log('[_layout] Account load error:', e));
+        await loadAllAccounts().catch(() => {});
       } catch {}
       try {
-        console.log('[_layout] Loading home content...');
         await loadHomeContent();
-        console.log('[_layout] Home content loaded');
-      } catch (e) {
-        console.error('[_layout] Home content error:', e);
-      }
+      } catch {}
       try {
         await loadFavorites();
       } catch {}
