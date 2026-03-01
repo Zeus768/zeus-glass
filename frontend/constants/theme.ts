@@ -1,8 +1,21 @@
 import { Platform, Dimensions } from 'react-native';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-export const isTV = Platform.isTV || SCREEN_WIDTH > 1200;
+// Get screen dimensions
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// TV Detection - check multiple sources
+// Platform.isTV should work after adding @react-native-tvos/config-tv plugin
+// Also use screen size as fallback (TV screens are typically > 960px wide in landscape)
+export const isTV = Platform.isTV === true || (Platform.OS === 'android' && SCREEN_WIDTH >= 960);
 export const isTablet = SCREEN_WIDTH > 768 && !isTV;
+
+// Debug log to verify TV detection
+if (__DEV__) {
+  console.log('[Theme] Platform.isTV:', Platform.isTV);
+  console.log('[Theme] Platform.OS:', Platform.OS);
+  console.log('[Theme] SCREEN_WIDTH:', SCREEN_WIDTH);
+  console.log('[Theme] isTV (computed):', isTV);
+}
 
 // Zeus Glass Theme - Sky Glass Inspired
 export const theme = {
@@ -22,7 +35,7 @@ export const theme = {
     success: '#10B981',
     error: '#EF4444',
     warning: '#F59E0B',
-    focus: '#00D9FF', // Focus color for TV navigation
+    focus: '#00D9FF',
     gradient: {
       start: '#0A0E27',
       end: '#1A1F3F',
@@ -62,7 +75,6 @@ export const theme = {
     semibold: '600' as const,
     bold: '700' as const,
   },
-  // TV-specific settings
   tv: {
     focusBorderWidth: 4,
     focusScale: 1.08,
@@ -70,7 +82,6 @@ export const theme = {
     cardHeight: 330,
     carouselItemSpacing: 20,
   },
-  // Mobile settings
   mobile: {
     cardWidth: 150,
     cardHeight: 220,
