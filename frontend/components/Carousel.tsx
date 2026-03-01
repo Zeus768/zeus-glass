@@ -160,6 +160,7 @@ const styles = StyleSheet.create({
   },
   scrollWrapper: {
     height: TOTAL_CARD_HEIGHT,
+    backgroundColor: 'rgba(255,0,0,0.1)', // Debug: red tint to see area
   },
   scrollView: {
     flex: 1,
