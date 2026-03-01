@@ -200,10 +200,10 @@ const styles = StyleSheet.create({
     fontSize: isTV ? 18 : 12,
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    padding: isTV ? 12 : 8,
+    position: 'absolute',
+    top: isTV ? 12 : 8,
+    right: isTV ? 12 : 8,
+    pointerEvents: 'none',
   },
   ratingBadge: {
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
