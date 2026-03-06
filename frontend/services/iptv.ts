@@ -199,18 +199,31 @@ export const iptvService = {
       const config = await iptvService.getConfig();
       if (!config || !config.enabled) return null;
 
-      let cleanDomain = config.domain.replace(/^https?:\/\//, '');
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
       
-      const response = await axios.get(
-        `http://${cleanDomain}/player_api.php`,
-        {
-          params: {
-            username: config.username,
-            password: config.password,
-          },
-          timeout: 10000,
+      // Try HTTPS first, then HTTP
+      const protocols = ['https', 'http'];
+      let response = null;
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+              },
+              timeout: 10000,
+            }
+          );
+          break;
+        } catch (e) {
+          continue;
         }
-      );
+      }
+      
+      if (!response) return null;
 
       const userInfo = response.data?.user_info;
       if (!userInfo) return null;
