@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - **TV Portrait Lock**: Removed `android:screenOrientation="portrait"` that was locking app to narrow mobile view on TV
 - **IPTV/Xtreme Codes Authentication**: Now tries HTTPS first, then falls back to HTTP for providers that use either protocol
+- **All IPTV Endpoints Fixed**: getLiveChannels, getVODContent, getAccountInfo, getEPG all now support HTTPS/HTTP fallback
 - **Tab Bar Visibility**: Created custom tab bar component that renders separately from expo-router to ensure tabs are always visible on both mobile and TV
 
 ### Changed
@@ -29,6 +30,7 @@ All notable changes to this project will be documented in this file.
 - Created `/plugins/withAndroidTV.js` custom Expo config plugin
 - Updated `/android/app/src/main/AndroidManifest.xml` with TV-specific configurations
 - Updated `styles.xml` for fullscreen TV themes
+- expo-clipboard updated to v8.0.8
 
 ---
 
