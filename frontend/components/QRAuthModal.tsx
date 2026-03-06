@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Dimensions, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Dimensions, Platform, ScrollView, Alert } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { BlurView } from 'expo-blur';
 import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -224,10 +225,35 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
                       <View style={[styles.codeBadge, isTV && styles.codeBadgeTV]}>
                         <Text style={[styles.codeText, isTV && styles.codeTextTV]}>{userCode}</Text>
                       </View>
+                      
+                      {/* Copy Code Button - especially useful for mobile */}
+                      <Pressable 
+                        style={[styles.copyButton, isTV && styles.copyButtonTV]}
+                        onPress={async () => {
+                          await Clipboard.setStringAsync(userCode);
+                          Alert.alert('Copied!', `Code "${userCode}" copied to clipboard`);
+                        }}
+                      >
+                        <Ionicons name="copy-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
+                        <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Copy Code</Text>
+                      </Pressable>
+                      
                       <Text style={[styles.urlLabel, isTV && styles.urlLabelTV]}>at this URL:</Text>
                       <Text style={[styles.urlText, isTV && styles.urlTextTV]} numberOfLines={2}>
                         {verificationUrl}
                       </Text>
+                      
+                      {/* Copy URL Button */}
+                      <Pressable 
+                        style={[styles.copyButton, isTV && styles.copyButtonTV]}
+                        onPress={async () => {
+                          await Clipboard.setStringAsync(verificationUrl);
+                          Alert.alert('Copied!', 'URL copied to clipboard');
+                        }}
+                      >
+                        <Ionicons name="link-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
+                        <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Copy URL</Text>
+                      </Pressable>
                     </View>
                   </View>
 
@@ -474,6 +500,36 @@ const styles = StyleSheet.create({
   },
   urlTextTV: {
     fontSize: 20,
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surfaceLight,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    gap: 8,
+  },
+  copyButtonTV: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    marginTop: 20,
+    marginBottom: 24,
+    gap: 12,
+  },
+  copyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  copyButtonTextTV: {
+    fontSize: 22,
   },
   statusContainer: {
     flexDirection: 'row',

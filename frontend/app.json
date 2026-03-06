@@ -2,14 +2,15 @@
   "expo": {
     "name": "Zeus Glass",
     "slug": "zeus-glass",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "zeusglass",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "owner": "thealphaman",
-    "description": "Premium IPTV and Streaming Platform",
+    "author": "Zeus768",
+    "description": "Premium IPTV and Streaming Platform for Android TV, Fire TV, Shield TV and Mobile",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zeusglass.app",

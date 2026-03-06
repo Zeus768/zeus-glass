@@ -22,26 +22,45 @@ export const iptvService = {
   // Real Xtreme Codes authentication
   authenticate: async (domain: string, username: string, password: string): Promise<boolean> => {
     try {
-      // Clean domain (remove http/https if present)
-      let cleanDomain = domain.replace(/^https?:\/\//, '');
+      // Clean domain (remove http/https if present, and trailing slashes)
+      let cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
       
-      // Test authentication by getting user info
-      const response = await axios.get(
-        `http://${cleanDomain}/player_api.php`,
-        {
-          params: {
-            username: username,
-            password: password,
-          },
-          timeout: 10000,
-        }
-      );
+      // Try HTTPS first, then fall back to HTTP
+      const protocols = ['https', 'http'];
+      
+      for (const protocol of protocols) {
+        try {
+          const response = await axios.get(
+            `${protocol}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: username,
+                password: password,
+              },
+              timeout: 15000,
+              validateStatus: (status) => status < 500, // Accept any status < 500
+            }
+          );
 
-      // If we get user_info, authentication is successful
-      if (response.data && response.data.user_info) {
-        return true;
+          // Check for valid response with user_info
+          if (response.data && response.data.user_info) {
+            console.log(`IPTV auth successful via ${protocol}`);
+            return true;
+          }
+          
+          // Check for auth status in response
+          if (response.data && response.data.user_info === null) {
+            console.log('IPTV auth failed: invalid credentials');
+            return false;
+          }
+        } catch (protocolError: any) {
+          console.log(`IPTV ${protocol} failed:`, protocolError.message);
+          // Continue to next protocol
+        }
       }
       
+      // If both protocols fail
+      console.error('IPTV authentication failed on both HTTP and HTTPS');
       return false;
     } catch (error) {
       console.error('IPTV authentication error:', error);
@@ -57,19 +76,34 @@ export const iptvService = {
         return [];
       }
 
-      let cleanDomain = config.domain.replace(/^https?:\/\//, '');
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
       
-      const response = await axios.get(
-        `http://${cleanDomain}/player_api.php`,
-        {
-          params: {
-            username: config.username,
-            password: config.password,
-            action: 'get_live_streams',
-          },
-          timeout: 15000,
+      // Try HTTPS first, then HTTP
+      const protocols = ['https', 'http'];
+      let response = null;
+      let protocol = 'http';
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+                action: 'get_live_streams',
+              },
+              timeout: 15000,
+            }
+          );
+          protocol = p;
+          break;
+        } catch (e) {
+          continue;
         }
-      );
+      }
+      
+      if (!response) return [];
 
       const streams = response.data || [];
       const channels: IPTVChannel[] = [];
@@ -81,7 +115,7 @@ export const iptvService = {
           name: stream.name || 'Unknown Channel',
           logo: stream.stream_icon || '',
           category: stream.category_name || 'Uncategorized',
-          stream_url: `http://${cleanDomain}/live/${config.username}/${config.password}/${stream.stream_id}.ts`,
+          stream_url: `${protocol}://${cleanDomain}/live/${config.username}/${config.password}/${stream.stream_id}.ts`,
           epg: [], // EPG loaded separately
         };
         channels.push(channel);
@@ -103,19 +137,34 @@ export const iptvService = {
         return [];
       }
 
-      let cleanDomain = config.domain.replace(/^https?:\/\//, '');
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
       
-      const response = await axios.get(
-        `http://${cleanDomain}/player_api.php`,
-        {
-          params: {
-            username: config.username,
-            password: config.password,
-            action: 'get_vod_streams',
-          },
-          timeout: 15000,
+      // Try HTTPS first, then HTTP
+      const protocols = ['https', 'http'];
+      let response = null;
+      let protocol = 'http';
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+                action: 'get_vod_streams',
+              },
+              timeout: 15000,
+            }
+          );
+          protocol = p;
+          break;
+        } catch (e) {
+          continue;
         }
-      );
+      }
+      
+      if (!response) return [];
 
       const streams = response.data || [];
       const vodItems: VODItem[] = [];
@@ -129,7 +178,7 @@ export const iptvService = {
           poster: stream.stream_icon || stream.cover || '',
           backdrop: stream.backdrop_path?.[0] || '',
           category: stream.category_name || 'Movies',
-          stream_url: `http://${cleanDomain}/movie/${config.username}/${config.password}/${stream.stream_id}.${stream.container_extension || 'mp4'}`,
+          stream_url: `${protocol}://${cleanDomain}/movie/${config.username}/${config.password}/${stream.stream_id}.${stream.container_extension || 'mp4'}`,
           duration: stream.duration ? parseInt(stream.duration) : undefined,
           year: stream.releasedate || stream.year || '',
         };
@@ -188,20 +237,33 @@ export const iptvService = {
       const config = await iptvService.getConfig();
       if (!config || !config.enabled) return [];
 
-      let cleanDomain = config.domain.replace(/^https?:\/\//, '');
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
       
-      const response = await axios.get(
-        `http://${cleanDomain}/player_api.php`,
-        {
-          params: {
-            username: config.username,
-            password: config.password,
-            action: 'get_simple_data_table',
-            stream_id: channelId,
-          },
-          timeout: 10000,
+      // Try HTTPS first, then HTTP
+      const protocols = ['https', 'http'];
+      let response = null;
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+                action: 'get_simple_data_table',
+                stream_id: channelId,
+              },
+              timeout: 10000,
+            }
+          );
+          break;
+        } catch (e) {
+          continue;
         }
-      );
+      }
+      
+      if (!response) return [];
 
       const epgData = response.data?.epg_listings || [];
       const programs: EPGProgram[] = [];

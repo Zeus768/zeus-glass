@@ -1783,6 +1783,13 @@
   resolved "https://registry.npmjs.org/@react-native-community/netinfo/-/netinfo-11.4.1.tgz"
   integrity sha512-B0BYAkghz3Q2V09BF88RA601XursIEA111tnc2JOaN7axJWmNefmfjZqw/KdSxKZp7CZUuPpjBmz/WCR9uaHYg==
 
+"@react-native-tvos/config-tv@^0.1.5":
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/@react-native-tvos/config-tv/-/config-tv-0.1.5.tgz#b5b705ab42296da8235bcf20bd7823c2a003cd63"
+  integrity sha512-f9PyeBKMJs7LUI0qzAyFFUzmcrgiSlb+yytD7y/mOaIpscw0cLnZYvdeEY7YEKy4ZZ5hsOtUQks+KWd5CKrcGA==
+  dependencies:
+    getenv "^1.0.0"
+
 "@react-native/assets-registry@0.81.5":
   version "0.81.5"
   resolved "https://registry.npmjs.org/@react-native/assets-registry/-/assets-registry-0.81.5.tgz"
@@ -3968,6 +3975,11 @@ expo-blur@~15.0.8:
   resolved "https://registry.npmjs.org/expo-blur/-/expo-blur-15.0.8.tgz"
   integrity sha512-rWyE1NBRZEu9WD+X+5l7gyPRszw7n12cW3IRNAb5i6KFzaBp8cxqT5oeaphJapqURvcqhkOZn2k5EtBSbsuU7w==
 
+expo-clipboard@^55.0.8:
+  version "55.0.8"
+  resolved "https://registry.yarnpkg.com/expo-clipboard/-/expo-clipboard-55.0.8.tgz#9e7a0a16c9fc41caa91e216e7aa5457567558e55"
+  integrity sha512-s0Hkop+dc6m09LwzUAWweNI0gzLAaX5CgEGR8TMdOdSPKTPc2rCl8h8Ji/cUNM1wYoJQ4Wysa15E8If/Vlu7WA==
+
 expo-constants@~18.0.12, expo-constants@~18.0.13:
   version "18.0.13"
   resolved "https://registry.npmjs.org/expo-constants/-/expo-constants-18.0.13.tgz"
@@ -4018,7 +4030,7 @@ expo-linking@~8.0.11:
 
 expo-mail-composer@~15.0.8:
   version "15.0.8"
-  resolved "https://registry.yarnpkg.com/expo-mail-composer/-/expo-mail-composer-15.0.8.tgz#ca6f5d07d2d93b2edcb92bbcf50d18a0f61e9495"
+  resolved "https://registry.npmjs.org/expo-mail-composer/-/expo-mail-composer-15.0.8.tgz"
   integrity sha512-v9oGZ+523ByMXxH6C82V96otbIbQEFTyk1AhBX02nFTlUpg+qlGCV5fycMGDRxfsWmRGRVfX+0K3zwpIz1NmuQ==
 
 expo-media-library@~18.2.1:
@@ -4437,6 +4449,11 @@ get-tsconfig@^4.10.0:
   integrity sha512-auHyJ4AgMz7vgS8Hp3N6HXSmlMdUyhSUrfBF16w153rxtLIEOE+HGqaBppczZvnHLqQJfiHotCYpNhl0lUROFQ==
   dependencies:
     resolve-pkg-maps "^1.0.0"
+
+getenv@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/getenv/-/getenv-1.0.0.tgz#874f2e7544fbca53c7a4738f37de8605c3fcfc31"
+  integrity sha512-7yetJWqbS9sbn0vIfliPsFgoXMKn/YMF+Wuiog97x+urnSRRRZ7xB+uVkwGKzRgq9CDFfMQnE9ruL5DHv9c6Xg==
 
 getenv@^2.0.0:
   version "2.0.0"
