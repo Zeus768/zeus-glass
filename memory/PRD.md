@@ -1,118 +1,134 @@
 # Zeus Glass - Product Requirements Document
 
-## Project Overview
-Zeus Glass is a cross-platform streaming application for Android, Android TV, and Fire TV that replicates the "Sky Glass" aesthetic with a premium, glassmorphic dark theme.
-
 ## Original Problem Statement
-Build a cross-platform mobile application called "Zeus Glass" with:
-- Sky Glass-inspired UI/UX with glassmorphic dark theme
-- TV-compatible layout with remote control focus management
-- Integration with TMDB and Trakt for metadata
-- Torrent scraping with Real-Debrid integration
-- IPTV support with Xtreme Codes credentials
-- Parental controls, recording functionality, and error logging
+Build a cross-platform mobile application for Android, Android TV, and Fire TV called "Zeus Glass", with a UI/UX that replicates "Sky Glass" aesthetic. The app integrates streaming services via Debrid providers (Real-Debrid, AllDebrid, Premiumize), IPTV with Xtreme Codes, and movie/TV metadata from TMDB and Trakt.
+
+## User Personas
+- **Primary**: Android TV/Fire TV/Shield TV users who want a unified streaming experience
+- **Secondary**: Mobile users (Android) who want access to the same content library
 
 ## Core Requirements
 
-### UI/UX
-- [x] Full-screen TV layout with focus indicators for remote navigation
-- [x] Scrollable top navigation tabs (HOME, MOVIES, TV SHOWS, LIVE TV, CATCH UP, SEARCH, VOD, SETTINGS)
-- [x] Hero carousel on home screen with trending content
-- [x] Horizontal scrolling carousels for content categories
-- [x] Infinite scrolling with FlatList in Movies/TV Shows grids
-- [x] TV-scaled font sizes and touch targets
-- [x] Mobile-responsive layouts (2-3 column grids on phones)
-- [x] QR code authentication modals with readable sizing
-
-### Content Integration
-- [x] TMDB integration for movie/TV show metadata
-- [x] Real-Debrid cached torrent search from multiple indexers
-- [x] Uncached torrent support
-- [x] Multiple indexers: Torrentio, Mediafusion, Knightcrawler, Comet, Jackettio
+### Authentication & Accounts
+- [x] Real-Debrid OAuth device code flow
+- [x] AllDebrid PIN authentication flow
+- [x] Premiumize API key authentication
+- [x] Trakt OAuth authentication
+- [x] IPTV Xtreme Codes login (domain, username, password)
 
 ### IPTV Features
-- [x] Xtreme Codes IPTV login
-- [x] Live TV guide with EPG
-- [x] VOD content tab
-- [x] Recording/scheduling functionality
-- [x] Catch Up tab for recordings
+- [x] Live TV with full channel list from provider
+- [x] Category filtering for live channels
+- [x] EPG data with Now/Next program info (Base64 decoded)
+- [x] VOD Movies with categories and infinite scroll
+- [x] VOD TV Shows with categories
+- [x] Full-screen video player for IPTV content
 
-### Account Management
-- [x] Trakt authentication
-- [x] Real-Debrid authentication
-- [x] AllDebrid authentication
-- [x] Premiumize authentication
-- [x] IPTV credentials storage
+### Debrid/Streaming Features
+- [x] Torrent search for movies and TV shows
+- [x] Stream link resolution via Debrid services
+- [x] Cached torrent checking
+- [ ] TV show seasons/episodes selection before stream search
+- [ ] External player (VLC) integration
 
-### Additional Features
-- [x] Parental controls with PIN
-- [x] Error logging with email/Telegram export
-- [x] Donation button linking to buymeacoffee.com/zeus768
+### UI/UX
+- [x] Sky Glass-inspired dark glassmorphic theme
+- [x] Hero carousel on home page
+- [x] Category carousels for content browsing
+- [x] Account cards in settings with login/logout
+- [x] QR code auth modals for Debrid services
+- [ ] TV remote focus highlighting (needs improvement for real TV)
 
-## Technical Stack
-- **Frontend**: React Native, Expo, Expo Router, TypeScript, Zustand
-- **Backend**: Python, FastAPI
-- **APIs**: TMDB, Trakt, Real-Debrid, Xtreme Codes
+## Technical Architecture
 
-## What's Been Implemented
+### Frontend (React Native / Expo)
+- **Framework**: Expo SDK with TypeScript
+- **Navigation**: Expo Router (file-based)
+- **State**: Zustand for global state
+- **Storage**: AsyncStorage with localStorage fallback for web
+- **Key Files**:
+  - `/app/frontend/services/debrid.ts` - Debrid auth with CORS proxy support
+  - `/app/frontend/services/iptv.ts` - IPTV service with web storage fallback
+  - `/app/frontend/components/QRAuthModal.tsx` - Auth modal component
+  - `/app/frontend/app/tv-guide.tsx` - Live TV guide
+  - `/app/frontend/app/vod.tsx` - VOD movies and TV shows
 
-### Version 1.4.0 (Latest - December 2025)
-- **TV Full-Screen Fix**: Added `android.fullscreen: true` to app.json
-- **Enhanced TV Config Plugin**: Updated `withAndroidTV.js` with immersive mode, hardware acceleration, landscape orientation
-- **TV Build Profiles**: Added `preview_tv` and `development_tv` EAS profiles with EXPO_TV=1
-- **Real-Debrid Auth Debugging**: Added comprehensive logging to diagnose auth issues
+### Backend (FastAPI / Python)
+- **Framework**: FastAPI with uvicorn
+- **Database**: MongoDB (via motor async driver)
+- **Key Endpoints**:
+  - `/api/debrid/real-debrid/*` - Real-Debrid proxy endpoints
+  - `/api/debrid/alldebrid/*` - AllDebrid proxy endpoints
+  - `/api/debrid/premiumize/*` - Premiumize proxy endpoints
+  - `/api/torrents/*` - Torrent search endpoints
+  - `/api/debrid/cache/*` - Debrid cache search endpoints
 
-### Previous Versions
-- Platform.isTV detection throughout the app
-- Focus styling for remote control navigation (cyan border + scale effect)
-- TV-scaled dimensions in theme.ts (cardWidth, fontSize, spacing)
-- hasTVPreferredFocus for initial focus on TV
-- 7-column grid on TV, 2-3 columns on mobile
-- Cross-platform storage utility for token persistence
+## What's Been Implemented (March 6, 2026)
 
-## Pending Tasks / Known Issues
+### Critical Fixes Completed
+1. **Debrid Authentication (P0 - FIXED)**
+   - Real-Debrid OAuth device code flow now working via backend proxy
+   - AllDebrid PIN authentication working via backend proxy
+   - Premiumize direct API key entry flow implemented
+   - Backend proxy endpoints added to bypass CORS on web
 
-### P0 - Critical (Need Testing on Physical Device)
-- [ ] **TV Full-Screen Layout**: Changes implemented (`fullscreen: true`, `immersive`, `sensorLandscape`), needs testing on Fire TV/Shield TV
-- [ ] **TV Focus Indicators**: Implemented bright cyan highlights with scale + glow for all focusable elements - **MUST TEST ON SHIELD TV**
-- [ ] **Real-Debrid Authentication**: Token exchange fixed to use form-urlencoded POST, needs user verification
+2. **IPTV Functionality (P0 - FIXED)**
+   - Live TV page shows all channels with category filtering
+   - VOD Movies page with categories and metadata
+   - VOD TV Shows page with series support
+   - EPG data fetching with Base64 title/description decoding
+   - localStorage fallback for web storage reliability
 
-### P1 - High Priority  
-- [x] **Stream Scrapers Integration**: Integrated VidSrc, FlixMomo, and other direct streaming sources into movie/TV detail screens
-- [x] **Tabbed Stream Modal**: Added tabbed interface (Debrid/Direct) for stream selection
-- [x] **TV Episode Selector**: Added season/episode picker for TV show streaming
-- [x] **IPTV Categories API**: Added getLiveCategories method
-- [ ] External player integration (VLC via expo-linking) - Not started
-- [ ] IPTV login verification - Needs user testing
-- [ ] Sky Glass style EPG grid - Current guide is functional but not Sky Glass aesthetic
+3. **Storage Reliability**
+   - Added webStorage helper for localStorage fallback on web
+   - IPTV config persists correctly across page reloads
 
-### P2 - Medium Priority
-- [ ] Trakt "Favorites" and "Continue Watching" data sync
-- [ ] AllDebrid OAuth flow verification
-- [ ] Premiumize OAuth flow verification
-- [ ] EPG/Guide functionality check
-- [ ] Visible remote focus enhancement
+### Testing Results (100% Pass Rate)
+- Real-Debrid auth: QR code + user code + polling ✅
+- AllDebrid auth: PIN code + URL + polling ✅
+- Premiumize auth: API key input form ✅
+- IPTV Login: Works with provided credentials ✅
+- Live TV: Channels + categories + EPG loading ✅
+- VOD Movies: 30+ movies with categories ✅
+- VOD TV Shows: 60+ shows with categories ✅
 
-### P3 - Future
+## Prioritized Backlog
+
+### P0 (Critical) - COMPLETED
+- [x] Fix Debrid authentication (Real-Debrid, AllDebrid, Premiumize)
+- [x] Fix IPTV functionality (channels, VOD, categories)
+
+### P1 (High Priority) - PENDING
+- [ ] TV focus highlighting improvement for real TV devices
+- [ ] TV show seasons/episodes flow for Debrid
+- [ ] Add scrapers from fmhy.net/video
+- [ ] Add "Providers" tab (Netflix, Disney+, Hulu filter)
+
+### P2 (Medium Priority) - PENDING
+- [ ] External player (VLC) integration
+- [ ] Trakt lists integration (Favorites, Continue Watching)
+- [ ] Full-screen mode enforcement on TV
+
+### P3 (Low Priority) - PENDING
 - [ ] GitLab CI/CD setup
 - [ ] Comprehensive search functionality
-- [ ] M3U/.ts file import for custom playlists
-- [ ] User onboarding flow
+- [ ] PPV section in IPTV guide
 
-## Build Information
-- **Latest Version**: 1.4.0
-- **Owner**: thealphaman
-- **Author**: Zeus768
-- **Project ID**: edd69901-6e43-4552-b8f9-f3e76d355ab7
-- **Build Command for TV**: `eas build --profile preview_tv -p android`
+## Known Issues
+- Mixed content warnings for HTTP channel logos (IPTV provider issue)
+- IPTV modal Login button may need force click (LOW priority)
+- EPG "Now/Next" only shows when program times match current time
 
-## Key Files Reference
-- `/app/frontend/app.json` - App config with fullscreen: true
-- `/app/frontend/eas.json` - EAS build profiles including TV profiles
-- `/app/frontend/plugins/withAndroidTV.js` - Custom TV config plugin
-- `/app/frontend/constants/theme.ts` - TV/mobile sizing and colors
-- `/app/frontend/app/_layout.tsx` - Main layout with tabs
-- `/app/frontend/services/debrid.ts` - Real-Debrid service with debugging
-- `/app/frontend/utils/storage.ts` - Cross-platform storage utility
-- `/app/frontend/services/streamScrapers.ts` - Stream scraper service (not integrated)
-- `/app/backend/debrid_cache_search.py` - Real-Debrid torrent search
+## Test Credentials
+```
+IPTV:
+  domain: thenewdns.co
+  username: patrickteddyirl@gmail.com
+  password: 3cb7f892dc747bb4
+```
+
+## Files Modified in This Session
+- `/app/frontend/services/debrid.ts` - Complete rewrite with proxy support
+- `/app/frontend/services/iptv.ts` - Added web storage fallback
+- `/app/frontend/components/QRAuthModal.tsx` - Updated for all auth flows
+- `/app/backend/server.py` - Added Debrid proxy endpoints
