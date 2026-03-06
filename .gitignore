@@ -65,3 +65,7 @@ test_reports/
 .cache/
 tmp/
 temp/
+-e 
+# Environment files
+*.env
+*.env.*
