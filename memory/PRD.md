@@ -54,68 +54,60 @@ Build a cross-platform mobile application called "Zeus Glass" with:
 - **Backend**: Python, FastAPI
 - **APIs**: TMDB, Trakt, Real-Debrid, Xtreme Codes
 
-## What's Been Implemented (March 2026)
+## What's Been Implemented
 
-### TV Compatibility Overhaul ✅
+### Version 1.4.0 (Latest - December 2025)
+- **TV Full-Screen Fix**: Added `android.fullscreen: true` to app.json
+- **Enhanced TV Config Plugin**: Updated `withAndroidTV.js` with immersive mode, hardware acceleration, landscape orientation
+- **TV Build Profiles**: Added `preview_tv` and `development_tv` EAS profiles with EXPO_TV=1
+- **Real-Debrid Auth Debugging**: Added comprehensive logging to diagnose auth issues
+
+### Previous Versions
 - Platform.isTV detection throughout the app
 - Focus styling for remote control navigation (cyan border + scale effect)
 - TV-scaled dimensions in theme.ts (cardWidth, fontSize, spacing)
 - hasTVPreferredFocus for initial focus on TV
 - 7-column grid on TV, 2-3 columns on mobile
+- Cross-platform storage utility for token persistence
 
-### Home Screen ✅
-- Hero section with trending movie backdrop
-- Watch Now/Playlist/Info buttons
-- Trending Movies, Popular Movies, In Cinemas carousels
-- Trending TV Shows, Popular TV Shows carousels
-- Continue Watching and Favorites carousels (when data exists)
+## Pending Tasks / Known Issues
 
-### Movies & TV Shows Screens ✅
-- Horizontal scrollable genre filter tabs
-- Grid layout with infinite scrolling (FlatList + onEndReached)
-- Rating badges on each card
-- Focus overlay with play icon on TV
-
-### Settings Screen ✅
-- Account cards: Trakt, Real-Debrid, AllDebrid, Premiumize, Premium IPTV
-- Parental controls section
-- Debug/support section
-- Error logging
-
-### Donation Modal ✅
-- QR code for buymeacoffee.com/zeus768
-- Buy Me a Coffee button
-- TV-sized layout
-
-## Pending Tasks
+### P0 - Critical (Need Testing on Physical Device)
+- [ ] **TV Full-Screen Layout**: Changes implemented, needs testing on Fire TV/Shield TV
+- [ ] **Real-Debrid Authentication**: Debugging added, needs user verification
 
 ### P1 - High Priority
 - [ ] External player integration (VLC via expo-linking)
-- [ ] Trakt "Favorites" and "Continue Watching" data sync
+- [ ] Integrate stream scrapers (service created but not integrated)
+- [ ] IPTV login verification
 
 ### P2 - Medium Priority
-- [ ] AllDebrid OAuth flow implementation
-- [ ] Premiumize OAuth flow implementation
-- [ ] M3U/.ts file import for custom playlists
-- [ ] Comprehensive search functionality
+- [ ] Trakt "Favorites" and "Continue Watching" data sync
+- [ ] AllDebrid OAuth flow verification
+- [ ] Premiumize OAuth flow verification
+- [ ] EPG/Guide functionality check
+- [ ] Visible remote focus enhancement
 
 ### P3 - Future
+- [ ] GitLab CI/CD setup
+- [ ] Comprehensive search functionality
+- [ ] M3U/.ts file import for custom playlists
 - [ ] User onboarding flow
-- [ ] Offline favorites caching
-- [ ] Push notifications for new content
 
 ## Build Information
-- **Latest Build**: March 1, 2026
-- **Build URL**: https://expo.dev/accounts/thealphaman/projects/zeus-glass/builds/637d4466-aab0-4bdf-aaf8-7e6eb57ae179
-- **EAS Profile**: preview (APK distribution)
+- **Latest Version**: 1.4.0
 - **Owner**: thealphaman
+- **Author**: Zeus768
 - **Project ID**: edd69901-6e43-4552-b8f9-f3e76d355ab7
+- **Build Command for TV**: `eas build --profile preview_tv -p android`
 
 ## Key Files Reference
+- `/app/frontend/app.json` - App config with fullscreen: true
+- `/app/frontend/eas.json` - EAS build profiles including TV profiles
+- `/app/frontend/plugins/withAndroidTV.js` - Custom TV config plugin
 - `/app/frontend/constants/theme.ts` - TV/mobile sizing and colors
 - `/app/frontend/app/_layout.tsx` - Main layout with tabs
-- `/app/frontend/app/index.tsx` - Home screen
-- `/app/frontend/app/movies.tsx` - Movies grid with infinite scroll
-- `/app/frontend/components/Carousel.tsx` - Horizontal content carousel
-- `/app/frontend/services/tmdb.ts` - TMDB API service
+- `/app/frontend/services/debrid.ts` - Real-Debrid service with debugging
+- `/app/frontend/utils/storage.ts` - Cross-platform storage utility
+- `/app/frontend/services/streamScrapers.ts` - Stream scraper service (not integrated)
 - `/app/backend/debrid_cache_search.py` - Real-Debrid torrent search

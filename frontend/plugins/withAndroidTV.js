@@ -20,6 +20,7 @@ const withAndroidTV = (config) => {
       { $: { 'android:name': 'android.hardware.nfc', 'android:required': 'false' } },
       { $: { 'android:name': 'android.hardware.location.gps', 'android:required': 'false' } },
       { $: { 'android:name': 'android.hardware.microphone', 'android:required': 'false' } },
+      { $: { 'android:name': 'android.hardware.sensor', 'android:required': 'false' } },
     ];
     
     // Add TV features
@@ -39,13 +40,19 @@ const withAndroidTV = (config) => {
     );
     
     if (mainActivity) {
-      // Remove portrait orientation lock - allow landscape on TV
-      mainActivity.$['android:screenOrientation'] = 'unspecified';
+      // Set landscape orientation for TV - critical for full-screen
+      mainActivity.$['android:screenOrientation'] = 'sensorLandscape';
+      
+      // Enable immersive full-screen mode
+      mainActivity.$['android:immersive'] = 'true';
       
       // Add extra config changes for TV
       mainActivity.$['android:configChanges'] = 
-        'keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize';
+        'keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density';
       mainActivity.$['android:resizeableActivity'] = 'true';
+      
+      // Ensure activity uses fullscreen window
+      mainActivity.$['android:windowSoftInputMode'] = 'adjustPan';
       
       // Add LEANBACK_LAUNCHER intent filter for Android TV
       if (!mainActivity['intent-filter']) {
@@ -66,6 +73,9 @@ const withAndroidTV = (config) => {
     
     // Add banner to application for TV launcher
     application.$['android:banner'] = '@mipmap/ic_launcher';
+    
+    // Enable hardware acceleration for smooth TV rendering
+    application.$['android:hardwareAccelerated'] = 'true';
     
     return config;
   });

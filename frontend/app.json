@@ -2,7 +2,7 @@
   "expo": {
     "name": "Zeus Glass",
     "slug": "zeus-glass",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "zeusglass",
@@ -29,7 +29,8 @@
         "INTERNET",
         "CAMERA"
       ],
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "fullscreen": true
     },
     "androidTv": {
       "banner": "./assets/images/tv-banner.png",

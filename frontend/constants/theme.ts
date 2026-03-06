@@ -3,10 +3,17 @@ import { Platform, Dimensions } from 'react-native';
 // Get screen dimensions
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// TV Detection - check multiple sources
-// Platform.isTV should work after adding @react-native-tvos/config-tv plugin
-// Also use screen size as fallback (TV screens are typically > 960px wide in landscape)
-export const isTV = Platform.isTV === true || (Platform.OS === 'android' && SCREEN_WIDTH >= 960);
+// TV Detection - check multiple sources for reliable detection
+// 1. Platform.isTV - native flag from React Native
+// 2. EXPO_TV environment variable - set during build
+// 3. Screen dimensions - TV screens are typically 960px+ in landscape
+// Shield TV and Fire TV typically report 1920x1080 or 3840x2160
+const isTVBySize = SCREEN_WIDTH >= 960 || SCREEN_HEIGHT >= 960;
+const isTVByPlatform = Platform.isTV === true;
+const isTVByEnv = process.env.EXPO_TV === '1';
+
+// Combined TV detection - any of these conditions means it's a TV
+export const isTV = isTVByPlatform || (Platform.OS === 'android' && (isTVBySize || isTVByEnv));
 export const isTablet = SCREEN_WIDTH > 768 && !isTV;
 
 // Debug log to verify TV detection
@@ -14,6 +21,8 @@ if (__DEV__) {
   console.log('[Theme] Platform.isTV:', Platform.isTV);
   console.log('[Theme] Platform.OS:', Platform.OS);
   console.log('[Theme] SCREEN_WIDTH:', SCREEN_WIDTH);
+  console.log('[Theme] SCREEN_HEIGHT:', SCREEN_HEIGHT);
+  console.log('[Theme] isTVBySize:', isTVBySize);
   console.log('[Theme] isTV (computed):', isTV);
 }
 

@@ -8,11 +8,28 @@
       "developmentClient": true,
       "distribution": "internal"
     },
+    "development_tv": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_TV": "1"
+      }
+    },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk",
         "credentialsSource": "local"
+      }
+    },
+    "preview_tv": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "credentialsSource": "local"
+      },
+      "env": {
+        "EXPO_TV": "1"
       }
     },
     "production": {

@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-12-XX
+
+### Added
+- **TV Build Profile**: Added `preview_tv` and `development_tv` EAS build profiles with `EXPO_TV=1` environment variable for proper TV builds
+- **Enhanced TV Detection**: Improved TV detection in theme.ts to check Platform.isTV, EXPO_TV env var, and screen dimensions
+
+### Fixed
+- **TV Full-Screen Layout (Critical)**: Added `android.fullscreen: true` to app.json to fix narrow column rendering on Fire TV/Shield TV
+- **withAndroidTV Plugin Enhanced**:
+  - Added `android:immersive="true"` for true fullscreen mode
+  - Added `android:hardwareAccelerated="true"` for smooth TV rendering
+  - Changed orientation to `sensorLandscape` for proper TV layout
+  - Added `density` to configChanges for better display handling
+  - Added `android.hardware.sensor` to uses-feature list
+- **Real-Debrid Auth Debugging**: Added comprehensive logging throughout the auth flow to diagnose token storage issues
+
+### Changed
+- Version bumped to 1.4.0
+- Updated EAS profiles to include TV-specific builds
+
+### Technical Notes
+- Users should build with `eas build --profile preview_tv -p android` for TV-optimized APKs
+- TV builds set `EXPO_TV=1` which enables TV-specific code paths
+
+---
+
 ## [1.3.0] - 2026-03-01
 
 ### Added

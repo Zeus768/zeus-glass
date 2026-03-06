@@ -15,15 +15,18 @@ import { errorLogService } from './errorLogService';
 // Real-Debrid Service
 export const realDebridService = {
   getDeviceCode: async (): Promise<{ device_code: string; user_code: string; verification_url: string; expires_in: number; interval: number }> => {
+    console.log('[Real-Debrid] Getting device code...');
     const response = await axios.get(`${REAL_DEBRID_BASE_URL}/oauth/v2/device/code`, {
       params: { client_id: REAL_DEBRID_CLIENT_ID, new_credentials: 'yes' },
     });
+    console.log('[Real-Debrid] Got device code:', response.data.user_code);
     return response.data;
   },
 
   // Poll for credentials (client_id + client_secret) after user authorizes
   pollForCredentials: async (deviceCode: string): Promise<{ client_id: string; client_secret: string } | null> => {
     try {
+      console.log('[Real-Debrid] Polling for credentials...');
       const response = await axios.get(`${REAL_DEBRID_BASE_URL}/oauth/v2/device/credentials`, {
         params: {
           client_id: REAL_DEBRID_CLIENT_ID,
@@ -33,17 +36,21 @@ export const realDebridService = {
       
       // Returns { client_id, client_secret } when user has authorized
       if (response.data && response.data.client_id && response.data.client_secret) {
+        console.log('[Real-Debrid] Got credentials! client_id:', response.data.client_id);
         return {
           client_id: response.data.client_id,
           client_secret: response.data.client_secret,
         };
       }
+      console.log('[Real-Debrid] No credentials yet');
       return null;
     } catch (error: any) {
       // 403 means user hasn't authorized yet
       if (error.response?.status === 403) {
+        console.log('[Real-Debrid] Still waiting for user authorization (403)');
         return null;
       }
+      console.error('[Real-Debrid] Credentials poll error:', error.message);
       throw error;
     }
   },
@@ -51,6 +58,7 @@ export const realDebridService = {
   // Exchange credentials for access token
   getAccessToken: async (deviceCode: string, clientId: string, clientSecret: string): Promise<string | null> => {
     try {
+      console.log('[Real-Debrid] Exchanging credentials for access token...');
       const response = await axios.post(`${REAL_DEBRID_BASE_URL}/oauth/v2/token`, null, {
         params: {
           client_id: clientId,
@@ -59,9 +67,10 @@ export const realDebridService = {
           grant_type: 'http://oauth.net/grant_type/device/1.0',
         },
       });
+      console.log('[Real-Debrid] Got access token!');
       return response.data.access_token || null;
     } catch (error: any) {
-      console.error('Error getting access token:', error);
+      console.error('[Real-Debrid] Error getting access token:', error.response?.data || error.message);
       return null;
     }
   },
@@ -76,7 +85,7 @@ export const realDebridService = {
         return null; // User hasn't authorized yet
       }
       
-      console.log('Got Real-Debrid credentials, exchanging for token...');
+      console.log('[Real-Debrid] Got Real-Debrid credentials, exchanging for token...');
       
       // Step 2: Exchange for access token
       const accessToken = await realDebridService.getAccessToken(
@@ -86,27 +95,41 @@ export const realDebridService = {
       );
       
       if (accessToken) {
+        console.log('[Real-Debrid] Auth flow complete, token received!');
         return { access_token: accessToken };
       }
       
+      console.error('[Real-Debrid] Token exchange returned null');
       return null;
     } catch (error: any) {
       if (error.response?.status === 403) {
         return null; // Still pending
       }
+      console.error('[Real-Debrid] Poll for token error:', error.message);
       throw error;
     }
   },
 
   saveToken: async (token: string): Promise<void> => {
+    console.log('[Real-Debrid] Saving token to storage...');
     await storage.setItem(STORAGE_KEYS.REAL_DEBRID_TOKEN, token);
+    // Verify it was saved
+    const savedToken = await storage.getItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
+    if (savedToken) {
+      console.log('[Real-Debrid] Token saved successfully!');
+    } else {
+      console.error('[Real-Debrid] ERROR: Token was not saved properly!');
+    }
   },
 
   getToken: async (): Promise<string | null> => {
-    return await storage.getItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
+    const token = await storage.getItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
+    console.log('[Real-Debrid] Retrieved token:', token ? 'EXISTS' : 'NULL');
+    return token;
   },
 
   logout: async (): Promise<void> => {
+    console.log('[Real-Debrid] Logging out, deleting token...');
     await storage.deleteItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
   },
 
