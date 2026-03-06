@@ -21,7 +21,35 @@ export const realDebridService = {
     return response.data;
   },
 
-  pollForToken: async (deviceCode: string, clientId: string, clientSecret: string): Promise<any> => {
+  // Poll for credentials (client_id + client_secret) after user authorizes
+  pollForCredentials: async (deviceCode: string): Promise<{ client_id: string; client_secret: string } | null> => {
+    try {
+      const response = await axios.get(`${REAL_DEBRID_BASE_URL}/oauth/v2/device/credentials`, {
+        params: {
+          client_id: REAL_DEBRID_CLIENT_ID,
+          code: deviceCode,
+        },
+      });
+      
+      // Returns { client_id, client_secret } when user has authorized
+      if (response.data && response.data.client_id && response.data.client_secret) {
+        return {
+          client_id: response.data.client_id,
+          client_secret: response.data.client_secret,
+        };
+      }
+      return null;
+    } catch (error: any) {
+      // 403 means user hasn't authorized yet
+      if (error.response?.status === 403) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  // Exchange credentials for access token
+  getAccessToken: async (deviceCode: string, clientId: string, clientSecret: string): Promise<string | null> => {
     try {
       const response = await axios.post(`${REAL_DEBRID_BASE_URL}/oauth/v2/token`, null, {
         params: {
@@ -31,9 +59,39 @@ export const realDebridService = {
           grant_type: 'http://oauth.net/grant_type/device/1.0',
         },
       });
-      return response.data;
+      return response.data.access_token || null;
     } catch (error: any) {
-      if (error.response?.status === 400) {
+      console.error('Error getting access token:', error);
+      return null;
+    }
+  },
+
+  // Combined poll function - polls for credentials, then gets token
+  pollForToken: async (deviceCode: string): Promise<{ access_token: string } | null> => {
+    try {
+      // Step 1: Poll for credentials
+      const credentials = await realDebridService.pollForCredentials(deviceCode);
+      
+      if (!credentials) {
+        return null; // User hasn't authorized yet
+      }
+      
+      console.log('Got Real-Debrid credentials, exchanging for token...');
+      
+      // Step 2: Exchange for access token
+      const accessToken = await realDebridService.getAccessToken(
+        deviceCode,
+        credentials.client_id,
+        credentials.client_secret
+      );
+      
+      if (accessToken) {
+        return { access_token: accessToken };
+      }
+      
+      return null;
+    } catch (error: any) {
+      if (error.response?.status === 403) {
         return null; // Still pending
       }
       throw error;

@@ -33,8 +33,6 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [polling, setPolling] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [clientId, setClientId] = useState<string>('');
-  const [clientSecret, setClientSecret] = useState<string>('');
 
   const serviceNames = {
     'real-debrid': 'Real-Debrid',
@@ -67,8 +65,6 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
       switch (service) {
         case 'real-debrid':
           codeData = await realDebridService.getDeviceCode();
-          setClientId(codeData.client_id || '');
-          setClientSecret(codeData.client_secret || '');
           break;
         case 'alldebrid':
           codeData = await allDebridService.getDeviceCode();
@@ -89,6 +85,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
       // Start polling
       startPolling(codeData.device_code, codeData.interval || 5);
     } catch (err: any) {
+      console.error('Auth initialization error:', err);
       setError(err.message || 'Failed to initialize authentication');
       setLoading(false);
     }
@@ -103,8 +100,10 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
         
         switch (service) {
           case 'real-debrid':
-            tokenData = await realDebridService.pollForToken(code, clientId, clientSecret);
-            if (tokenData) {
+            // Real-Debrid polling now handles credentials internally
+            tokenData = await realDebridService.pollForToken(code);
+            if (tokenData && tokenData.access_token) {
+              console.log('Real-Debrid auth successful, saving token...');
               await realDebridService.saveToken(tokenData.access_token);
               clearInterval(pollInterval);
               setPolling(false);
@@ -114,7 +113,8 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
             break;
           case 'alldebrid':
             tokenData = await allDebridService.pollForToken(code);
-            if (tokenData) {
+            if (tokenData && tokenData.access_token) {
+              console.log('AllDebrid auth successful, saving token...');
               await allDebridService.saveToken(tokenData.access_token);
               clearInterval(pollInterval);
               setPolling(false);
@@ -124,7 +124,8 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
             break;
           case 'premiumize':
             tokenData = await premiumizeService.pollForToken(code);
-            if (tokenData) {
+            if (tokenData && tokenData.access_token) {
+              console.log('Premiumize auth successful, saving token...');
               await premiumizeService.saveToken(tokenData.access_token);
               clearInterval(pollInterval);
               setPolling(false);
@@ -135,6 +136,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           case 'trakt':
             tokenData = await traktService.pollForToken(code);
             if (tokenData) {
+              console.log('Trakt auth successful, saving token...');
               await traktService.saveToken(tokenData);
               clearInterval(pollInterval);
               setPolling(false);

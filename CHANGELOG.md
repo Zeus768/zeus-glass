@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-03-01
+
+### Fixed
+- **Real-Debrid OAuth Flow**: Fixed the complete OAuth device authorization flow:
+  - Step 1: Get device code
+  - Step 2: Poll `/oauth/v2/device/credentials` endpoint to get user-specific `client_id` and `client_secret`
+  - Step 3: Exchange credentials for access token
+  - This fixes the "appears to authorize but doesn't save" issue
+- **Removed unused state variables** from QRAuthModal (clientId, clientSecret)
+
+### Changed
+- Version bumped to 1.2.0
+- Simplified QRAuthModal polling logic - Real-Debrid now handles credentials internally
+
+---
+
 ## [1.1.0] - 2026-03-01
 
 ### Added
