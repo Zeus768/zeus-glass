@@ -2,11 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.4.0] - 2026-12-XX
+## [1.4.0] - 2025-12-XX
 
 ### Added
 - **TV Build Profile**: Added `preview_tv` and `development_tv` EAS build profiles with `EXPO_TV=1` environment variable for proper TV builds
 - **Enhanced TV Detection**: Improved TV detection in theme.ts to check Platform.isTV, EXPO_TV env var, and screen dimensions
+- **Stream Source Integration**: Integrated direct streaming sources (VidSrc, FlixMomo, HydraHD, etc.) into movie/TV detail screens
+- **Tabbed Stream Modal**: Added tabbed interface in stream modal to switch between Debrid and Direct stream sources
+- **TV Show Episode Selector**: Added season/episode picker UI for TV show streaming
+- **Direct Stream Playback**: Direct streams open in browser or external player
 
 ### Fixed
 - **TV Full-Screen Layout (Critical)**: Added `android.fullscreen: true` to app.json to fix narrow column rendering on Fire TV/Shield TV
@@ -21,10 +25,12 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Version bumped to 1.4.0
 - Updated EAS profiles to include TV-specific builds
+- Movie and TV detail screens now fetch both Debrid and Direct streams in parallel
 
 ### Technical Notes
 - Users should build with `eas build --profile preview_tv -p android` for TV-optimized APKs
 - TV builds set `EXPO_TV=1` which enables TV-specific code paths
+- Stream scrapers include: VidSrc, VidSrc Pro, FlixMomo, HydraHD, 2embed, AutoEmbed, SuperEmbed, MoviesAPI, SmashyStream, VidLink
 
 ---
 

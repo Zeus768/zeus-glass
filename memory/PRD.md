@@ -73,13 +73,15 @@ Build a cross-platform mobile application called "Zeus Glass" with:
 ## Pending Tasks / Known Issues
 
 ### P0 - Critical (Need Testing on Physical Device)
-- [ ] **TV Full-Screen Layout**: Changes implemented, needs testing on Fire TV/Shield TV
-- [ ] **Real-Debrid Authentication**: Debugging added, needs user verification
+- [ ] **TV Full-Screen Layout**: Changes implemented (`fullscreen: true`, `immersive`, `sensorLandscape`), needs testing on Fire TV/Shield TV
+- [ ] **Real-Debrid Authentication**: Debugging added, needs user verification on device
 
-### P1 - High Priority
-- [ ] External player integration (VLC via expo-linking)
-- [ ] Integrate stream scrapers (service created but not integrated)
-- [ ] IPTV login verification
+### P1 - High Priority  
+- [x] **Stream Scrapers Integration**: Integrated VidSrc, FlixMomo, and other direct streaming sources into movie/TV detail screens
+- [x] **Tabbed Stream Modal**: Added tabbed interface (Debrid/Direct) for stream selection
+- [x] **TV Episode Selector**: Added season/episode picker for TV show streaming
+- [ ] External player integration (VLC via expo-linking) - Not started
+- [ ] IPTV login verification - Needs user testing
 
 ### P2 - Medium Priority
 - [ ] Trakt "Favorites" and "Continue Watching" data sync

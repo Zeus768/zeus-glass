@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../constants/theme';
+import { theme, isTV } from '../../constants/theme';
 import { tmdbService } from '../../services/tmdb';
 import { debridCacheService, realDebridService } from '../../services/debrid';
+import { streamScraperService, StreamSource } from '../../services/streamScrapers';
 import { useContentStore } from '../../store/contentStore';
 import { Movie, CachedTorrent } from '../../types';
 import { QUALITY_OPTIONS } from '../../config/constants';
@@ -22,10 +23,12 @@ export default function MovieDetailScreen() {
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
   const [cachedTorrents, setCachedTorrents] = useState<CachedTorrent[]>([]);
+  const [directStreams, setDirectStreams] = useState<StreamSource[]>([]);
   const [showLinksModal, setShowLinksModal] = useState(false);
   const [loadingLinks, setLoadingLinks] = useState(false);
   const [selectedTorrent, setSelectedTorrent] = useState<CachedTorrent | null>(null);
   const [gettingStream, setGettingStream] = useState(false);
+  const [activeTab, setActiveTab] = useState<'debrid' | 'direct'>('debrid');
 
   useEffect(() => {
     if (id) {
@@ -49,41 +52,100 @@ export default function MovieDetailScreen() {
     setLoadingLinks(true);
     setShowLinksModal(true);
     setCachedTorrents([]);
+    setDirectStreams([]);
     
     try {
       if (!movie) return;
       
-      // Check if user has Real-Debrid token
-      const token = await realDebridService.getToken();
-      if (!token) {
-        Alert.alert(
-          'Login Required',
-          'Please login to Real-Debrid in Settings to stream content.',
-          [{ text: 'OK', onPress: () => setShowLinksModal(false) }]
-        );
-        return;
-      }
-      
       const year = movie.release_date ? parseInt(movie.release_date.split('-')[0]) : undefined;
+      const imdbId = movie.imdb_id || undefined;
       
-      errorLogService.info(`Searching cached torrents for "${movie.title}"`, 'MovieDetail');
+      // Fetch both debrid and direct streams in parallel
+      const [debridResults, directResults] = await Promise.allSettled([
+        // Debrid cache search (only if logged in)
+        (async () => {
+          const token = await realDebridService.getToken();
+          if (!token) {
+            errorLogService.info('No Real-Debrid token, skipping debrid search', 'MovieDetail');
+            return [];
+          }
+          errorLogService.info(`Searching cached torrents for "${movie.title}"`, 'MovieDetail');
+          return await debridCacheService.searchCachedMovie(movie.title, year);
+        })(),
+        // Direct streaming sources
+        (async () => {
+          errorLogService.info(`Searching direct streams for "${movie.title}"`, 'MovieDetail');
+          return await streamScraperService.getMovieStreams(id, imdbId, movie.title, year);
+        })(),
+      ]);
       
-      // Search for cached torrents using the new cache search
-      const torrents = await debridCacheService.searchCachedMovie(
-        movie.title,
-        year
-      );
-      
-      if (torrents.length === 0) {
-        errorLogService.warn(`No cached torrents found for "${movie.title}"`, 'MovieDetail');
+      // Process debrid results
+      if (debridResults.status === 'fulfilled') {
+        setCachedTorrents(debridResults.value);
+        if (debridResults.value.length === 0) {
+          errorLogService.warn(`No cached torrents found for "${movie.title}"`, 'MovieDetail');
+        }
       }
       
-      setCachedTorrents(torrents);
+      // Process direct stream results
+      if (directResults.status === 'fulfilled') {
+        setDirectStreams(directResults.value);
+        errorLogService.info(`Found ${directResults.value.length} direct streams`, 'MovieDetail');
+      }
+      
+      // If we have direct streams but no debrid, switch to direct tab
+      if (debridResults.status === 'fulfilled' && debridResults.value.length === 0 && 
+          directResults.status === 'fulfilled' && directResults.value.length > 0) {
+        setActiveTab('direct');
+      }
+      
     } catch (error: any) {
       errorLogService.error(`Error loading streams: ${error.message}`, 'MovieDetail', error);
       Alert.alert('Error', 'Failed to load streams. Please try again.');
     } finally {
       setLoadingLinks(false);
+    }
+  };
+
+  const handlePlayDirectStream = async (stream: StreamSource) => {
+    try {
+      if (stream.type === 'embed') {
+        // Open embed URL in browser or webview
+        const supported = await Linking.canOpenURL(stream.url);
+        if (supported) {
+          await Linking.openURL(stream.url);
+        } else {
+          Alert.alert('Error', 'Cannot open this stream source');
+        }
+      } else if (stream.type === 'torrent') {
+        // For torrent links, try to resolve via Real-Debrid if available
+        const token = await realDebridService.getToken();
+        if (token && stream.url.startsWith('magnet:')) {
+          errorLogService.info(`Resolving torrent via Real-Debrid: ${stream.name}`, 'MovieDetail');
+          const directUrl = await realDebridService.addMagnetAndGetLink(stream.url, movie?.title || 'Movie');
+          if (directUrl) {
+            setShowLinksModal(false);
+            router.push({
+              pathname: '/player',
+              params: { url: directUrl, title: movie?.title || 'Movie' }
+            });
+          } else {
+            Alert.alert('Error', 'Failed to resolve torrent. Try another source.');
+          }
+        } else {
+          Alert.alert('Login Required', 'Please login to Real-Debrid to play torrent sources.');
+        }
+      } else {
+        // Direct stream - open in player
+        setShowLinksModal(false);
+        router.push({
+          pathname: '/player',
+          params: { url: stream.url, title: movie?.title || 'Movie' }
+        });
+      }
+    } catch (error: any) {
+      errorLogService.error(`Error playing stream: ${error.message}`, 'MovieDetail', error);
+      Alert.alert('Error', 'Failed to play stream');
     }
   };
 
@@ -268,102 +330,171 @@ export default function MovieDetailScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Quality</Text>
+              <Text style={styles.modalTitle}>Stream Sources</Text>
               <Pressable onPress={() => setShowLinksModal(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </Pressable>
             </View>
+            
+            {/* Tab Switcher */}
+            <View style={styles.tabSwitcher}>
+              <Pressable 
+                style={[styles.tabButton, activeTab === 'debrid' && styles.tabButtonActive]}
+                onPress={() => setActiveTab('debrid')}
+              >
+                <Ionicons name="flash" size={18} color={activeTab === 'debrid' ? '#000' : theme.colors.text} />
+                <Text style={[styles.tabButtonText, activeTab === 'debrid' && styles.tabButtonTextActive]}>
+                  Debrid ({cachedTorrents.length})
+                </Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.tabButton, activeTab === 'direct' && styles.tabButtonActive]}
+                onPress={() => setActiveTab('direct')}
+              >
+                <Ionicons name="globe" size={18} color={activeTab === 'direct' ? '#000' : theme.colors.text} />
+                <Text style={[styles.tabButtonText, activeTab === 'direct' && styles.tabButtonTextActive]}>
+                  Direct ({directStreams.length})
+                </Text>
+              </Pressable>
+            </View>
+            
             {loadingLinks ? (
               <View style={styles.modalLoading}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Searching 5 indexers...</Text>
-                <Text style={styles.loadingSubtext}>Torrentio • Knightcrawler • Comet • Jackettio • Mediafusion</Text>
+                <Text style={styles.loadingText}>Searching sources...</Text>
+                <Text style={styles.loadingSubtext}>Torrentio • VidSrc • FlixMomo • YTS • More...</Text>
               </View>
-            ) : cachedTorrents.length === 0 ? (
-              <View style={styles.modalLoading}>
-                <Ionicons name="cloud-offline" size={48} color={theme.colors.textSecondary} />
-                <Text style={styles.loadingText}>No streams found</Text>
-                <Text style={styles.noLinksSubtext}>
-                  No torrents found for this content.
-                </Text>
-              </View>
-            ) : (
-              <ScrollView style={styles.modalScroll}>
-                {/* Stats bar */}
-                <View style={styles.statsBar}>
-                  <View style={styles.statItem}>
-                    <Ionicons name="flash" size={16} color={theme.colors.gold} />
-                    <Text style={styles.statText}>
-                      {cachedTorrents.filter(t => t.cached).length} Cached
-                    </Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Ionicons name="cloud-download" size={16} color={theme.colors.primary} />
-                    <Text style={styles.statText}>
-                      {cachedTorrents.filter(t => !t.cached).length} Available
-                    </Text>
-                  </View>
+            ) : activeTab === 'debrid' ? (
+              // Debrid Tab Content
+              cachedTorrents.length === 0 ? (
+                <View style={styles.modalLoading}>
+                  <Ionicons name="cloud-offline" size={48} color={theme.colors.textSecondary} />
+                  <Text style={styles.loadingText}>No Debrid streams found</Text>
+                  <Text style={styles.noLinksSubtext}>
+                    Login to Real-Debrid or try Direct streams
+                  </Text>
                 </View>
-                
-                {qualityOptions.map((quality) => (
-                  groupedTorrents[quality]?.length > 0 && (
-                    <View key={quality} style={styles.qualitySection}>
-                      <Text style={styles.qualityTitle}>{quality}</Text>
-                      {groupedTorrents[quality].map((torrent, index) => (
-                        <Pressable 
-                          key={index} 
-                          style={[
-                            styles.linkCard,
-                            !torrent.cached && styles.linkCardUncached,
-                            selectedTorrent?.hash === torrent.hash && gettingStream && styles.linkCardActive
-                          ]}
-                          onPress={() => handlePlayTorrent(torrent)}
-                          disabled={gettingStream}
-                        >
-                          <View style={styles.linkInfo}>
-                            {torrent.cached ? (
-                              <View style={styles.cachedBadge}>
-                                <Ionicons name="flash" size={12} color="#000" />
-                                <Text style={styles.cachedText}>CACHED</Text>
-                              </View>
-                            ) : (
-                              <View style={styles.uncachedBadge}>
-                                <Ionicons name="cloud-download" size={12} color={theme.colors.text} />
-                                <Text style={styles.uncachedText}>DOWNLOAD</Text>
-                              </View>
-                            )}
-                            <Text style={[styles.linkSource, !torrent.cached && styles.linkSourceUncached]}>
-                              {torrent.source.toUpperCase()}
-                            </Text>
-                            {torrent.size && (
-                              <Text style={[styles.linkSize, !torrent.cached && styles.linkSizeUncached]}>
-                                {torrent.size}
-                              </Text>
-                            )}
-                            {torrent.seeders > 0 && (
-                              <View style={styles.seedersContainer}>
-                                <Ionicons name="people" size={14} color={torrent.cached ? theme.colors.success : theme.colors.textSecondary} />
-                                <Text style={[styles.seedersText, !torrent.cached && styles.seedersTextUncached]}>
-                                  {torrent.seeders}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                          {selectedTorrent?.hash === torrent.hash && gettingStream ? (
-                            <ActivityIndicator size="small" color={torrent.cached ? theme.colors.gold : theme.colors.primary} />
-                          ) : (
-                            <Ionicons 
-                              name="play-circle" 
-                              size={32} 
-                              color={torrent.cached ? theme.colors.gold : theme.colors.primary} 
-                            />
-                          )}
-                        </Pressable>
-                      ))}
+              ) : (
+                <ScrollView style={styles.modalScroll}>
+                  {/* Stats bar */}
+                  <View style={styles.statsBar}>
+                    <View style={styles.statItem}>
+                      <Ionicons name="flash" size={16} color={theme.colors.gold} />
+                      <Text style={styles.statText}>
+                        {cachedTorrents.filter(t => t.cached).length} Cached
+                      </Text>
                     </View>
-                  )
-                ))}
-              </ScrollView>
+                    <View style={styles.statItem}>
+                      <Ionicons name="cloud-download" size={16} color={theme.colors.primary} />
+                      <Text style={styles.statText}>
+                        {cachedTorrents.filter(t => !t.cached).length} Available
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  {qualityOptions.map((quality) => (
+                    groupedTorrents[quality]?.length > 0 && (
+                      <View key={quality} style={styles.qualitySection}>
+                        <Text style={styles.qualityTitle}>{quality}</Text>
+                        {groupedTorrents[quality].map((torrent, index) => (
+                          <Pressable 
+                            key={index} 
+                            style={[
+                              styles.linkCard,
+                              !torrent.cached && styles.linkCardUncached,
+                              selectedTorrent?.hash === torrent.hash && gettingStream && styles.linkCardActive
+                            ]}
+                            onPress={() => handlePlayTorrent(torrent)}
+                            disabled={gettingStream}
+                          >
+                            <View style={styles.linkInfo}>
+                              {torrent.cached ? (
+                                <View style={styles.cachedBadge}>
+                                  <Ionicons name="flash" size={12} color="#000" />
+                                  <Text style={styles.cachedText}>CACHED</Text>
+                                </View>
+                              ) : (
+                                <View style={styles.uncachedBadge}>
+                                  <Ionicons name="cloud-download" size={12} color={theme.colors.text} />
+                                  <Text style={styles.uncachedText}>DOWNLOAD</Text>
+                                </View>
+                              )}
+                              <Text style={[styles.linkSource, !torrent.cached && styles.linkSourceUncached]}>
+                                {torrent.source.toUpperCase()}
+                              </Text>
+                              {torrent.size && (
+                                <Text style={[styles.linkSize, !torrent.cached && styles.linkSizeUncached]}>
+                                  {torrent.size}
+                                </Text>
+                              )}
+                              {torrent.seeders > 0 && (
+                                <View style={styles.seedersContainer}>
+                                  <Ionicons name="people" size={14} color={torrent.cached ? theme.colors.success : theme.colors.textSecondary} />
+                                  <Text style={[styles.seedersText, !torrent.cached && styles.seedersTextUncached]}>
+                                    {torrent.seeders}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            {selectedTorrent?.hash === torrent.hash && gettingStream ? (
+                              <ActivityIndicator size="small" color={torrent.cached ? theme.colors.gold : theme.colors.primary} />
+                            ) : (
+                              <Ionicons 
+                                name="play-circle" 
+                                size={32} 
+                                color={torrent.cached ? theme.colors.gold : theme.colors.primary} 
+                              />
+                            )}
+                          </Pressable>
+                        ))}
+                      </View>
+                    )
+                  ))}
+                </ScrollView>
+              )
+            ) : (
+              // Direct Streams Tab Content
+              directStreams.length === 0 ? (
+                <View style={styles.modalLoading}>
+                  <Ionicons name="globe-outline" size={48} color={theme.colors.textSecondary} />
+                  <Text style={styles.loadingText}>No direct streams found</Text>
+                  <Text style={styles.noLinksSubtext}>
+                    Try Debrid sources for more options
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView style={styles.modalScroll}>
+                  <Text style={styles.directStreamNote}>
+                    Direct streams open in browser or external player
+                  </Text>
+                  {directStreams.map((stream, index) => (
+                    <Pressable 
+                      key={index} 
+                      style={styles.directLinkCard}
+                      onPress={() => handlePlayDirectStream(stream)}
+                    >
+                      <View style={styles.directLinkInfo}>
+                        <View style={[
+                          styles.streamTypeBadge,
+                          stream.type === 'embed' && styles.streamTypeBadgeEmbed,
+                          stream.type === 'torrent' && styles.streamTypeBadgeTorrent,
+                          stream.type === 'direct' && styles.streamTypeBadgeDirect,
+                        ]}>
+                          <Ionicons 
+                            name={stream.type === 'embed' ? 'globe' : stream.type === 'torrent' ? 'magnet' : 'play'} 
+                            size={12} 
+                            color="#fff" 
+                          />
+                          <Text style={styles.streamTypeBadgeText}>{stream.type.toUpperCase()}</Text>
+                        </View>
+                        <Text style={styles.directLinkSource}>{stream.source}</Text>
+                        <Text style={styles.directLinkQuality}>{stream.quality}</Text>
+                      </View>
+                      <Ionicons name="open-outline" size={24} color={theme.colors.primary} />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )
             )}
           </View>
         </View>
@@ -682,5 +813,95 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.text,
     fontWeight: theme.fontWeight.medium,
+  },
+  // Tab Switcher Styles
+  tabSwitcher: {
+    flexDirection: 'row',
+    padding: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceLight,
+    gap: theme.spacing.xs,
+  },
+  tabButtonActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  tabButtonText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  tabButtonTextActive: {
+    color: '#000',
+  },
+  // Direct Stream Styles
+  directStreamNote: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    marginBottom: theme.spacing.md,
+  },
+  directLinkCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  directLinkInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  directLinkSource: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  directLinkQuality: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.medium,
+  },
+  streamTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: theme.borderRadius.sm,
+    gap: 4,
+    backgroundColor: theme.colors.textMuted,
+  },
+  streamTypeBadgeEmbed: {
+    backgroundColor: '#7C4DFF',
+  },
+  streamTypeBadgeTorrent: {
+    backgroundColor: '#FF6B6B',
+  },
+  streamTypeBadgeDirect: {
+    backgroundColor: theme.colors.success,
+  },
+  streamTypeBadgeText: {
+    fontSize: 10,
+    fontWeight: theme.fontWeight.bold,
+    color: '#fff',
   },
 });
