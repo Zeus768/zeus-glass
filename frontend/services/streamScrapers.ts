@@ -7,28 +7,20 @@ export interface StreamSource {
   quality: string;
   type: 'direct' | 'embed' | 'torrent';
   source: string;
+  size?: string;
+  seeders?: number;
 }
 
 // Scraper configuration
 const SCRAPERS = {
-  // Torrent indexers (via Stremio addons)
+  // Torrent indexers (via Stremio addons) - these need IMDB IDs
   torrentio: {
     name: 'Torrentio',
     baseUrl: 'https://torrentio.strem.fun',
     type: 'torrent' as const,
   },
-  mediafusion: {
-    name: 'MediaFusion',
-    baseUrl: 'https://mediafusion.elfhosted.com',
-    type: 'torrent' as const,
-  },
-  yts: {
-    name: 'YTS',
-    baseUrl: 'https://yts.mx/api/v2',
-    type: 'torrent' as const,
-  },
   
-  // Streaming sites
+  // Streaming sites - these work with TMDB IDs
   vidsrc: {
     name: 'VidSrc',
     baseUrl: 'https://vidsrc.to',
@@ -41,50 +33,31 @@ const SCRAPERS = {
     embedUrl: 'https://vidsrc.pro/embed',
     type: 'embed' as const,
   },
-  flixmomo: {
-    name: 'FlixMomo',
-    baseUrl: 'https://flixmomo.tv',
+  vidsrcXyz: {
+    name: 'VidSrc.xyz',
+    baseUrl: 'https://vidsrc.xyz',
+    embedUrl: 'https://vidsrc.xyz/embed',
     type: 'embed' as const,
   },
-  hydrahd: {
-    name: 'HydraHD',
-    baseUrl: 'https://hydrahd.ru',
+  superEmbed: {
+    name: 'SuperEmbed',
+    baseUrl: 'https://multiembed.mov',
     type: 'embed' as const,
   },
-  cineby: {
-    name: 'Cineby',
-    baseUrl: 'https://cineby.gd',
+  smashystream: {
+    name: 'SmashyStream',
+    baseUrl: 'https://player.smashy.stream',
     type: 'embed' as const,
   },
-  flickystream: {
-    name: 'FlickyStream',
-    baseUrl: 'https://flickystream.ru',
+  twoembed: {
+    name: '2Embed',
+    baseUrl: 'https://www.2embed.cc',
     type: 'embed' as const,
   },
-  yflix: {
-    name: 'YFlix',
-    baseUrl: 'https://yflix.to',
+  autoembed: {
+    name: 'AutoEmbed',
+    baseUrl: 'https://player.autoembed.cc',
     type: 'embed' as const,
-  },
-  gomovies: {
-    name: 'GoMovies',
-    baseUrl: 'https://gomovies.gg',
-    type: 'embed' as const,
-  },
-  movieparadise: {
-    name: 'MovieParadise',
-    baseUrl: 'https://movieparadise.co',
-    type: 'embed' as const,
-  },
-  utelevision: {
-    name: 'UTelevision',
-    baseUrl: 'https://utelevision.to',
-    type: 'embed' as const,
-  },
-  archive: {
-    name: 'Archive.org',
-    baseUrl: 'https://archive.org',
-    type: 'direct' as const,
   },
 };
 
@@ -94,28 +67,28 @@ export const streamScraperService = {
    */
   getMovieStreams: async (tmdbId: string, imdbId?: string, title?: string, year?: number): Promise<StreamSource[]> => {
     const streams: StreamSource[] = [];
+    console.log(`[Scrapers] Getting movie streams for tmdb:${tmdbId}, imdb:${imdbId}`);
     
-    // Run scrapers in parallel
-    const scraperPromises = [
-      // Torrentio
-      streamScraperService.scrapeTorrentio('movie', imdbId || tmdbId),
-      // MediaFusion
-      streamScraperService.scrapeMediaFusion('movie', imdbId || tmdbId),
-      // YTS (movies only)
-      title && year ? streamScraperService.scrapeYTS(title, year) : Promise.resolve([]),
-      // VidSrc
+    // Run embed scrapers (these are most reliable)
+    const embedPromises = [
+      // VidSrc variants
       streamScraperService.scrapeVidSrc('movie', tmdbId),
-      // VidSrc Pro
       streamScraperService.scrapeVidSrcPro('movie', tmdbId),
-      // Embed scrapers
-      streamScraperService.scrapeEmbedSite('flixmomo', 'movie', tmdbId, imdbId),
-      streamScraperService.scrapeEmbedSite('cineby', 'movie', tmdbId, imdbId),
-      streamScraperService.scrapeEmbedSite('hydrahd', 'movie', tmdbId, imdbId),
-      streamScraperService.scrapeEmbedSite('yflix', 'movie', tmdbId, imdbId),
+      streamScraperService.scrapeVidSrcXyz('movie', tmdbId),
+      // Other embeds
+      streamScraperService.scrapeSuperEmbed('movie', tmdbId, imdbId),
+      streamScraperService.scrapeSmashyStream('movie', tmdbId),
+      streamScraperService.scrapeTwoEmbed('movie', tmdbId, imdbId),
+      streamScraperService.scrapeAutoEmbed('movie', tmdbId),
     ];
     
+    // Torrentio only if we have IMDB ID (required for Stremio addons)
+    if (imdbId) {
+      embedPromises.push(streamScraperService.scrapeTorrentio('movie', imdbId));
+    }
+    
     try {
-      const results = await Promise.allSettled(scraperPromises);
+      const results = await Promise.allSettled(embedPromises);
       results.forEach((result) => {
         if (result.status === 'fulfilled' && result.value) {
           streams.push(...result.value);
@@ -125,6 +98,7 @@ export const streamScraperService = {
       console.error('Error scraping streams:', error);
     }
     
+    console.log(`[Scrapers] Found ${streams.length} streams`);
     return streams;
   },
 
@@ -133,23 +107,27 @@ export const streamScraperService = {
    */
   getTVStreams: async (tmdbId: string, imdbId: string | undefined, season: number, episode: number): Promise<StreamSource[]> => {
     const streams: StreamSource[] = [];
+    console.log(`[Scrapers] Getting TV streams for tmdb:${tmdbId}, S${season}E${episode}`);
     
-    const scraperPromises = [
-      // Torrentio
-      streamScraperService.scrapeTorrentio('series', imdbId || tmdbId, season, episode),
-      // MediaFusion
-      streamScraperService.scrapeMediaFusion('series', imdbId || tmdbId, season, episode),
-      // VidSrc
+    const embedPromises = [
+      // VidSrc variants
       streamScraperService.scrapeVidSrc('tv', tmdbId, season, episode),
-      // VidSrc Pro
       streamScraperService.scrapeVidSrcPro('tv', tmdbId, season, episode),
-      // Embed scrapers
-      streamScraperService.scrapeEmbedSite('flixmomo', 'tv', tmdbId, imdbId, season, episode),
-      streamScraperService.scrapeEmbedSite('cineby', 'tv', tmdbId, imdbId, season, episode),
+      streamScraperService.scrapeVidSrcXyz('tv', tmdbId, season, episode),
+      // Other embeds
+      streamScraperService.scrapeSuperEmbed('tv', tmdbId, imdbId, season, episode),
+      streamScraperService.scrapeSmashyStream('tv', tmdbId, season, episode),
+      streamScraperService.scrapeTwoEmbed('tv', tmdbId, imdbId, season, episode),
+      streamScraperService.scrapeAutoEmbed('tv', tmdbId, season, episode),
     ];
     
+    // Torrentio only if we have IMDB ID
+    if (imdbId) {
+      embedPromises.push(streamScraperService.scrapeTorrentio('series', imdbId, season, episode));
+    }
+    
     try {
-      const results = await Promise.allSettled(scraperPromises);
+      const results = await Promise.allSettled(embedPromises);
       results.forEach((result) => {
         if (result.status === 'fulfilled' && result.value) {
           streams.push(...result.value);
@@ -159,221 +137,171 @@ export const streamScraperService = {
       console.error('Error scraping TV streams:', error);
     }
     
+    console.log(`[Scrapers] Found ${streams.length} TV streams`);
     return streams;
   },
 
   /**
-   * Scrape Torrentio (Stremio addon)
+   * Scrape Torrentio (Stremio addon) - requires IMDB ID
    */
-  scrapeTorrentio: async (type: 'movie' | 'series', id: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+  scrapeTorrentio: async (type: 'movie' | 'series', imdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
     try {
-      let url = `${SCRAPERS.torrentio.baseUrl}/stream/${type}/${id}`;
+      if (!imdbId || !imdbId.startsWith('tt')) {
+        console.log('[Torrentio] Invalid IMDB ID:', imdbId);
+        return [];
+      }
+      
+      let url = `${SCRAPERS.torrentio.baseUrl}/stream/${type}/${imdbId}`;
       if (type === 'series' && season !== undefined && episode !== undefined) {
         url += `:${season}:${episode}`;
       }
       url += '.json';
       
-      const response = await axios.get(url, { timeout: 10000 });
+      console.log('[Torrentio] Fetching:', url);
+      const response = await axios.get(url, { timeout: 15000 });
       const streams = response.data?.streams || [];
       
-      return streams.map((s: any) => ({
+      return streams.slice(0, 15).map((s: any) => ({
         name: s.title || s.name || 'Torrentio',
-        url: s.url || s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}` : '',
+        url: s.url || (s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(s.title || 'Video')}` : ''),
         quality: extractQuality(s.title || s.name || ''),
         type: 'torrent' as const,
         source: 'Torrentio',
+        size: extractSize(s.title || ''),
+        seeders: s.seeders,
       })).filter((s: StreamSource) => s.url);
-    } catch (error) {
-      console.log('Torrentio scrape failed:', error);
+    } catch (error: any) {
+      console.log('[Torrentio] Error:', error.message);
       return [];
     }
   },
 
   /**
-   * Scrape MediaFusion (Stremio addon)
-   */
-  scrapeMediaFusion: async (type: 'movie' | 'series', id: string, season?: number, episode?: number): Promise<StreamSource[]> => {
-    try {
-      let url = `${SCRAPERS.mediafusion.baseUrl}/${process.env.MEDIAFUSION_CONFIG || 'default'}/stream/${type}/${id}`;
-      if (type === 'series' && season !== undefined && episode !== undefined) {
-        url += `:${season}:${episode}`;
-      }
-      url += '.json';
-      
-      const response = await axios.get(url, { timeout: 10000 });
-      const streams = response.data?.streams || [];
-      
-      return streams.map((s: any) => ({
-        name: s.title || s.name || 'MediaFusion',
-        url: s.url || (s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}` : ''),
-        quality: extractQuality(s.title || s.name || ''),
-        type: 'torrent' as const,
-        source: 'MediaFusion',
-      })).filter((s: StreamSource) => s.url);
-    } catch (error) {
-      console.log('MediaFusion scrape failed:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Scrape YTS for movies
-   */
-  scrapeYTS: async (title: string, year: number): Promise<StreamSource[]> => {
-    try {
-      const response = await axios.get(`${SCRAPERS.yts.baseUrl}/list_movies.json`, {
-        params: {
-          query_term: title,
-          limit: 5,
-        },
-        timeout: 10000,
-      });
-      
-      const movies = response.data?.data?.movies || [];
-      const matchingMovie = movies.find((m: any) => 
-        m.year === year && m.title.toLowerCase().includes(title.toLowerCase())
-      );
-      
-      if (!matchingMovie || !matchingMovie.torrents) return [];
-      
-      return matchingMovie.torrents.map((t: any) => ({
-        name: `YTS ${t.quality} ${t.type}`,
-        url: t.url || `magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(matchingMovie.title)}`,
-        quality: t.quality || 'Unknown',
-        type: 'torrent' as const,
-        source: 'YTS',
-      }));
-    } catch (error) {
-      console.log('YTS scrape failed:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Scrape VidSrc
+   * Scrape VidSrc.to
    */
   scrapeVidSrc: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
-    try {
-      let embedUrl = `${SCRAPERS.vidsrc.embedUrl}/${type}/${tmdbId}`;
-      if (type === 'tv' && season !== undefined && episode !== undefined) {
-        embedUrl += `/${season}/${episode}`;
-      }
-      
-      return [{
-        name: 'VidSrc',
-        url: embedUrl,
-        quality: 'HD',
-        type: 'embed' as const,
-        source: 'VidSrc',
-      }];
-    } catch (error) {
-      return [];
+    let embedUrl = `${SCRAPERS.vidsrc.embedUrl}/${type}/${tmdbId}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `/${season}/${episode}`;
     }
+    
+    return [{
+      name: 'VidSrc',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'VidSrc',
+    }];
   },
 
   /**
    * Scrape VidSrc Pro
    */
   scrapeVidSrcPro: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
-    try {
-      let embedUrl = `${SCRAPERS.vidsrcPro.embedUrl}/${type}/${tmdbId}`;
-      if (type === 'tv' && season !== undefined && episode !== undefined) {
-        embedUrl += `/${season}/${episode}`;
-      }
-      
-      return [{
-        name: 'VidSrc Pro',
-        url: embedUrl,
-        quality: 'HD',
-        type: 'embed' as const,
-        source: 'VidSrc Pro',
-      }];
-    } catch (error) {
-      return [];
+    let embedUrl = `${SCRAPERS.vidsrcPro.embedUrl}/${type}/${tmdbId}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `/${season}/${episode}`;
     }
-  },
-
-  /**
-   * Generic embed site scraper
-   */
-  scrapeEmbedSite: async (
-    site: keyof typeof SCRAPERS, 
-    type: 'movie' | 'tv', 
-    tmdbId: string, 
-    imdbId?: string,
-    season?: number, 
-    episode?: number
-  ): Promise<StreamSource[]> => {
-    const scraper = SCRAPERS[site];
-    if (!scraper) return [];
     
-    try {
-      let url = scraper.baseUrl;
-      
-      // Build URL based on site pattern
-      switch (site) {
-        case 'flixmomo':
-          url += type === 'movie' ? `/movie/${tmdbId}` : `/tv/${tmdbId}/${season}/${episode}`;
-          break;
-        case 'cineby':
-          url += type === 'movie' ? `/movie/${tmdbId}` : `/tv/${tmdbId}/${season}/${episode}`;
-          break;
-        case 'hydrahd':
-          url += type === 'movie' ? `/watch/${imdbId || tmdbId}` : `/watch/${imdbId || tmdbId}/s${season}e${episode}`;
-          break;
-        case 'yflix':
-          url += type === 'movie' ? `/movie/${tmdbId}` : `/tv/${tmdbId}/${season}/${episode}`;
-          break;
-        case 'gomovies':
-          url += type === 'movie' ? `/watch-movie/${tmdbId}` : `/watch-tv/${tmdbId}/${season}/${episode}`;
-          break;
-        case 'movieparadise':
-          url += type === 'movie' ? `/movie/${tmdbId}` : `/tv/${tmdbId}/${season}/${episode}`;
-          break;
-        default:
-          url += `/${type}/${tmdbId}`;
-      }
-      
-      return [{
-        name: scraper.name,
-        url: url,
-        quality: 'HD',
-        type: scraper.type,
-        source: scraper.name,
-      }];
-    } catch (error) {
-      return [];
-    }
+    return [{
+      name: 'VidSrc Pro',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'VidSrc Pro',
+    }];
   },
 
   /**
-   * Get Archive.org Disney streams
+   * Scrape VidSrc.xyz
    */
-  scrapeArchiveOrg: async (searchTerm: string): Promise<StreamSource[]> => {
-    try {
-      const response = await axios.get('https://archive.org/advancedsearch.php', {
-        params: {
-          q: `collection:disney_202105 AND title:${searchTerm}`,
-          fl: ['identifier', 'title'],
-          rows: 10,
-          output: 'json',
-        },
-        timeout: 10000,
-      });
-      
-      const docs = response.data?.response?.docs || [];
-      
-      return docs.map((doc: any) => ({
-        name: `Archive.org - ${doc.title}`,
-        url: `https://archive.org/download/${doc.identifier}`,
-        quality: 'Unknown',
-        type: 'direct' as const,
-        source: 'Archive.org',
-      }));
-    } catch (error) {
-      console.log('Archive.org scrape failed:', error);
-      return [];
+  scrapeVidSrcXyz: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    let embedUrl = `${SCRAPERS.vidsrcXyz.embedUrl}/${type}/${tmdbId}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `/${season}/${episode}`;
     }
+    
+    return [{
+      name: 'VidSrc.xyz',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'VidSrc.xyz',
+    }];
+  },
+
+  /**
+   * Scrape SuperEmbed / MultiEmbed
+   */
+  scrapeSuperEmbed: async (type: 'movie' | 'tv', tmdbId: string, imdbId?: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    // MultiEmbed prefers TMDB ID
+    let embedUrl = `${SCRAPERS.superEmbed.baseUrl}/?video_id=${tmdbId}&tmdb=1`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `&s=${season}&e=${episode}`;
+    }
+    
+    return [{
+      name: 'SuperEmbed',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'SuperEmbed',
+    }];
+  },
+
+  /**
+   * Scrape SmashyStream
+   */
+  scrapeSmashyStream: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    let embedUrl = `${SCRAPERS.smashystream.baseUrl}/${type}/${tmdbId}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `?s=${season}&e=${episode}`;
+    }
+    
+    return [{
+      name: 'SmashyStream',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'SmashyStream',
+    }];
+  },
+
+  /**
+   * Scrape 2Embed
+   */
+  scrapeTwoEmbed: async (type: 'movie' | 'tv', tmdbId: string, imdbId?: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    // 2Embed uses TMDB ID
+    let embedUrl = `${SCRAPERS.twoembed.baseUrl}/embed/${type}/${tmdbId}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `/${season}/${episode}`;
+    }
+    
+    return [{
+      name: '2Embed',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: '2Embed',
+    }];
+  },
+
+  /**
+   * Scrape AutoEmbed
+   */
+  scrapeAutoEmbed: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    let embedUrl = `${SCRAPERS.autoembed.baseUrl}/embed/${type}/${tmdbId}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `/${season}/${episode}`;
+    }
+    
+    return [{
+      name: 'AutoEmbed',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'AutoEmbed',
+    }];
   },
 };
 
@@ -394,4 +322,13 @@ function extractQuality(title: string): string {
   }
   
   return 'Unknown';
+}
+
+// Helper function to extract size from title
+function extractSize(title: string): string | undefined {
+  const sizeMatch = title.match(/(\d+(?:\.\d+)?)\s*(GB|MB|TB)/i);
+  if (sizeMatch) {
+    return `${sizeMatch[1]} ${sizeMatch[2].toUpperCase()}`;
+  }
+  return undefined;
 }

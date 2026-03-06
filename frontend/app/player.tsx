@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, BackHandler, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, BackHandler, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { WebView } from 'react-native-webview';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
 import { StatusBar } from 'expo-status-bar';
@@ -10,7 +11,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function PlayerScreen() {
-  const { url, title } = useLocalSearchParams<{ url: string; title: string }>();
+  const { url, title, type } = useLocalSearchParams<{ url: string; title: string; type?: 'video' | 'embed' }>();
   const router = useRouter();
   const videoRef = useRef<Video>(null);
   
@@ -19,10 +20,16 @@ export default function PlayerScreen() {
   const [error, setError] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(true);
   const [focusedButton, setFocusedButton] = useState<string | null>(null);
+  const [isEmbed, setIsEmbed] = useState(false);
   
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Determine if this is an embed URL
+    const embedPatterns = ['vidsrc', 'embed', 'flixmomo', 'cineby', 'hydrahd', 'yflix'];
+    const isEmbedUrl = type === 'embed' || embedPatterns.some(p => url?.toLowerCase().includes(p));
+    setIsEmbed(isEmbedUrl);
+
     // Lock to landscape for fullscreen
     const lockOrientation = async () => {
       try {
@@ -31,6 +38,12 @@ export default function PlayerScreen() {
         console.log('Could not lock orientation:', e);
       }
     };
+    
+    // Hide status bar
+    if (Platform.OS === 'android') {
+      RNStatusBar.setHidden(true);
+    }
+    
     lockOrientation();
 
     // Handle back button on TV/Android
@@ -41,9 +54,31 @@ export default function PlayerScreen() {
 
     return () => {
       backHandler.remove();
-      ScreenOrientation.unlockAsync().catch(() => {});
+      // Reset orientation on unmount
+      resetOrientation();
     };
-  }, []);
+  }, [url, type]);
+
+  const resetOrientation = async () => {
+    try {
+      await ScreenOrientation.unlockAsync();
+      // Force back to portrait on mobile
+      if (!isTV && Platform.OS !== 'web') {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        // Unlock after a short delay to allow normal rotation
+        setTimeout(async () => {
+          await ScreenOrientation.unlockAsync();
+        }, 500);
+      }
+    } catch (e) {
+      console.log('Could not reset orientation:', e);
+    }
+    
+    // Show status bar again
+    if (Platform.OS === 'android') {
+      RNStatusBar.setHidden(false);
+    }
+  };
 
   useEffect(() => {
     // Auto-hide controls after 5 seconds
@@ -63,10 +98,11 @@ export default function PlayerScreen() {
     };
   }, [showControls, status]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
     if (videoRef.current) {
-      videoRef.current.stopAsync();
+      await videoRef.current.stopAsync();
     }
+    await resetOrientation();
     router.back();
   }, [router]);
 
@@ -106,8 +142,60 @@ export default function PlayerScreen() {
   const duration = status && 'durationMillis' in status ? status.durationMillis : 0;
   const progressPercent = duration > 0 ? (position / duration) * 100 : 0;
 
+  // Render WebView for embed sources
+  if (isEmbed) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <StatusBar hidden />
+        
+        {/* Close Button for Embed */}
+        <Pressable 
+          onPress={handleClose}
+          style={[styles.embedCloseButton, focusedButton === 'close' && styles.buttonFocused]}
+          onFocus={() => setFocusedButton('close')}
+          onBlur={() => setFocusedButton(null)}
+        >
+          <Ionicons name="close" size={isTV ? 36 : 28} color="#fff" />
+        </Pressable>
+        
+        {/* Title */}
+        <View style={styles.embedTitleBar}>
+          <Text style={styles.embedTitle} numberOfLines={1}>{title || 'Playing'}</Text>
+        </View>
+        
+        <WebView
+          source={{ uri: url }}
+          style={styles.webview}
+          allowsFullscreenVideo={true}
+          mediaPlaybackRequiresUserAction={false}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+          renderLoading={() => (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={styles.loadingText}>Loading stream...</Text>
+            </View>
+          )}
+        />
+        
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Loading stream...</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // Render native Video player for direct streams
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
       <StatusBar hidden />
       
       {/* Video Player - Full Screen */}
@@ -259,11 +347,44 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: '#000',
   },
+  webview: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  embedCloseButton: {
+    position: 'absolute',
+    top: isTV ? 20 : 40,
+    left: isTV ? 20 : 16,
+    zIndex: 100,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 25,
+    padding: 10,
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  embedTitleBar: {
+    position: 'absolute',
+    top: isTV ? 20 : 40,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+    alignItems: 'center',
+    paddingHorizontal: 80,
+  },
+  embedTitle: {
+    fontSize: isTV ? 24 : 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 200,
   },
   loadingText: {
     marginTop: theme.spacing.md,
@@ -297,7 +418,7 @@ const styles = StyleSheet.create({
   },
   errorButtonText: {
     fontSize: isTV ? 22 : 16,
-    fontWeight: theme.fontWeight.bold,
+    fontWeight: 'bold',
     color: '#000',
   },
   controlsOverlay: {
@@ -314,14 +435,14 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: 25,
     borderWidth: 3,
     borderColor: 'transparent',
   },
   titleText: {
     flex: 1,
     fontSize: isTV ? 28 : 20,
-    fontWeight: theme.fontWeight.bold,
+    fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
     marginHorizontal: theme.spacing.md,
@@ -338,7 +459,7 @@ const styles = StyleSheet.create({
   controlButton: {
     alignItems: 'center',
     padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: 12,
     borderWidth: 3,
     borderColor: 'transparent',
   },
@@ -346,7 +467,7 @@ const styles = StyleSheet.create({
     fontSize: isTV ? 18 : 14,
     color: '#fff',
     marginTop: theme.spacing.xs,
-    fontWeight: theme.fontWeight.medium,
+    fontWeight: '500',
   },
   playButton: {
     backgroundColor: 'rgba(0, 217, 255, 0.4)',
@@ -380,7 +501,7 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: isTV ? 20 : 14,
     color: '#fff',
-    fontWeight: theme.fontWeight.medium,
+    fontWeight: '500',
     minWidth: isTV ? 100 : 60,
   },
   progressBarContainer: {

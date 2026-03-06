@@ -25,13 +25,52 @@ const webStorage = {
   },
 };
 
+// EPG Cache to prevent crashes from too many API calls
+interface EPGCacheEntry {
+  data: EPGProgram[];
+  timestamp: number;
+}
+
+const EPG_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+const epgCache: Map<string, EPGCacheEntry> = new Map();
+
+// Channels cache
+interface ChannelsCacheEntry {
+  data: IPTVChannel[];
+  timestamp: number;
+}
+const CHANNELS_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes cache
+let channelsCache: ChannelsCacheEntry | null = null;
+
+// Categories cache
+interface CategoriesCacheEntry {
+  data: any[];
+  timestamp: number;
+}
+const CATEGORIES_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes cache
+let liveCategoriesCache: CategoriesCacheEntry | null = null;
+let vodCategoriesCache: CategoriesCacheEntry | null = null;
+let seriesCategoriesCache: CategoriesCacheEntry | null = null;
+
 // Real Xtreme Codes IPTV Service
 export const iptvService = {
+  // Clear all caches
+  clearCache: () => {
+    epgCache.clear();
+    channelsCache = null;
+    liveCategoriesCache = null;
+    vodCategoriesCache = null;
+    seriesCategoriesCache = null;
+    console.log('[IPTV] Cache cleared');
+  },
+
   saveConfig: async (config: IPTVConfig): Promise<void> => {
     const configStr = JSON.stringify(config);
     // Save to both AsyncStorage and localStorage (for web reliability)
     await AsyncStorage.setItem(STORAGE_KEYS.IPTV_CONFIG, configStr);
     webStorage.setItem(STORAGE_KEYS.IPTV_CONFIG, configStr);
+    // Clear cache when config changes
+    iptvService.clearCache();
     console.log('[IPTV] Config saved:', config.domain, config.username);
   },
 
@@ -58,6 +97,7 @@ export const iptvService = {
   logout: async (): Promise<void> => {
     await AsyncStorage.removeItem(STORAGE_KEYS.IPTV_CONFIG);
     webStorage.removeItem(STORAGE_KEYS.IPTV_CONFIG);
+    iptvService.clearCache();
     console.log('[IPTV] Logged out');
   },
 
@@ -557,9 +597,16 @@ export const iptvService = {
     }
   },
 
-  // Get EPG for a channel
+  // Get EPG for a channel with caching
   getEPG: async (channelId: string): Promise<EPGProgram[]> => {
     try {
+      // Check cache first
+      const cached = epgCache.get(channelId);
+      if (cached && Date.now() - cached.timestamp < EPG_CACHE_DURATION) {
+        console.log(`[IPTV] EPG cache hit for channel ${channelId}`);
+        return cached.data;
+      }
+
       const config = await iptvService.getConfig();
       if (!config || !config.enabled) return [];
 
@@ -624,10 +671,54 @@ export const iptvService = {
         });
       }
 
+      // Cache the result
+      epgCache.set(channelId, { data: programs, timestamp: Date.now() });
+      console.log(`[IPTV] EPG cached for channel ${channelId}`);
+
       return programs;
     } catch (error) {
       console.error('Error fetching EPG:', error);
       return [];
     }
+  },
+
+  // Batch load EPG for multiple channels (to reduce API calls)
+  getEPGBatch: async (channelIds: string[]): Promise<Map<string, EPGProgram[]>> => {
+    const results = new Map<string, EPGProgram[]>();
+    
+    // Only fetch EPG for channels not in cache
+    const uncachedIds = channelIds.filter(id => {
+      const cached = epgCache.get(id);
+      if (cached && Date.now() - cached.timestamp < EPG_CACHE_DURATION) {
+        results.set(id, cached.data);
+        return false;
+      }
+      return true;
+    });
+
+    // Limit concurrent requests to prevent crashes
+    const batchSize = 5;
+    for (let i = 0; i < uncachedIds.length; i += batchSize) {
+      const batch = uncachedIds.slice(i, i + batchSize);
+      const promises = batch.map(id => iptvService.getEPG(id));
+      
+      try {
+        const batchResults = await Promise.allSettled(promises);
+        batchResults.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            results.set(batch[index], result.value);
+          }
+        });
+      } catch (e) {
+        console.error('[IPTV] EPG batch error:', e);
+      }
+      
+      // Small delay between batches to prevent overwhelming the server
+      if (i + batchSize < uncachedIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    return results;
   },
 };

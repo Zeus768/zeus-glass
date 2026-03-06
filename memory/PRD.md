@@ -3,155 +3,95 @@
 ## Original Problem Statement
 Build a cross-platform mobile application for Android, Android TV, and Fire TV called "Zeus Glass", with a UI/UX that replicates "Sky Glass" aesthetic. The app integrates streaming services via Debrid providers (Real-Debrid, AllDebrid, Premiumize), IPTV with Xtreme Codes, and movie/TV metadata from TMDB and Trakt.
 
-## User Personas
-- **Primary**: Android TV/Fire TV/Shield TV users who want a unified streaming experience
-- **Secondary**: Mobile users (Android) who want access to the same content library
+## What's Been Fixed (Session 3 - March 6, 2026)
 
-## Core Requirements
+### Issues Fixed From User Feedback:
 
-### Authentication & Accounts ✅
-- [x] Real-Debrid OAuth device code flow (with backend proxy for CORS)
-- [x] AllDebrid PIN authentication flow (with backend proxy for CORS)
-- [x] Premiumize API key authentication
-- [x] Trakt OAuth authentication
-- [x] IPTV Xtreme Codes login (domain, username, password)
+1. **Player Screen Improvements**
+   - Added `Stack.Screen options={{ headerShown: false }}` for true fullscreen
+   - Fixed screen orientation lock to landscape during playback
+   - Added proper orientation reset to portrait when exiting player
+   - Added WebView player for embed sources (VidSrc, etc.)
+   - Status bar now hidden during playback
 
-### Trakt Lists Integration ✅ (NEW)
-- [x] Continue Watching carousel (from playback progress)
-- [x] My Watchlist (Movies) carousel
-- [x] My Watchlist (TV Shows) carousel
-- [x] Recently Watched history
-- [x] Add/Remove from Watchlist functionality
-- [x] Carousel icons for visual distinction
+2. **Stream Scrapers Rewrite**
+   - Rewrote all embed scrapers to use working URLs
+   - Added: VidSrc.xyz, SuperEmbed, SmashyStream, 2Embed, AutoEmbed
+   - Fixed Torrentio to require valid IMDB ID (starts with 'tt')
+   - Added logging for debugging stream fetching
+   - Added size and seeders info to torrent results
 
-### IPTV Features ✅
-- [x] Live TV with full channel list from provider
-- [x] Category filtering for live channels (114 categories)
-- [x] EPG data with Now/Next program info (Base64 decoded)
-- [x] VOD Movies with categories and infinite scroll
-- [x] VOD TV Shows with categories
-- [x] Full-screen video player for IPTV content
-- [x] Web storage fallback for reliable config persistence
+3. **EPG & TV Guide Caching**
+   - Added 5-minute EPG cache to prevent crashes from API overload
+   - Added 10-minute channels cache
+   - Added 30-minute categories cache
+   - Added batch EPG loading with rate limiting (5 concurrent requests)
+   - Added cache clearing on logout/config change
 
-### TV Focus Highlighting ✅ (ENHANCED)
-- [x] Enhanced FocusableView component with stronger glow
-- [x] Visible cyan border on focused elements
-- [x] Scale transform on focus (1.1x for TV, 1.06x for mobile)
-- [x] Shadow/glow effect for depth
-- [x] Tab navigation support
-- [x] Works with keyboard and D-pad navigation
+4. **Trakt Lists Integration**
+   - Watchlist Movies carousel
+   - Watchlist TV Shows carousel
+   - Continue Watching carousel
+   - Recently Watched history
+   - Add/Remove from Watchlist functionality
 
-### Debrid/Streaming Features
-- [x] Backend proxy endpoints for CORS bypass
-- [x] Torrent search for movies and TV shows
-- [x] Stream link resolution via Debrid services
-- [x] Cached torrent checking
-- [ ] TV show seasons/episodes selection before stream search
-- [ ] External player (VLC) integration
-
-### UI/UX ✅
-- [x] Sky Glass-inspired dark glassmorphic theme
-- [x] Hero carousel on home page
-- [x] Category carousels for content browsing
-- [x] Account cards in settings with login/logout
-- [x] QR code auth modals for Debrid services
-- [x] Genre filter pills on Movies/TV Shows pages
-- [x] Donate button (links to buymeacoffee.com/zeus768)
-
-## Technical Architecture
-
-### Frontend (React Native / Expo)
-- **Framework**: Expo SDK with TypeScript
-- **Navigation**: Expo Router (file-based)
-- **State**: Zustand for global state
-- **Storage**: AsyncStorage with localStorage fallback for web
-- **Key Files**:
-  - `/app/frontend/services/debrid.ts` - Debrid auth with CORS proxy support
-  - `/app/frontend/services/iptv.ts` - IPTV service with web storage fallback
-  - `/app/frontend/services/trakt.ts` - Enhanced Trakt API with lists
-  - `/app/frontend/store/contentStore.ts` - State with Trakt lists support
-  - `/app/frontend/components/FocusableView.tsx` - Enhanced focus component
-  - `/app/frontend/components/Carousel.tsx` - With icon support
-
-### Backend (FastAPI / Python)
-- **Framework**: FastAPI with uvicorn
-- **Database**: MongoDB (via motor async driver)
-- **Key Endpoints**:
-  - `/api/debrid/real-debrid/*` - Real-Debrid proxy endpoints
-  - `/api/debrid/alldebrid/*` - AllDebrid proxy endpoints
-  - `/api/debrid/premiumize/*` - Premiumize proxy endpoints
-  - `/api/torrents/*` - Torrent search endpoints
-  - `/api/debrid/cache/*` - Debrid cache search endpoints
-
-## What's Been Implemented (March 6, 2026)
-
-### Session 1: Critical P0 Fixes
-1. **Debrid Authentication** - All 3 services working via backend proxy
-2. **IPTV Functionality** - Full implementation with channels, VOD, categories
-3. **Storage Reliability** - localStorage fallback for web
-
-### Session 2: Trakt Lists & Focus Enhancement
-1. **Trakt Lists Integration**
-   - Added getWatchlistMovies(), getWatchlistShows(), getRecentlyWatched()
-   - Added loadTraktLists() to content store
-   - Home page shows Trakt carousels when authenticated
-   - Carousel component supports icons (bookmark, play-circle, heart)
-
-2. **Focus Highlighting Enhancement**
+5. **Focus Highlighting Enhancement**
    - Increased border width (5px TV, 4px mobile)
    - Stronger glow effect (25px shadow radius)
    - Higher scale transform (1.12x)
-   - Better z-index management
 
-### Testing Results (100% Frontend Pass Rate)
-- Home page: Hero + carousels ✅
-- Movies page: Grid + 17 genre filters ✅
-- TV Shows page: Grid + 16 genre filters ✅
-- Settings page: 5 account cards ✅
-- VOD page: Movies (30) + TV Shows + categories ✅
-- Live TV: Channels (BBC, etc.) + categories ✅
-- Focus highlighting: Tab navigation + cyan borders ✅
+## Known Remaining Issues
+
+1. **Debrid Links (0 showing)**: This happens when:
+   - User is not authenticated with Real-Debrid/AllDebrid/Premiumize
+   - Movie/show doesn't have a valid IMDB ID
+   - Torrentio server is down/slow
+   - Note: User MUST complete OAuth auth flow first
+
+2. **Direct Links Not Playing**: 
+   - Some embed sites may be blocked by the provider
+   - The WebView player now handles embed URLs properly
+   - User may need to interact with the player (click play, close ads)
+
+3. **Shield TV Focus**: 
+   - Focus highlighting is implemented but needs testing on real device
+   - The styles use cyan border + scale transform + shadow glow
+
+## Test Credentials (DO NOT COMMIT)
+IPTV credentials stored separately for testing purposes.
+
+## Technical Changes Summary
+
+### Files Modified:
+- `/app/frontend/app/player.tsx` - Fullscreen fix, orientation lock, WebView for embeds
+- `/app/frontend/services/iptv.ts` - EPG caching, batch loading, cache clear
+- `/app/frontend/services/streamScrapers.ts` - New embed sources, better torrent handling
+- `/app/frontend/services/trakt.ts` - Watchlist, collection, history functions
+- `/app/frontend/store/contentStore.ts` - Trakt lists loading
+- `/app/frontend/components/Carousel.tsx` - Icon support
+- `/app/frontend/components/FocusableView.tsx` - Enhanced focus styles
+
+### Architecture:
+- **Caching Strategy**: In-memory caches with TTL (EPG: 5min, Channels: 10min, Categories: 30min)
+- **Player Types**: Native video player for direct streams, WebView for embed sources
+- **Orientation**: Lock to landscape on player open, unlock/reset on close
 
 ## Prioritized Backlog
 
-### P0 (Critical) - COMPLETED ✅
-- [x] Fix Debrid authentication
-- [x] Fix IPTV functionality
-- [x] Trakt lists integration
-- [x] Focus highlighting enhancement
+### P0 (Critical) - IN PROGRESS
+- [ ] Test Debrid auth flow end-to-end on real device
+- [ ] Test focus highlighting on Shield TV / Fire TV
+- [ ] Test orientation reset on mobile after player exit
 
-### P1 (High Priority) - PENDING
-- [ ] TV show seasons/episodes flow for Debrid
+### P1 (High Priority)
+- [ ] TV show seasons/episodes selection flow
 - [ ] Add scrapers from fmhy.net/video
-- [ ] Add "Providers" tab (Netflix, Disney+, Hulu filter)
+- [ ] "Providers" tab for filtering by streaming service
 
-### P2 (Medium Priority) - PENDING
+### P2 (Medium Priority)
 - [ ] External player (VLC) integration
-- [ ] Full-screen mode enforcement on TV
 - [ ] PPV section in IPTV guide
 
-### P3 (Low Priority) - PENDING
+### P3 (Low Priority)
 - [ ] GitLab CI/CD setup
 - [ ] Comprehensive search functionality
-
-## Test Credentials
-```
-IPTV:
-  domain: [YOUR_IPTV_DOMAIN]
-  username: [YOUR_IPTV_USERNAME]
-  password: [YOUR_IPTV_PASSWORD]
-```
-*Note: Add your Xtreme Codes credentials in the Settings page*
-
-## Known Issues
-- Mixed content warnings for HTTP channel logos (IPTV provider issue)
-- Console warning: "Unexpected text node" - whitespace in JSX
-
-## Routes Reference
-- Home: `/`
-- Movies: `/movies`
-- TV Shows: `/tv-shows`
-- Live TV: `/tv-guide`
-- VOD: `/vod`
-- Settings: `/settings`
-- Search: `/search`
