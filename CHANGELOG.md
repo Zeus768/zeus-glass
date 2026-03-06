@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
 - **TV Show Episode Selector**: Added season/episode picker UI for TV show streaming
 - **Direct Stream Playback**: Direct streams open in browser or external player
 - **Poll Status Display**: Added real-time polling status display in auth modal
+- **FocusableView Component**: New reusable component for TV remote navigation
+- **IPTV Categories API**: Added `getLiveCategories` method to fetch channel categories
 
 ### Fixed
 - **TV Full-Screen Layout (Critical)**: Added `android.fullscreen: true` to app.json to fix narrow column rendering on Fire TV/Shield TV
@@ -26,16 +28,24 @@ All notable changes to this project will be documented in this file.
   - Added comprehensive `[Real-Debrid]` console logging throughout auth flow
   - Fixed error handling to not throw on expected 403 responses
   - Added detailed status messages during authorization polling
+- **TV Remote Focus Indicators (Critical for Shield/Fire TV)**:
+  - Tab bar buttons now show bright cyan highlight with white border when focused
+  - Account cards (Trakt, Real-Debrid, etc.) show focus state with glow effect
+  - Login/Logout buttons scale up 15% with white glow when focused
+  - Carousel cards show "PRESS TO PLAY" overlay with play button when focused
+  - All focusable elements have visible state change for remote navigation
 
 ### Changed
 - Version bumped to 1.4.0
 - Updated EAS profiles to include TV-specific builds
 - Movie and TV detail screens now fetch both Debrid and Direct streams in parallel
+- Increased IPTV channel limit from 50 to 200
 
 ### Technical Notes
 - Users should build with `eas build --profile preview_tv -p android` for TV-optimized APKs
 - TV builds set `EXPO_TV=1` which enables TV-specific code paths
 - Stream scrapers include: VidSrc, VidSrc Pro, FlixMomo, HydraHD, 2embed, AutoEmbed, SuperEmbed, MoviesAPI, SmashyStream, VidLink
+- Focus states use scale(1.15-1.2) + cyan border + white glow for maximum visibility on TV
 
 ---
 

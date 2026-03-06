@@ -74,14 +74,17 @@ Build a cross-platform mobile application called "Zeus Glass" with:
 
 ### P0 - Critical (Need Testing on Physical Device)
 - [ ] **TV Full-Screen Layout**: Changes implemented (`fullscreen: true`, `immersive`, `sensorLandscape`), needs testing on Fire TV/Shield TV
-- [ ] **Real-Debrid Authentication**: Debugging added, needs user verification on device
+- [ ] **TV Focus Indicators**: Implemented bright cyan highlights with scale + glow for all focusable elements - **MUST TEST ON SHIELD TV**
+- [ ] **Real-Debrid Authentication**: Token exchange fixed to use form-urlencoded POST, needs user verification
 
 ### P1 - High Priority  
 - [x] **Stream Scrapers Integration**: Integrated VidSrc, FlixMomo, and other direct streaming sources into movie/TV detail screens
 - [x] **Tabbed Stream Modal**: Added tabbed interface (Debrid/Direct) for stream selection
 - [x] **TV Episode Selector**: Added season/episode picker for TV show streaming
+- [x] **IPTV Categories API**: Added getLiveCategories method
 - [ ] External player integration (VLC via expo-linking) - Not started
 - [ ] IPTV login verification - Needs user testing
+- [ ] Sky Glass style EPG grid - Current guide is functional but not Sky Glass aesthetic
 
 ### P2 - Medium Priority
 - [ ] Trakt "Favorites" and "Continue Watching" data sync

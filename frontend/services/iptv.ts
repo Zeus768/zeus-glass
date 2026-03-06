@@ -108,8 +108,8 @@ export const iptvService = {
       const streams = response.data || [];
       const channels: IPTVChannel[] = [];
 
-      // Convert to our format (limit to 50 for performance)
-      for (const stream of streams.slice(0, 50)) {
+      // Convert to our format - increased limit for better experience
+      for (const stream of streams.slice(0, 200)) {
         const channel: IPTVChannel = {
           id: stream.stream_id?.toString() || stream.num?.toString(),
           name: stream.name || 'Unknown Channel',
@@ -125,6 +125,55 @@ export const iptvService = {
       return parentalControlService.filterContent(channels);
     } catch (error) {
       console.error('Error fetching live channels:', error);
+      return [];
+    }
+  },
+
+  // Get live categories from Xtreme Codes
+  getLiveCategories: async (): Promise<{ id: string; name: string }[]> => {
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) {
+        return [];
+      }
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      
+      const protocols = ['https', 'http'];
+      let response = null;
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+                action: 'get_live_categories',
+              },
+              timeout: 15000,
+            }
+          );
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!response || !response.data) return [];
+      
+      // Handle both array and object response formats
+      const categories = Array.isArray(response.data) 
+        ? response.data 
+        : response.data.live_categories || [];
+      
+      return categories.map((cat: any) => ({
+        id: cat.category_id?.toString() || cat.id?.toString(),
+        name: cat.category_name || cat.name || 'Unknown',
+      }));
+    } catch (error) {
+      console.error('Error fetching live categories:', error);
       return [];
     }
   },

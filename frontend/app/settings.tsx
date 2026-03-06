@@ -225,6 +225,10 @@ export default function SettingsScreen() {
     </View>
   );
 
+  // Focus state for account cards
+  const [focusedCard, setFocusedCard] = useState<string | null>(null);
+  const [focusedButton, setFocusedButton] = useState<string | null>(null);
+
   const AccountCard = ({
     title,
     icon,
@@ -237,68 +241,112 @@ export default function SettingsScreen() {
     account?: any;
     onLogin: () => void;
     onLogout: () => void;
-  }) => (
-    <View style={styles.accountCard}>
-      <View style={styles.accountHeader}>
-        <View style={styles.accountTitleContainer}>
-          <Ionicons name={icon as any} size={24} color={theme.colors.primary} />
-          <Text style={styles.accountTitle}>{title}</Text>
+  }) => {
+    const cardId = title.toLowerCase().replace(/\s+/g, '-');
+    const isCardFocused = focusedCard === cardId;
+    const isLoginFocused = focusedButton === `${cardId}-login`;
+    const isLogoutFocused = focusedButton === `${cardId}-logout`;
+    
+    return (
+      <View style={[
+        styles.accountCard,
+        isCardFocused && styles.accountCardFocused,
+      ]}>
+        <View style={styles.accountHeader}>
+          <View style={styles.accountTitleContainer}>
+            <Ionicons name={icon as any} size={isTV ? 32 : 24} color={theme.colors.primary} />
+            <Text style={styles.accountTitle}>{title}</Text>
+          </View>
+          {account ? (
+            <Pressable 
+              onPress={onLogout} 
+              onFocus={() => {
+                setFocusedCard(cardId);
+                setFocusedButton(`${cardId}-logout`);
+              }}
+              onBlur={() => {
+                setFocusedCard(null);
+                setFocusedButton(null);
+              }}
+              style={[
+                styles.logoutButton,
+                isLogoutFocused && styles.buttonFocused,
+              ]}
+              testID={`logout-${cardId}`}
+            >
+              <Text style={[styles.logoutText, isLogoutFocused && styles.buttonTextFocused]}>
+                Logout
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable 
+              onPress={onLogin} 
+              onFocus={() => {
+                setFocusedCard(cardId);
+                setFocusedButton(`${cardId}-login`);
+              }}
+              onBlur={() => {
+                setFocusedCard(null);
+                setFocusedButton(null);
+              }}
+              style={[
+                styles.loginButton,
+                isLoginFocused && styles.buttonFocused,
+              ]}
+              testID={`login-${cardId}`}
+            >
+              <Text style={[styles.loginText, isLoginFocused && styles.buttonTextFocused]}>
+                Login
+              </Text>
+            </Pressable>
+          )}
         </View>
-        {account ? (
-          <Pressable onPress={onLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </Pressable>
-        ) : (
-          <Pressable onPress={onLogin} style={styles.loginButton}>
-            <Text style={styles.loginText}>Login</Text>
-          </Pressable>
+        {account && (
+          <View style={styles.accountInfo}>
+            <View style={styles.accountRow}>
+              <Text style={styles.accountLabel}>Username:</Text>
+              <Text style={styles.accountValue}>{account.username}</Text>
+            </View>
+            {account.email && (
+              <View style={styles.accountRow}>
+                <Text style={styles.accountLabel}>Email:</Text>
+                <Text style={styles.accountValue}>{account.email}</Text>
+              </View>
+            )}
+            {account.expiryDate && (
+              <>
+                <View style={styles.accountRow}>
+                  <Text style={styles.accountLabel}>Expires:</Text>
+                  <Text style={styles.accountValue}>
+                    {formatDistanceToNow(new Date(account.expiryDate), { addSuffix: true })}
+                  </Text>
+                </View>
+                <View style={styles.accountRow}>
+                  <Text style={styles.accountLabel}>Days Left:</Text>
+                  <Text
+                    style={[
+                      styles.accountValue,
+                      { color: account.daysLeft <= 10 ? theme.colors.error : account.daysLeft < 30 ? theme.colors.warning : theme.colors.success },
+                    ]}
+                  >
+                    {account.daysLeft} days {account.daysLeft <= 10 && '⚠️'}
+                  </Text>
+                </View>
+              </>
+            )}
+            {account.type && (
+              <View style={styles.accountRow}>
+                <Text style={styles.accountLabel}>Type:</Text>
+                <Text style={[styles.accountValue, { color: theme.colors.gold }]}>
+                  {account.type.toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
         )}
       </View>
-      {account && (
-        <View style={styles.accountInfo}>
-          <View style={styles.accountRow}>
-            <Text style={styles.accountLabel}>Username:</Text>
-            <Text style={styles.accountValue}>{account.username}</Text>
-          </View>
-          {account.email && (
-            <View style={styles.accountRow}>
-              <Text style={styles.accountLabel}>Email:</Text>
-              <Text style={styles.accountValue}>{account.email}</Text>
-            </View>
-          )}
-          {account.expiryDate && (
-            <>
-              <View style={styles.accountRow}>
-                <Text style={styles.accountLabel}>Expires:</Text>
-                <Text style={styles.accountValue}>
-                  {formatDistanceToNow(new Date(account.expiryDate), { addSuffix: true })}
-                </Text>
-              </View>
-              <View style={styles.accountRow}>
-                <Text style={styles.accountLabel}>Days Left:</Text>
-                <Text
-                  style={[
-                    styles.accountValue,
-                    { color: account.daysLeft <= 10 ? theme.colors.error : account.daysLeft < 30 ? theme.colors.warning : theme.colors.success },
-                  ]}
-                >
-                  {account.daysLeft} days {account.daysLeft <= 10 && '⚠️'}
-                </Text>
-              </View>
-            </>
-          )}
-          {account.type && (
-            <View style={styles.accountRow}>
-              <Text style={styles.accountLabel}>Type:</Text>
-              <Text style={[styles.accountValue, { color: theme.colors.gold }]}>
-                {account.type.toUpperCase()}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-    </View>
-  );
+    );
+  };
 
   const SettingToggle = ({
     label,
@@ -695,8 +743,17 @@ const styles = StyleSheet.create({
     borderRadius: isTV ? 20 : theme.borderRadius.md,
     padding: isTV ? 28 : theme.spacing.md,
     marginBottom: isTV ? 20 : theme.spacing.md,
-    borderWidth: 1,
+    borderWidth: isTV ? 3 : 1,
     borderColor: theme.colors.border,
+  },
+  accountCardFocused: {
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 10,
   },
   accountHeader: {
     flexDirection: 'row',
@@ -719,6 +776,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: isTV ? 32 : theme.spacing.lg,
     paddingVertical: isTV ? 16 : theme.spacing.sm,
     borderRadius: isTV ? 16 : theme.borderRadius.md,
+    borderWidth: isTV ? 4 : 2,
+    borderColor: 'transparent',
   },
   loginText: {
     fontSize: isTV ? 22 : theme.fontSize.md,
@@ -730,11 +789,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: isTV ? 32 : theme.spacing.lg,
     paddingVertical: isTV ? 16 : theme.spacing.sm,
     borderRadius: isTV ? 16 : theme.borderRadius.md,
+    borderWidth: isTV ? 4 : 2,
+    borderColor: 'transparent',
   },
   logoutText: {
     fontSize: isTV ? 22 : theme.fontSize.md,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text,
+  },
+  buttonFocused: {
+    borderColor: '#FFFFFF',
+    transform: [{ scale: isTV ? 1.15 : 1.1 }],
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  buttonTextFocused: {
+    fontWeight: '900' as const,
   },
   accountInfo: {
     gap: isTV ? 16 : theme.spacing.sm,
