@@ -22,8 +22,9 @@ import { IPTVChannel, EPGProgram } from '../types';
 export default function TVGuideScreen() {
   const router = useRouter();
   const [channels, setChannels] = useState<IPTVChannel[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<IPTVChannel | null>(null);
   const [recordDuration, setRecordDuration] = useState('60');
@@ -31,6 +32,10 @@ export default function TVGuideScreen() {
   const [repeatType, setRepeatType] = useState<'once' | 'daily' | 'weekly'>('once');
   const [isScheduling, setIsScheduling] = useState(false);
   const [recordingChannels, setRecordingChannels] = useState<Set<string>>(new Set());
+  const [channelEPGs, setChannelEPGs] = useState<{ [key: string]: EPGProgram[] }>({});
+  const [loadingEPG, setLoadingEPG] = useState<Set<string>>(new Set());
+  const [focusedChannel, setFocusedChannel] = useState<string | null>(null);
+  const [focusedCategory, setFocusedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     loadChannels();
@@ -40,13 +45,67 @@ export default function TVGuideScreen() {
   const loadChannels = async () => {
     setLoading(true);
     try {
-      const channelData = await iptvService.getLiveChannels();
+      const [channelData, categoryData] = await Promise.all([
+        iptvService.getLiveChannels(),
+        iptvService.getLiveCategories(),
+      ]);
       setChannels(channelData);
+      setCategories([{ id: 'all', name: 'All' }, ...categoryData]);
+      
+      // Load EPG for first 20 channels
+      const first20 = channelData.slice(0, 20);
+      loadEPGForChannels(first20);
     } catch (error) {
       console.error('Error loading channels:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadEPGForChannels = async (channelsToLoad: IPTVChannel[]) => {
+    for (const channel of channelsToLoad) {
+      if (channelEPGs[channel.id] || loadingEPG.has(channel.id)) continue;
+      
+      setLoadingEPG(prev => new Set(prev).add(channel.id));
+      try {
+        const epg = await iptvService.getEPG(channel.id);
+        setChannelEPGs(prev => ({ ...prev, [channel.id]: epg }));
+      } catch (error) {
+        console.error(`Error loading EPG for ${channel.name}:`, error);
+      } finally {
+        setLoadingEPG(prev => {
+          const next = new Set(prev);
+          next.delete(channel.id);
+          return next;
+        });
+      }
+    }
+  };
+
+  // Get currently airing and next program
+  const getCurrentAndNextProgram = (epg: EPGProgram[]) => {
+    const now = new Date();
+    let current: EPGProgram | null = null;
+    let next: EPGProgram | null = null;
+    
+    for (let i = 0; i < epg.length; i++) {
+      const program = epg[i];
+      const start = new Date(program.start);
+      const end = new Date(program.end);
+      
+      if (start <= now && end > now) {
+        current = program;
+        if (i + 1 < epg.length) {
+          next = epg[i + 1];
+        }
+        break;
+      } else if (start > now && !next) {
+        next = program;
+        break;
+      }
+    }
+    
+    return { current, next };
   };
 
   const checkActiveRecordings = async () => {
@@ -150,11 +209,11 @@ export default function TVGuideScreen() {
     }
   };
 
-  const categories = ['All', ...new Set(channels.map((c) => c.category))];
   const filteredChannels =
-    selectedCategory === 'All'
+    selectedCategory === 'all'
       ? channels
-      : channels.filter((c) => c.category === selectedCategory);
+      : channels.filter((c) => c.category === selectedCategory || 
+          categories.find(cat => cat.id === selectedCategory)?.name === c.category);
 
   if (loading) {
     return (
@@ -183,42 +242,60 @@ export default function TVGuideScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Categories */}
+      {/* Categories from API */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.categoriesContainer}
         contentContainerStyle={styles.categoriesContent}
       >
-        {categories.map((category) => (
-          <Pressable
-            key={category}
-            onPress={() => setSelectedCategory(category)}
-            style={[
-              styles.categoryButton,
-              selectedCategory === category && styles.categoryButtonActive,
-            ]}
-          >
-            <Text
+        {categories.map((category) => {
+          const isCatFocused = focusedCategory === category.id;
+          return (
+            <Pressable
+              key={category.id}
+              onPress={() => setSelectedCategory(category.id)}
+              onFocus={() => setFocusedCategory(category.id)}
+              onBlur={() => setFocusedCategory(null)}
               style={[
-                styles.categoryText,
-                selectedCategory === category && styles.categoryTextActive,
+                styles.categoryButton,
+                selectedCategory === category.id && styles.categoryButtonActive,
+                isCatFocused && styles.categoryButtonFocused,
               ]}
             >
-              {category}
-            </Text>
-          </Pressable>
-        ))}
+              <Text
+                style={[
+                  styles.categoryText,
+                  selectedCategory === category.id && styles.categoryTextActive,
+                ]}
+              >
+                {category.name}
+              </Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       {/* Channels List */}
       <ScrollView style={styles.channelsList} showsVerticalScrollIndicator={false}>
         {filteredChannels.map((channel) => {
           const isRecording = recordingChannels.has(channel.name);
+          const epg = channelEPGs[channel.id] || [];
+          const { current, next } = getCurrentAndNextProgram(epg);
+          const isChannelFocused = focusedChannel === channel.id;
           
           return (
-            <View key={channel.id} style={[styles.channelCard, isRecording && styles.channelCardRecording]}>
-              <Pressable onPress={() => handlePlayChannel(channel)} style={styles.channelPressable}>
+            <View key={channel.id} style={[
+              styles.channelCard, 
+              isRecording && styles.channelCardRecording,
+              isChannelFocused && styles.channelCardFocused,
+            ]}>
+              <Pressable 
+                onPress={() => handlePlayChannel(channel)} 
+                onFocus={() => setFocusedChannel(channel.id)}
+                onBlur={() => setFocusedChannel(null)}
+                style={styles.channelPressable}
+              >
                 <View style={styles.channelHeader}>
                   {channel.logo ? (
                     <Image
@@ -269,6 +346,45 @@ export default function TVGuideScreen() {
                     </Pressable>
                   </View>
                 </View>
+                
+                {/* NOW & NEXT EPG Display - Sky Glass Style */}
+                {(current || next) && (
+                  <View style={styles.nowNextContainer}>
+                    {current && (
+                      <View style={styles.nowSection}>
+                        <View style={styles.nowBadge}>
+                          <View style={styles.liveDot} />
+                          <Text style={styles.nowBadgeText}>NOW</Text>
+                        </View>
+                        <View style={styles.programDetails}>
+                          <Text style={styles.programTitleNow} numberOfLines={1}>{current.title}</Text>
+                          <Text style={styles.programTimeNow}>
+                            {format(new Date(current.start), 'HH:mm')} - {format(new Date(current.end), 'HH:mm')}
+                          </Text>
+                          {current.description && (
+                            <Text style={styles.programDescNow} numberOfLines={2}>{current.description}</Text>
+                          )}
+                        </View>
+                      </View>
+                    )}
+                    {next && (
+                      <View style={styles.nextSection}>
+                        <Text style={styles.nextLabel}>NEXT</Text>
+                        <Text style={styles.programTitleNext} numberOfLines={1}>{next.title}</Text>
+                        <Text style={styles.programTimeNext}>
+                          {format(new Date(next.start), 'HH:mm')}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+                
+                {loadingEPG.has(channel.id) && (
+                  <View style={styles.loadingEPG}>
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                    <Text style={styles.loadingEPGText}>Loading guide...</Text>
+                  </View>
+                )}
               </Pressable>
 
               {/* EPG */}
@@ -838,5 +954,112 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.bold,
     color: '#fff',
+  },
+  // Category Focus Style
+  categoryButtonFocused: {
+    borderColor: '#FFFFFF',
+    borderWidth: 3,
+    transform: [{ scale: 1.1 }],
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 15,
+  },
+  // Channel Card Focus Style
+  channelCardFocused: {
+    borderColor: theme.colors.primary,
+    borderWidth: 3,
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 15,
+  },
+  // NOW & NEXT EPG Styles - Sky Glass Style
+  nowNextContainer: {
+    flexDirection: 'row',
+    marginTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: theme.spacing.md,
+  },
+  nowSection: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+  },
+  nowBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F44336',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    gap: 4,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+  },
+  nowBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  programDetails: {
+    flex: 1,
+  },
+  programTitleNow: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+    marginBottom: 2,
+  },
+  programTimeNow: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.primary,
+    marginBottom: 4,
+  },
+  programDescNow: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    lineHeight: 16,
+  },
+  nextSection: {
+    flex: 1,
+    paddingLeft: theme.spacing.md,
+    borderLeftWidth: 1,
+    borderLeftColor: theme.colors.border,
+  },
+  nextLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.colors.textMuted,
+    marginBottom: 4,
+  },
+  programTitleNext: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+    marginBottom: 2,
+  },
+  programTimeNext: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textMuted,
+  },
+  loadingEPG: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.sm,
+  },
+  loadingEPGText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textMuted,
   },
 });

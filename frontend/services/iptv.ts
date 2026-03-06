@@ -178,8 +178,8 @@ export const iptvService = {
     }
   },
 
-  // Get VOD content from Xtreme Codes
-  getVODContent: async (): Promise<VODItem[]> => {
+  // Get VOD content from Xtreme Codes with pagination
+  getVODContent: async (categoryId?: string, page: number = 1, limit: number = 50): Promise<VODItem[]> => {
     try {
       const config = await iptvService.getConfig();
       if (!config || !config.enabled) {
@@ -195,14 +195,19 @@ export const iptvService = {
       
       for (const p of protocols) {
         try {
+          const params: any = {
+            username: config.username,
+            password: config.password,
+            action: 'get_vod_streams',
+          };
+          if (categoryId && categoryId !== 'all') {
+            params.category_id = categoryId;
+          }
+          
           response = await axios.get(
             `${p}://${cleanDomain}/player_api.php`,
             {
-              params: {
-                username: config.username,
-                password: config.password,
-                action: 'get_vod_streams',
-              },
+              params,
               timeout: 15000,
             }
           );
@@ -217,9 +222,13 @@ export const iptvService = {
 
       const streams = response.data || [];
       const vodItems: VODItem[] = [];
+      
+      // Pagination
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedStreams = streams.slice(startIndex, endIndex);
 
-      // Convert to our format (limit to 50 for performance)
-      for (const stream of streams.slice(0, 50)) {
+      for (const stream of paginatedStreams) {
         const vodItem: VODItem = {
           id: stream.stream_id?.toString() || stream.num?.toString(),
           name: stream.name || 'Unknown',
@@ -227,9 +236,12 @@ export const iptvService = {
           poster: stream.stream_icon || stream.cover || '',
           backdrop: stream.backdrop_path?.[0] || '',
           category: stream.category_name || 'Movies',
+          category_id: stream.category_id?.toString(),
           stream_url: `${protocol}://${cleanDomain}/movie/${config.username}/${config.password}/${stream.stream_id}.${stream.container_extension || 'mp4'}`,
           duration: stream.duration ? parseInt(stream.duration) : undefined,
           year: stream.releasedate || stream.year || '',
+          rating: stream.rating || '',
+          type: 'movie',
         };
         vodItems.push(vodItem);
       }
@@ -239,6 +251,216 @@ export const iptvService = {
     } catch (error) {
       console.error('Error fetching VOD content:', error);
       return [];
+    }
+  },
+
+  // Get VOD Categories
+  getVODCategories: async (): Promise<{ id: string; name: string }[]> => {
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) return [];
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      
+      const protocols = ['https', 'http'];
+      let response = null;
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+                action: 'get_vod_categories',
+              },
+              timeout: 15000,
+            }
+          );
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!response || !response.data) return [];
+      
+      const categories = Array.isArray(response.data) ? response.data : [];
+      
+      return categories.map((cat: any) => ({
+        id: cat.category_id?.toString() || cat.id?.toString(),
+        name: cat.category_name || cat.name || 'Unknown',
+      }));
+    } catch (error) {
+      console.error('Error fetching VOD categories:', error);
+      return [];
+    }
+  },
+
+  // Get TV Series (Shows) from Xtreme Codes
+  getSeries: async (categoryId?: string, page: number = 1, limit: number = 50): Promise<VODItem[]> => {
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) return [];
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      
+      const protocols = ['https', 'http'];
+      let response = null;
+      let protocol = 'http';
+      
+      for (const p of protocols) {
+        try {
+          const params: any = {
+            username: config.username,
+            password: config.password,
+            action: 'get_series',
+          };
+          if (categoryId && categoryId !== 'all') {
+            params.category_id = categoryId;
+          }
+          
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            { params, timeout: 15000 }
+          );
+          protocol = p;
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!response) return [];
+
+      const series = response.data || [];
+      const seriesItems: VODItem[] = [];
+      
+      // Pagination
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedSeries = series.slice(startIndex, endIndex);
+
+      for (const show of paginatedSeries) {
+        const seriesItem: VODItem = {
+          id: show.series_id?.toString() || show.id?.toString(),
+          name: show.name || show.title || 'Unknown',
+          description: show.plot || show.description || '',
+          poster: show.cover || show.stream_icon || '',
+          backdrop: show.backdrop_path?.[0] || '',
+          category: show.category_name || 'TV Shows',
+          category_id: show.category_id?.toString(),
+          stream_url: '', // Series have episodes, not direct URL
+          year: show.releaseDate || show.year || '',
+          rating: show.rating || '',
+          type: 'series',
+          seasons: show.seasons || [],
+        };
+        seriesItems.push(seriesItem);
+      }
+
+      return parentalControlService.filterContent(seriesItems);
+    } catch (error) {
+      console.error('Error fetching series:', error);
+      return [];
+    }
+  },
+
+  // Get Series Categories
+  getSeriesCategories: async (): Promise<{ id: string; name: string }[]> => {
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) return [];
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      
+      const protocols = ['https', 'http'];
+      let response = null;
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+                action: 'get_series_categories',
+              },
+              timeout: 15000,
+            }
+          );
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!response || !response.data) return [];
+      
+      const categories = Array.isArray(response.data) ? response.data : [];
+      
+      return categories.map((cat: any) => ({
+        id: cat.category_id?.toString() || cat.id?.toString(),
+        name: cat.category_name || cat.name || 'Unknown',
+      }));
+    } catch (error) {
+      console.error('Error fetching series categories:', error);
+      return [];
+    }
+  },
+
+  // Get Series Info (episodes)
+  getSeriesInfo: async (seriesId: string): Promise<any> => {
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) return null;
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      
+      const protocols = ['https', 'http'];
+      let response = null;
+      let protocol = 'http';
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+                action: 'get_series_info',
+                series_id: seriesId,
+              },
+              timeout: 15000,
+            }
+          );
+          protocol = p;
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!response || !response.data) return null;
+      
+      // Return series info with episode URLs
+      const info = response.data;
+      if (info.episodes) {
+        Object.keys(info.episodes).forEach(season => {
+          info.episodes[season] = info.episodes[season].map((ep: any) => ({
+            ...ep,
+            stream_url: `${protocol}://${cleanDomain}/series/${config.username}/${config.password}/${ep.id}.${ep.container_extension || 'mp4'}`,
+          }));
+        });
+      }
+      
+      return info;
+    } catch (error) {
+      console.error('Error fetching series info:', error);
+      return null;
     }
   },
 

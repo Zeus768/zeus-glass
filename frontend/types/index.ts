@@ -91,9 +91,13 @@ export interface VODItem {
   poster: string;
   backdrop?: string;
   category: string;
+  category_id?: string;
   stream_url: string;
   duration?: number;
   year?: string;
+  rating?: string;
+  type?: 'movie' | 'series';
+  seasons?: any[];
 }
 
 // Trakt Types
