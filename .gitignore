@@ -81,3 +81,7 @@ temp/
 .env.local
 .env.*.local
 test_reports/
+-e 
+# Environment files
+*.env
+*.env.*
