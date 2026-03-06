@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - **Tabbed Stream Modal**: Added tabbed interface in stream modal to switch between Debrid and Direct stream sources
 - **TV Show Episode Selector**: Added season/episode picker UI for TV show streaming
 - **Direct Stream Playback**: Direct streams open in browser or external player
+- **Poll Status Display**: Added real-time polling status display in auth modal
 
 ### Fixed
 - **TV Full-Screen Layout (Critical)**: Added `android.fullscreen: true` to app.json to fix narrow column rendering on Fire TV/Shield TV
@@ -20,7 +21,11 @@ All notable changes to this project will be documented in this file.
   - Changed orientation to `sensorLandscape` for proper TV layout
   - Added `density` to configChanges for better display handling
   - Added `android.hardware.sensor` to uses-feature list
-- **Real-Debrid Auth Debugging**: Added comprehensive logging throughout the auth flow to diagnose token storage issues
+- **Real-Debrid Authentication (Critical)**: 
+  - Fixed token exchange using proper form-urlencoded POST instead of query params
+  - Added comprehensive `[Real-Debrid]` console logging throughout auth flow
+  - Fixed error handling to not throw on expected 403 responses
+  - Added detailed status messages during authorization polling
 
 ### Changed
 - Version bumped to 1.4.0

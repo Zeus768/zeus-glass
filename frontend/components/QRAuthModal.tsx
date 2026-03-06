@@ -33,6 +33,8 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [polling, setPolling] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [pollStatus, setPollStatus] = useState<string>('Waiting for authorization...');
+  const [pollCount, setPollCount] = useState<number>(0);
 
   const serviceNames = {
     'real-debrid': 'Real-Debrid',
@@ -52,6 +54,8 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
       setLoading(true);
       setPolling(false);
       setError('');
+      setPollStatus('Waiting for authorization...');
+      setPollCount(0);
     }
   }, [visible, service]);
 
@@ -93,27 +97,37 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
 
   const startPolling = (code: string, interval: number) => {
     setPolling(true);
+    setPollStatus('Waiting for authorization...');
+    setPollCount(0);
     
     const pollInterval = setInterval(async () => {
       try {
+        setPollCount(prev => prev + 1);
         let tokenData;
         
         switch (service) {
           case 'real-debrid':
+            setPollStatus(`Checking authorization... (attempt ${pollCount + 1})`);
             // Real-Debrid polling now handles credentials internally
             tokenData = await realDebridService.pollForToken(code);
             if (tokenData && tokenData.access_token) {
+              setPollStatus('Authorization successful! Saving...');
               console.log('Real-Debrid auth successful, saving token...');
               await realDebridService.saveToken(tokenData.access_token);
               clearInterval(pollInterval);
               setPolling(false);
-              onSuccess();
-              onClose();
+              setPollStatus('Complete!');
+              // Small delay to show success message
+              setTimeout(() => {
+                onSuccess();
+                onClose();
+              }, 500);
             }
             break;
           case 'alldebrid':
             tokenData = await allDebridService.pollForToken(code);
             if (tokenData && tokenData.access_token) {
+              setPollStatus('Authorization successful! Saving...');
               console.log('AllDebrid auth successful, saving token...');
               await allDebridService.saveToken(tokenData.access_token);
               clearInterval(pollInterval);
@@ -125,6 +139,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           case 'premiumize':
             tokenData = await premiumizeService.pollForToken(code);
             if (tokenData && tokenData.access_token) {
+              setPollStatus('Authorization successful! Saving...');
               console.log('Premiumize auth successful, saving token...');
               await premiumizeService.saveToken(tokenData.access_token);
               clearInterval(pollInterval);
@@ -136,6 +151,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           case 'trakt':
             tokenData = await traktService.pollForToken(code);
             if (tokenData) {
+              setPollStatus('Authorization successful! Saving...');
               console.log('Trakt auth successful, saving token...');
               await traktService.saveToken(tokenData);
               clearInterval(pollInterval);
@@ -145,8 +161,9 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
             }
             break;
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Polling error:', err);
+        setPollStatus(`Error: ${err.message || 'Unknown error'}`);
       }
     }, interval * 1000);
 
@@ -156,6 +173,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
       if (polling) {
         setPolling(false);
         setError('Authentication timeout. Please try again.');
+        setPollStatus('Timeout - please try again');
       }
     }, 600000);
   };
@@ -264,7 +282,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
                     <View style={[styles.statusContainer, isTV && styles.statusContainerTV]}>
                       <ActivityIndicator size={isTV ? "large" : "small"} color={theme.colors.primary} />
                       <Text style={[styles.statusText, isTV && styles.statusTextTV]}>
-                        Waiting for authorization...
+                        {pollStatus}
                       </Text>
                     </View>
                   )}

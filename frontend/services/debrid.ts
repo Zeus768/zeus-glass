@@ -20,13 +20,14 @@ export const realDebridService = {
       params: { client_id: REAL_DEBRID_CLIENT_ID, new_credentials: 'yes' },
     });
     console.log('[Real-Debrid] Got device code:', response.data.user_code);
+    console.log('[Real-Debrid] Device code response:', JSON.stringify(response.data));
     return response.data;
   },
 
   // Poll for credentials (client_id + client_secret) after user authorizes
   pollForCredentials: async (deviceCode: string): Promise<{ client_id: string; client_secret: string } | null> => {
     try {
-      console.log('[Real-Debrid] Polling for credentials...');
+      console.log('[Real-Debrid] Polling for credentials with device_code:', deviceCode);
       const response = await axios.get(`${REAL_DEBRID_BASE_URL}/oauth/v2/device/credentials`, {
         params: {
           client_id: REAL_DEBRID_CLIENT_ID,
@@ -34,23 +35,31 @@ export const realDebridService = {
         },
       });
       
+      console.log('[Real-Debrid] Credentials response status:', response.status);
+      console.log('[Real-Debrid] Credentials response data:', JSON.stringify(response.data));
+      
       // Returns { client_id, client_secret } when user has authorized
       if (response.data && response.data.client_id && response.data.client_secret) {
-        console.log('[Real-Debrid] Got credentials! client_id:', response.data.client_id);
+        console.log('[Real-Debrid] SUCCESS! Got credentials! client_id:', response.data.client_id);
         return {
           client_id: response.data.client_id,
           client_secret: response.data.client_secret,
         };
       }
-      console.log('[Real-Debrid] No credentials yet');
+      console.log('[Real-Debrid] Response received but no credentials yet');
       return null;
     } catch (error: any) {
-      // 403 means user hasn't authorized yet
+      // 403 means user hasn't authorized yet - this is expected
       if (error.response?.status === 403) {
-        console.log('[Real-Debrid] Still waiting for user authorization (403)');
+        console.log('[Real-Debrid] Still waiting for user authorization (403) - this is normal');
         return null;
       }
-      console.error('[Real-Debrid] Credentials poll error:', error.message);
+      // Log full error details for debugging
+      console.error('[Real-Debrid] Credentials poll error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
       throw error;
     }
   },
@@ -59,18 +68,38 @@ export const realDebridService = {
   getAccessToken: async (deviceCode: string, clientId: string, clientSecret: string): Promise<string | null> => {
     try {
       console.log('[Real-Debrid] Exchanging credentials for access token...');
-      const response = await axios.post(`${REAL_DEBRID_BASE_URL}/oauth/v2/token`, null, {
-        params: {
-          client_id: clientId,
-          client_secret: clientSecret,
-          code: deviceCode,
-          grant_type: 'http://oauth.net/grant_type/device/1.0',
+      console.log('[Real-Debrid] Using client_id:', clientId);
+      console.log('[Real-Debrid] Using device_code:', deviceCode);
+      
+      // Real-Debrid requires POST with form data, not query params
+      const formData = new URLSearchParams();
+      formData.append('client_id', clientId);
+      formData.append('client_secret', clientSecret);
+      formData.append('code', deviceCode);
+      formData.append('grant_type', 'http://oauth.net/grant_type/device/1.0');
+      
+      const response = await axios.post(`${REAL_DEBRID_BASE_URL}/oauth/v2/token`, formData.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
-      console.log('[Real-Debrid] Got access token!');
-      return response.data.access_token || null;
+      
+      console.log('[Real-Debrid] Token response status:', response.status);
+      console.log('[Real-Debrid] Token response data:', JSON.stringify(response.data));
+      
+      if (response.data.access_token) {
+        console.log('[Real-Debrid] SUCCESS! Got access token!');
+        return response.data.access_token;
+      }
+      
+      console.error('[Real-Debrid] Token response missing access_token');
+      return null;
     } catch (error: any) {
-      console.error('[Real-Debrid] Error getting access token:', error.response?.data || error.message);
+      console.error('[Real-Debrid] Error getting access token:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
       return null;
     }
   },
@@ -78,14 +107,17 @@ export const realDebridService = {
   // Combined poll function - polls for credentials, then gets token
   pollForToken: async (deviceCode: string): Promise<{ access_token: string } | null> => {
     try {
+      console.log('[Real-Debrid] pollForToken called with device_code:', deviceCode);
+      
       // Step 1: Poll for credentials
       const credentials = await realDebridService.pollForCredentials(deviceCode);
       
       if (!credentials) {
+        console.log('[Real-Debrid] No credentials yet, user still needs to authorize');
         return null; // User hasn't authorized yet
       }
       
-      console.log('[Real-Debrid] Got Real-Debrid credentials, exchanging for token...');
+      console.log('[Real-Debrid] Got credentials! Now exchanging for token...');
       
       // Step 2: Exchange for access token
       const accessToken = await realDebridService.getAccessToken(
@@ -95,18 +127,20 @@ export const realDebridService = {
       );
       
       if (accessToken) {
-        console.log('[Real-Debrid] Auth flow complete, token received!');
+        console.log('[Real-Debrid] Auth flow COMPLETE! Token received!');
         return { access_token: accessToken };
       }
       
-      console.error('[Real-Debrid] Token exchange returned null');
+      console.error('[Real-Debrid] Token exchange returned null - this should not happen');
       return null;
     } catch (error: any) {
       if (error.response?.status === 403) {
-        return null; // Still pending
+        console.log('[Real-Debrid] 403 in pollForToken - still pending');
+        return null;
       }
       console.error('[Real-Debrid] Poll for token error:', error.message);
-      throw error;
+      // Don't throw - return null so polling continues
+      return null;
     }
   },
 
