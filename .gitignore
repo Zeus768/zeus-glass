@@ -73,3 +73,11 @@ temp/
 # Environment files
 *.env
 *.env.*
+.git-credentials
+
+# Sensitive files
+.git-credentials
+*.credentials
+.env.local
+.env.*.local
+test_reports/
