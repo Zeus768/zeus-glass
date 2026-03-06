@@ -32,6 +32,32 @@ export interface TVShow {
   popularity: number;
   origin_country: string[];
   original_language: string;
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  seasons?: Season[];
+  status?: string;
+}
+
+export interface Season {
+  id: number;
+  name: string;
+  season_number: number;
+  episode_count: number;
+  air_date?: string;
+  poster_path?: string | null;
+  overview?: string;
+}
+
+export interface Episode {
+  id: number;
+  name: string;
+  episode_number: number;
+  season_number: number;
+  air_date?: string;
+  overview?: string;
+  still_path?: string | null;
+  vote_average?: number;
+  runtime?: number;
 }
 
 export interface Genre {

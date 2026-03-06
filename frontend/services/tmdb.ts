@@ -77,6 +77,12 @@ export const tmdbService = {
     return response.data;
   },
 
+  // Get season episodes
+  getSeasonEpisodes: async (tvId: number, seasonNumber: number): Promise<any> => {
+    const response = await tmdbApi.get(`/tv/${tvId}/season/${seasonNumber}`);
+    return response.data;
+  },
+
   // Search
   searchMulti: async (query: string): Promise<(Movie | TVShow)[]> => {
     const response = await tmdbApi.get('/search/multi', {
