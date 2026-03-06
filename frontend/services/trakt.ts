@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 import { TRAKT_BASE_URL, TRAKT_CLIENT_ID, TRAKT_CLIENT_SECRET, STORAGE_KEYS, APP_SCHEME } from '../config/constants';
 import { TraktToken, TraktUser, ContinueWatching } from '../types';
 
@@ -14,7 +14,7 @@ const traktApi = axios.create({
 
 // Add auth token to requests
 traktApi.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync(STORAGE_KEYS.TRAKT_TOKEN);
+  const token = await storage.getItem(STORAGE_KEYS.TRAKT_TOKEN);
   if (token) {
     const tokenData: TraktToken = JSON.parse(token);
     config.headers.Authorization = `Bearer ${tokenData.access_token}`;
@@ -48,16 +48,16 @@ export const traktService = {
   },
 
   saveToken: async (token: TraktToken): Promise<void> => {
-    await SecureStore.setItemAsync(STORAGE_KEYS.TRAKT_TOKEN, JSON.stringify(token));
+    await storage.setItem(STORAGE_KEYS.TRAKT_TOKEN, JSON.stringify(token));
   },
 
   getToken: async (): Promise<TraktToken | null> => {
-    const token = await SecureStore.getItemAsync(STORAGE_KEYS.TRAKT_TOKEN);
+    const token = await storage.getItem(STORAGE_KEYS.TRAKT_TOKEN);
     return token ? JSON.parse(token) : null;
   },
 
   logout: async (): Promise<void> => {
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.TRAKT_TOKEN);
+    await storage.deleteItem(STORAGE_KEYS.TRAKT_TOKEN);
   },
 
   // User

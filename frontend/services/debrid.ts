@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 import {
   REAL_DEBRID_BASE_URL,
   REAL_DEBRID_CLIENT_ID,
@@ -99,15 +99,15 @@ export const realDebridService = {
   },
 
   saveToken: async (token: string): Promise<void> => {
-    await SecureStore.setItemAsync(STORAGE_KEYS.REAL_DEBRID_TOKEN, token);
+    await storage.setItem(STORAGE_KEYS.REAL_DEBRID_TOKEN, token);
   },
 
   getToken: async (): Promise<string | null> => {
-    return await SecureStore.getItemAsync(STORAGE_KEYS.REAL_DEBRID_TOKEN);
+    return await storage.getItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
   },
 
   logout: async (): Promise<void> => {
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.REAL_DEBRID_TOKEN);
+    await storage.deleteItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
   },
 
   getAccountInfo: async (): Promise<DebridAccount | null> => {
@@ -316,15 +316,15 @@ export const allDebridService = {
   },
 
   saveToken: async (token: string): Promise<void> => {
-    await SecureStore.setItemAsync(STORAGE_KEYS.ALLDEBRID_TOKEN, token);
+    await storage.setItem(STORAGE_KEYS.ALLDEBRID_TOKEN, token);
   },
 
   getToken: async (): Promise<string | null> => {
-    return await SecureStore.getItemAsync(STORAGE_KEYS.ALLDEBRID_TOKEN);
+    return await storage.getItem(STORAGE_KEYS.ALLDEBRID_TOKEN);
   },
 
   logout: async (): Promise<void> => {
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.ALLDEBRID_TOKEN);
+    await storage.deleteItem(STORAGE_KEYS.ALLDEBRID_TOKEN);
   },
 
   getAccountInfo: async (): Promise<DebridAccount | null> => {
@@ -398,15 +398,15 @@ export const premiumizeService = {
   },
 
   saveToken: async (token: string): Promise<void> => {
-    await SecureStore.setItemAsync(STORAGE_KEYS.PREMIUMIZE_TOKEN, token);
+    await storage.setItem(STORAGE_KEYS.PREMIUMIZE_TOKEN, token);
   },
 
   getToken: async (): Promise<string | null> => {
-    return await SecureStore.getItemAsync(STORAGE_KEYS.PREMIUMIZE_TOKEN);
+    return await storage.getItem(STORAGE_KEYS.PREMIUMIZE_TOKEN);
   },
 
   logout: async (): Promise<void> => {
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.PREMIUMIZE_TOKEN);
+    await storage.deleteItem(STORAGE_KEYS.PREMIUMIZE_TOKEN);
   },
 
   getAccountInfo: async (): Promise<DebridAccount | null> => {

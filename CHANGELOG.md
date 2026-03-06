@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-03-01
+
+### Added
+- **Stream Scrapers Service**: New comprehensive streaming source aggregator
+  - Torrentio (Stremio addon)
+  - MediaFusion (Stremio addon)
+  - YTS for movies
+  - VidSrc and VidSrc Pro
+  - FlixMomo.tv
+  - HydraHD.ru
+  - Cineby.gd
+  - FlickyStream.ru
+  - YFlix.to
+  - GoMovies.gg
+  - MovieParadise.co
+  - UTelevision.to
+  - Archive.org Disney collection
+- **Cross-Platform Storage Utility**: New `storage.ts` utility that uses SecureStore on native platforms and AsyncStorage on web
+
+### Fixed
+- **Token Storage on Web/TV**: All auth tokens now properly save using cross-platform storage
+  - Real-Debrid tokens save correctly
+  - AllDebrid tokens save correctly
+  - Premiumize tokens save correctly
+  - Trakt tokens save correctly
+  - Parental control PIN saves correctly
+- **SecureStore errors on web**: Replaced all direct SecureStore calls with cross-platform storage utility
+
+### Changed
+- Version bumped to 1.3.0
+- Migrated all services from SecureStore to cross-platform storage utility
+
+---
+
 ## [1.2.0] - 2026-03-01
 
 ### Fixed

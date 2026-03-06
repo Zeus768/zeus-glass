@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 
 // Parental control settings interface
 export interface ParentalSettings {
@@ -59,7 +59,7 @@ export const parentalControlService = {
       }
       
       // Get PIN from secure storage
-      const pin = await SecureStore.getItemAsync(STORAGE_KEYS.PARENTAL_PIN);
+      const pin = await storage.getItem(STORAGE_KEYS.PARENTAL_PIN);
       if (pin) {
         parentalControlService.settings.pin = pin;
       }
@@ -88,9 +88,9 @@ export const parentalControlService = {
     // Save PIN separately in secure storage
     if (settings.pin !== undefined) {
       if (settings.pin) {
-        await SecureStore.setItemAsync(STORAGE_KEYS.PARENTAL_PIN, settings.pin);
+        await storage.setItem(STORAGE_KEYS.PARENTAL_PIN, settings.pin);
       } else {
-        await SecureStore.deleteItemAsync(STORAGE_KEYS.PARENTAL_PIN);
+        await storage.deleteItem(STORAGE_KEYS.PARENTAL_PIN);
       }
     }
     
@@ -255,7 +255,7 @@ export const parentalControlService = {
     }
 
     await AsyncStorage.removeItem(STORAGE_KEYS.PARENTAL_SETTINGS);
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.PARENTAL_PIN);
+    await storage.deleteItem(STORAGE_KEYS.PARENTAL_PIN);
     parentalControlService.settings = { ...DEFAULT_SETTINGS };
     parentalControlService.isUnlocked = false;
     
