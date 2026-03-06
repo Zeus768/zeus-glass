@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file.
 - **VOD TV Series Support**: VOD screen now shows both Movies and TV Shows tabs with infinite scroll
 - **Series Episode Browser**: Modal to browse seasons and episodes of TV series
 - **Sky Glass Style EPG**: TV Guide shows "NOW" and "NEXT" programs with live badge and metadata
+- **Full-Screen Player**: Landscape-locked player with TV remote focus support, play/pause, seek ±10s
+- **ALL IPTV Channels**: Removed channel limit - shows all channels (even 20,000+)
 
 ### Fixed
 - **TV Full-Screen Layout (Critical)**: Added `android.fullscreen: true` to app.json to fix narrow column rendering on Fire TV/Shield TV
@@ -36,13 +38,14 @@ All notable changes to this project will be documented in this file.
   - Account cards (Trakt, Real-Debrid, etc.) show focus state with glow effect
   - Login/Logout buttons scale up 15% with white glow when focused
   - VOD cards and channel cards show focus states for remote navigation
+  - Player controls have focus states with scale + glow
 
 ### Changed
 - Version bumped to 1.4.0
 - Updated EAS profiles to include TV-specific builds
 - Movie and TV detail screens now fetch both Debrid and Direct streams in parallel
-- Increased IPTV channel limit from 50 to 200
-- VOD now uses pagination with infinite scroll
+- IPTV now loads ALL channels (no limit)
+- VOD uses internal fullscreen player instead of external VLC
 - TV Guide uses categories from Xtream API
 
 ### Technical Notes

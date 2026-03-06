@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, BackHandler, Platform } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../constants/theme';
+import { theme, isTV } from '../constants/theme';
 import { StatusBar } from 'expo-status-bar';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -17,12 +18,57 @@ export default function PlayerScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(true);
+  const [focusedButton, setFocusedButton] = useState<string | null>(null);
+  
+  const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Hide controls after 3 seconds
-    const timer = setTimeout(() => setShowControls(false), 3000);
-    return () => clearTimeout(timer);
-  }, [showControls]);
+    // Lock to landscape for fullscreen
+    const lockOrientation = async () => {
+      try {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+      } catch (e) {
+        console.log('Could not lock orientation:', e);
+      }
+    };
+    lockOrientation();
+
+    // Handle back button on TV/Android
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleClose();
+      return true;
+    });
+
+    return () => {
+      backHandler.remove();
+      ScreenOrientation.unlockAsync().catch(() => {});
+    };
+  }, []);
+
+  useEffect(() => {
+    // Auto-hide controls after 5 seconds
+    if (showControls && status && 'isPlaying' in status && status.isPlaying) {
+      if (controlsTimeout.current) {
+        clearTimeout(controlsTimeout.current);
+      }
+      controlsTimeout.current = setTimeout(() => {
+        setShowControls(false);
+      }, 5000);
+    }
+
+    return () => {
+      if (controlsTimeout.current) {
+        clearTimeout(controlsTimeout.current);
+      }
+    };
+  }, [showControls, status]);
+
+  const handleClose = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.stopAsync();
+    }
+    router.back();
+  }, [router]);
 
   const handlePlayPause = () => {
     if (status && 'isPlaying' in status) {
@@ -55,11 +101,16 @@ export default function PlayerScreen() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const isPlaying = status && 'isPlaying' in status && status.isPlaying;
+  const position = status && 'positionMillis' in status ? status.positionMillis : 0;
+  const duration = status && 'durationMillis' in status ? status.durationMillis : 0;
+  const progressPercent = duration > 0 ? (position / duration) * 100 : 0;
+
   return (
     <View style={styles.container}>
       <StatusBar hidden />
       
-      {/* Video Player */}
+      {/* Video Player - Full Screen */}
       <Pressable 
         style={styles.videoContainer}
         onPress={() => setShowControls(!showControls)}
@@ -71,11 +122,16 @@ export default function PlayerScreen() {
           useNativeControls={false}
           resizeMode={ResizeMode.CONTAIN}
           isLooping={false}
-          onPlaybackStatusUpdate={(status) => setStatus(status)}
+          onPlaybackStatusUpdate={(status) => {
+            setStatus(status);
+            if (status.isLoaded && loading) {
+              setLoading(false);
+            }
+          }}
           onLoad={() => setLoading(false)}
           onError={(error) => {
             console.error('Video error:', error);
-            setError('Failed to load video');
+            setError('Failed to load video. Try another source.');
             setLoading(false);
           }}
           shouldPlay
@@ -89,13 +145,25 @@ export default function PlayerScreen() {
           </View>
         )}
 
+        {/* Buffering Indicator */}
+        {status && 'isBuffering' in status && status.isBuffering && !loading && (
+          <View style={styles.bufferingIndicator}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
+        )}
+
         {/* Error */}
         {error && (
           <View style={styles.errorOverlay}>
             <Ionicons name="alert-circle" size={64} color={theme.colors.error} />
             <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.backButton} onPress={() => router.back()}>
-              <Text style={styles.backButtonText}>Go Back</Text>
+            <Pressable 
+              style={[styles.errorButton, focusedButton === 'back' && styles.buttonFocused]} 
+              onPress={handleClose}
+              onFocus={() => setFocusedButton('back')}
+              onBlur={() => setFocusedButton(null)}
+            >
+              <Text style={styles.errorButtonText}>Go Back</Text>
             </Pressable>
           </View>
         )}
@@ -105,53 +173,65 @@ export default function PlayerScreen() {
           <View style={styles.controlsOverlay}>
             {/* Top Bar */}
             <View style={styles.topBar}>
-              <Pressable onPress={() => router.back()} style={styles.closeButton}>
-                <Ionicons name="close" size={32} color={theme.colors.text} />
+              <Pressable 
+                onPress={handleClose} 
+                style={[styles.closeButton, focusedButton === 'close' && styles.buttonFocused]}
+                onFocus={() => setFocusedButton('close')}
+                onBlur={() => setFocusedButton(null)}
+              >
+                <Ionicons name="arrow-back" size={isTV ? 36 : 28} color="#fff" />
               </Pressable>
-              <Text style={styles.titleText} numberOfLines={1}>{title}</Text>
+              <Text style={styles.titleText} numberOfLines={1}>{title || 'Playing'}</Text>
               <View style={styles.placeholder} />
             </View>
 
             {/* Center Controls */}
             <View style={styles.centerControls}>
-              <Pressable onPress={() => handleSeek(-10)} style={styles.controlButton}>
-                <Ionicons name="play-back" size={48} color={theme.colors.text} />
+              <Pressable 
+                onPress={() => handleSeek(-10)} 
+                style={[styles.controlButton, focusedButton === 'rewind' && styles.buttonFocused]}
+                onFocus={() => setFocusedButton('rewind')}
+                onBlur={() => setFocusedButton(null)}
+              >
+                <Ionicons name="play-back" size={isTV ? 56 : 44} color="#fff" />
                 <Text style={styles.controlLabel}>-10s</Text>
               </Pressable>
 
-              <Pressable onPress={handlePlayPause} style={styles.playButton}>
+              <Pressable 
+                onPress={handlePlayPause} 
+                style={[styles.playButton, focusedButton === 'play' && styles.playButtonFocused]}
+                onFocus={() => setFocusedButton('play')}
+                onBlur={() => setFocusedButton(null)}
+                {...(Platform.isTV && { hasTVPreferredFocus: true })}
+              >
                 <Ionicons 
-                  name={status && 'isPlaying' in status && status.isPlaying ? 'pause' : 'play'} 
-                  size={64} 
-                  color={theme.colors.text} 
+                  name={isPlaying ? 'pause' : 'play'} 
+                  size={isTV ? 72 : 56} 
+                  color="#fff" 
                 />
               </Pressable>
 
-              <Pressable onPress={() => handleSeek(10)} style={styles.controlButton}>
-                <Ionicons name="play-forward" size={48} color={theme.colors.text} />
+              <Pressable 
+                onPress={() => handleSeek(10)} 
+                style={[styles.controlButton, focusedButton === 'forward' && styles.buttonFocused]}
+                onFocus={() => setFocusedButton('forward')}
+                onBlur={() => setFocusedButton(null)}
+              >
+                <Ionicons name="play-forward" size={isTV ? 56 : 44} color="#fff" />
                 <Text style={styles.controlLabel}>+10s</Text>
               </Pressable>
             </View>
 
             {/* Bottom Bar */}
             <View style={styles.bottomBar}>
-              {status && 'positionMillis' in status && 'durationMillis' in status && (
-                <>
-                  <Text style={styles.timeText}>
-                    {formatTime(status.positionMillis || 0)} / {formatTime(status.durationMillis || 0)}
-                  </Text>
-                  
-                  {/* Progress Bar */}
-                  <View style={styles.progressBarContainer}>
-                    <View 
-                      style={[
-                        styles.progressBar, 
-                        { width: `${((status.positionMillis || 0) / (status.durationMillis || 1)) * 100}%` }
-                      ]} 
-                    />
-                  </View>
-                </>
-              )}
+              <Text style={styles.timeText}>{formatTime(position)}</Text>
+              
+              {/* Progress Bar */}
+              <View style={styles.progressBarContainer}>
+                <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
+              </View>
+              
+              <Text style={styles.timeText}>{formatTime(duration)}</Text>
             </View>
           </View>
         )}
@@ -163,117 +243,156 @@ export default function PlayerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#000',
   },
   videoContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
   },
   video: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000',
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.lg,
-    color: theme.colors.text,
+    fontSize: isTV ? 24 : 18,
+    color: '#fff',
+  },
+  bufferingIndicator: {
+    position: 'absolute',
   },
   errorOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.xl,
   },
   errorText: {
     marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.lg,
+    fontSize: isTV ? 24 : 18,
     color: theme.colors.error,
     textAlign: 'center',
   },
-  backButton: {
+  errorButton: {
     marginTop: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: isTV ? 40 : 30,
+    paddingVertical: isTV ? 16 : 12,
     backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.md,
+    borderWidth: 3,
+    borderColor: 'transparent',
   },
-  backButtonText: {
-    fontSize: theme.fontSize.md,
+  errorButtonText: {
+    fontSize: isTV ? 22 : 16,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text,
+    color: '#000',
   },
   controlsOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'space-between',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: theme.spacing.lg,
-    paddingTop: 48,
+    padding: isTV ? 30 : 20,
+    paddingTop: isTV ? 40 : 48,
   },
   closeButton: {
     padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 3,
+    borderColor: 'transparent',
   },
   titleText: {
     flex: 1,
-    fontSize: theme.fontSize.lg,
+    fontSize: isTV ? 28 : 20,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text,
+    color: '#fff',
     textAlign: 'center',
     marginHorizontal: theme.spacing.md,
   },
   placeholder: {
-    width: 48,
+    width: isTV ? 60 : 48,
   },
   centerControls: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: theme.spacing.xxl,
+    gap: isTV ? 80 : 50,
   },
   controlButton: {
     alignItems: 'center',
     padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 3,
+    borderColor: 'transparent',
   },
   controlLabel: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text,
+    fontSize: isTV ? 18 : 14,
+    color: '#fff',
     marginTop: theme.spacing.xs,
+    fontWeight: theme.fontWeight.medium,
   },
   playButton: {
+    backgroundColor: 'rgba(0, 217, 255, 0.4)',
+    borderRadius: isTV ? 60 : 50,
+    padding: isTV ? 24 : 18,
+    borderWidth: 4,
+    borderColor: 'transparent',
+  },
+  playButtonFocused: {
+    backgroundColor: theme.colors.primary,
+    borderColor: '#fff',
+    transform: [{ scale: 1.15 }],
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 30,
+    elevation: 30,
+  },
+  buttonFocused: {
+    borderColor: theme.colors.primary,
     backgroundColor: 'rgba(0, 217, 255, 0.3)',
-    borderRadius: 50,
-    padding: theme.spacing.lg,
+    transform: [{ scale: 1.1 }],
   },
   bottomBar: {
-    padding: theme.spacing.lg,
-    paddingBottom: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: isTV ? 30 : 20,
+    paddingBottom: isTV ? 40 : 30,
+    gap: theme.spacing.md,
   },
   timeText: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-    textAlign: 'center',
+    fontSize: isTV ? 20 : 14,
+    color: '#fff',
+    fontWeight: theme.fontWeight.medium,
+    minWidth: isTV ? 100 : 60,
   },
   progressBarContainer: {
-    height: 4,
+    flex: 1,
+    height: isTV ? 8 : 6,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
+    borderRadius: 4,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
     backgroundColor: theme.colors.primary,
+    borderRadius: 4,
   },
 });

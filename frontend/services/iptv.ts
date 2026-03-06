@@ -108,8 +108,8 @@ export const iptvService = {
       const streams = response.data || [];
       const channels: IPTVChannel[] = [];
 
-      // Convert to our format - increased limit for better experience
-      for (const stream of streams.slice(0, 200)) {
+      // Convert ALL channels to our format - no limit
+      for (const stream of streams) {
         const channel: IPTVChannel = {
           id: stream.stream_id?.toString() || stream.num?.toString(),
           name: stream.name || 'Unknown Channel',

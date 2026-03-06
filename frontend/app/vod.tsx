@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, ScrollView, Linking, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, ScrollView, Alert, Modal } from 'react-native';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { theme, isTV } from '../constants/theme';
 import { iptvService } from '../services/iptv';
 import { VODItem } from '../types';
@@ -9,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 type ContentType = 'movies' | 'series';
 
 export default function VODScreen() {
+  const router = useRouter();
   const [movies, setMovies] = useState<VODItem[]>([]);
   const [series, setSeries] = useState<VODItem[]>([]);
   const [movieCategories, setMovieCategories] = useState<{ id: string; name: string }[]>([]);
@@ -138,21 +140,12 @@ export default function VODScreen() {
     }
   };
 
-  const playContent = async (url: string, title: string) => {
-    try {
-      // Try to open in external player (VLC preferred)
-      const vlcUrl = `vlc://${url}`;
-      const supported = await Linking.canOpenURL(vlcUrl);
-      
-      if (supported) {
-        await Linking.openURL(vlcUrl);
-      } else {
-        // Fallback to default handler
-        await Linking.openURL(url);
-      }
-    } catch (error) {
-      Alert.alert('Playback Error', 'Could not open video player. Please install VLC or another video player.');
-    }
+  const playContent = (url: string, title: string) => {
+    // Use internal fullscreen player
+    router.push({
+      pathname: '/player',
+      params: { url, title },
+    });
   };
 
   const currentContent = contentType === 'movies' ? movies : series;
