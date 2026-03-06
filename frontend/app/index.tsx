@@ -22,11 +22,14 @@ export default function HomeScreen() {
     trendingTVShows,
     popularTVShows,
     continueWatching,
+    watchlistMovies,
+    watchlistShows,
     favorites,
     loading,
     loadHomeContent,
     loadContinueWatching,
     loadFavorites,
+    loadTraktLists,
   } = useContentStore();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -39,15 +42,20 @@ export default function HomeScreen() {
     }
   }, [trendingMovies]);
 
+  // Load Trakt lists on mount
+  useEffect(() => {
+    loadTraktLists();
+  }, []);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
       loadHomeContent(),
-      loadContinueWatching(),
+      loadTraktLists(),
       loadFavorites(),
     ]);
     setRefreshing(false);
-  }, [loadHomeContent, loadContinueWatching, loadFavorites]);
+  }, [loadHomeContent, loadTraktLists, loadFavorites]);
 
   const handleWatchNow = useCallback(() => {
     if (heroMovie) {
@@ -129,12 +137,40 @@ export default function HomeScreen() {
 
         {/* Carousels */}
         <View style={styles.carouselsContainer}>
+          {/* Continue Watching - Trakt */}
           {continueWatching.length > 0 && (
-            <Carousel title="Continue Watching" data={continueWatching.map((item) => item.media)} />
+            <Carousel 
+              title="Continue Watching" 
+              data={continueWatching.map((item) => item.media)} 
+              icon="play-circle"
+            />
           )}
           
+          {/* My Watchlist - Movies - Trakt */}
+          {watchlistMovies.length > 0 && (
+            <Carousel 
+              title="My Watchlist (Movies)" 
+              data={watchlistMovies} 
+              icon="bookmark"
+            />
+          )}
+
+          {/* My Watchlist - TV Shows - Trakt */}
+          {watchlistShows.length > 0 && (
+            <Carousel 
+              title="My Watchlist (TV Shows)" 
+              data={watchlistShows} 
+              icon="bookmark"
+            />
+          )}
+          
+          {/* Local Favorites */}
           {favorites.length > 0 && (
-            <Carousel title="My Favorites" data={favorites} />
+            <Carousel 
+              title="My Favorites" 
+              data={favorites}
+              icon="heart"
+            />
           )}
 
           <Carousel title="Trending Movies" data={trendingMovies} />

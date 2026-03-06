@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
 import { Movie, TVShow } from '../types';
 import { tmdbService } from '../services/tmdb';
@@ -14,6 +15,7 @@ interface CarouselProps {
   title: string;
   data: (Movie | TVShow)[];
   onSeeAll?: () => void;
+  icon?: keyof typeof Ionicons.glyphMap;
 }
 
 const isMovie = (item: Movie | TVShow): item is Movie => 'title' in item;
@@ -90,7 +92,7 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress }) => 
   );
 };
 
-export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => {
+export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon }) => {
   const router = useRouter();
 
   const handlePress = useCallback((item: Movie | TVShow) => {
@@ -109,7 +111,17 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll }) => 
   return (
     <View style={styles.container} data-testid={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{title}</Text>
+        <View style={styles.headerTitleContainer}>
+          {icon && (
+            <Ionicons 
+              name={icon} 
+              size={isTV ? 28 : 20} 
+              color={theme.colors.primary} 
+              style={styles.headerIcon}
+            />
+          )}
+          <Text style={styles.headerTitle}>{title}</Text>
+        </View>
         {onSeeAll && (
           <Pressable onPress={onSeeAll} data-testid={`see-all-${title.toLowerCase().replace(/\s+/g, '-')}`}>
             <Text style={styles.seeAll}>See All</Text>
@@ -150,6 +162,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: isTV ? 50 : 16,
     marginBottom: isTV ? 20 : 12,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    marginRight: isTV ? 12 : 8,
   },
   headerTitle: {
     fontSize: isTV ? 32 : 20,

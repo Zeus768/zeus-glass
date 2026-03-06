@@ -17,19 +17,24 @@ interface ContentState {
   popularTVShows: TVShow[];
   onTheAirTVShows: TVShow[];
   
-  // Continue Watching
+  // Trakt Lists
   continueWatching: ContinueWatching[];
+  watchlistMovies: any[];
+  watchlistShows: any[];
+  recentlyWatched: any[];
   
-  // Favorites
+  // Favorites (local)
   favorites: (Movie | TVShow)[];
   
   // Loading states
   loading: boolean;
+  traktLoading: boolean;
   
   // Actions
   loadHomeContent: () => Promise<void>;
   loadContinueWatching: () => Promise<void>;
   loadFavorites: () => Promise<void>;
+  loadTraktLists: () => Promise<void>;
   addToFavorites: (item: Movie | TVShow) => Promise<void>;
   removeFromFavorites: (id: number) => Promise<void>;
   isFavorite: (id: number) => boolean;
@@ -44,8 +49,12 @@ export const useContentStore = create<ContentState>((set, get) => ({
   popularTVShows: [],
   onTheAirTVShows: [],
   continueWatching: [],
+  watchlistMovies: [],
+  watchlistShows: [],
+  recentlyWatched: [],
   favorites: [],
   loading: false,
+  traktLoading: false,
 
   loadHomeContent: async () => {
     set({ loading: true });
@@ -75,10 +84,74 @@ export const useContentStore = create<ContentState>((set, get) => ({
 
   loadContinueWatching: async () => {
     try {
+      const isAuth = await traktService.isAuthenticated();
+      if (!isAuth) {
+        console.log('[ContentStore] Trakt not authenticated, skipping continue watching');
+        return;
+      }
       const continueWatching = await traktService.getWatchedProgress();
       set({ continueWatching });
     } catch (error) {
       console.error('Error loading continue watching:', error);
+    }
+  },
+
+  loadTraktLists: async () => {
+    try {
+      const isAuth = await traktService.isAuthenticated();
+      if (!isAuth) {
+        console.log('[ContentStore] Trakt not authenticated, skipping lists');
+        return;
+      }
+
+      set({ traktLoading: true });
+
+      const [watchlistMovies, watchlistShows, recentlyWatched, continueWatching] = await Promise.all([
+        traktService.getWatchlistMovies(),
+        traktService.getWatchlistShows(),
+        traktService.getRecentlyWatched(15),
+        traktService.getWatchedProgress(),
+      ]);
+
+      // Fetch TMDB posters for watchlist items
+      const moviesWithPosters = await Promise.all(
+        watchlistMovies.slice(0, 20).map(async (movie: any) => {
+          try {
+            if (movie.id) {
+              const details = await tmdbService.getMovieDetails(movie.id);
+              return { ...movie, poster_path: details.poster_path, backdrop_path: details.backdrop_path };
+            }
+            return movie;
+          } catch {
+            return movie;
+          }
+        })
+      );
+
+      const showsWithPosters = await Promise.all(
+        watchlistShows.slice(0, 20).map(async (show: any) => {
+          try {
+            if (show.id) {
+              const details = await tmdbService.getTVShowDetails(show.id);
+              return { ...show, poster_path: details.poster_path, backdrop_path: details.backdrop_path };
+            }
+            return show;
+          } catch {
+            return show;
+          }
+        })
+      );
+
+      set({
+        watchlistMovies: moviesWithPosters,
+        watchlistShows: showsWithPosters,
+        recentlyWatched,
+        continueWatching,
+        traktLoading: false,
+      });
+    } catch (error) {
+      console.error('Error loading Trakt lists:', error);
+      set({ traktLoading: false });
     }
   },
 
