@@ -137,10 +137,11 @@ Build a cross-platform mobile application for Android, Android TV, and Fire TV c
 ## Test Credentials
 ```
 IPTV:
-  domain: thenewdns.co
-  username: patrickteddyirl@gmail.com
-  password: 3cb7f892dc747bb4
+  domain: [YOUR_IPTV_DOMAIN]
+  username: [YOUR_IPTV_USERNAME]
+  password: [YOUR_IPTV_PASSWORD]
 ```
+*Note: Add your Xtreme Codes credentials in the Settings page*
 
 ## Known Issues
 - Mixed content warnings for HTTP channel logos (IPTV provider issue)
