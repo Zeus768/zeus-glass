@@ -958,6 +958,7 @@ const styles = StyleSheet.create({
   },
   iptvModal: {
     width: '90%',
+    maxWidth: 500,
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.lg,
     overflow: 'hidden',

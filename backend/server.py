@@ -12,6 +12,11 @@ from datetime import datetime
 from torrent_scraper import TorrentScraper
 from torrentio_indexer import TorrentioIndexer, RealDebridIntegration
 from smart_scraper import SmartScraper
+import httpx
+
+# Constants for Debrid services
+REAL_DEBRID_CLIENT_ID = 'X245A4XAIBGVM'
+ALLDEBRID_AGENT = 'zeus-glass'
 from debrid_cache_search import RealDebridCacheSearch, AllDebridCacheSearch, PremiumizeCacheSearch
 
 
@@ -289,6 +294,130 @@ async def check_premiumize_cache(hashes: str, apikey: str):
         return {"success": True, "cached": cached}
     except Exception as e:
         logger.error(f"Error checking Premiumize cache: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# DEBRID AUTHENTICATION PROXY ENDPOINTS
+# These endpoints proxy Debrid auth requests to avoid CORS issues on web
+# ============================================
+
+@api_router.get("/debrid/real-debrid/device-code")
+async def get_real_debrid_device_code():
+    """Get Real-Debrid device code for OAuth flow"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.real-debrid.com/oauth/v2/device/code",
+                params={
+                    "client_id": REAL_DEBRID_CLIENT_ID,
+                    "new_credentials": "yes"
+                },
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Real-Debrid device code error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/debrid/real-debrid/credentials")
+async def poll_real_debrid_credentials(code: str):
+    """Poll for Real-Debrid credentials after user authorization"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.real-debrid.com/oauth/v2/device/credentials",
+                params={
+                    "client_id": REAL_DEBRID_CLIENT_ID,
+                    "code": code
+                },
+                timeout=15.0
+            )
+            # Return the response even if it's an error (user not authorized yet)
+            return {"status_code": response.status_code, "data": response.json() if response.status_code == 200 else None}
+    except httpx.HTTPStatusError as e:
+        return {"status_code": e.response.status_code, "data": None}
+    except Exception as e:
+        logger.error(f"Real-Debrid credentials error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/debrid/real-debrid/token")
+async def get_real_debrid_token(client_id: str, client_secret: str, code: str):
+    """Exchange credentials for Real-Debrid access token"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.real-debrid.com/oauth/v2/token",
+                data={
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "code": code,
+                    "grant_type": "http://oauth.net/grant_type/device/1.0"
+                },
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Real-Debrid token error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/debrid/alldebrid/pin")
+async def get_alldebrid_pin():
+    """Get AllDebrid PIN for authentication"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.alldebrid.com/v4/pin/get",
+                params={"agent": ALLDEBRID_AGENT},
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"AllDebrid PIN error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/debrid/alldebrid/pin-check")
+async def check_alldebrid_pin(pin: str):
+    """Check AllDebrid PIN status"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.alldebrid.com/v4/pin/check",
+                params={"agent": ALLDEBRID_AGENT, "pin": pin},
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"AllDebrid PIN check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/debrid/premiumize/account-info")
+async def get_premiumize_account_info(apikey: str):
+    """Get Premiumize account info to verify API key"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://www.premiumize.me/api/account/info",
+                params={"apikey": apikey},
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Premiumize account info error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Include the router in the main app

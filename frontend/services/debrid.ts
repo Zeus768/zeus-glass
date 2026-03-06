@@ -1,170 +1,212 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { storage } from '../utils/storage';
 import {
   REAL_DEBRID_BASE_URL,
   REAL_DEBRID_CLIENT_ID,
   ALLDEBRID_BASE_URL,
-  ALLDEBRID_CLIENT_ID,
   PREMIUMIZE_BASE_URL,
-  PREMIUMIZE_CLIENT_ID,
   STORAGE_KEYS,
 } from '../config/constants';
 import { DebridAccount, StreamLink, CachedTorrent } from '../types';
 import { errorLogService } from './errorLogService';
 
-// Real-Debrid Service
+// Get backend URL for proxy calls (web only)
+const getBackendUrl = () => {
+  // Use relative path which will go through the Kubernetes ingress
+  return '';
+};
+
+// Helper to determine if we need to use the proxy
+// This checks at runtime to ensure we're detecting web correctly
+const shouldUseProxy = () => {
+  // Check if we're in a browser environment
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    return true;
+  }
+  // Fallback to Platform check
+  return Platform.OS === 'web';
+};
+
+// ============================================
+// REAL-DEBRID SERVICE
+// OAuth Device Code Flow (Correct Implementation)
+// ============================================
 export const realDebridService = {
-  getDeviceCode: async (): Promise<{ device_code: string; user_code: string; verification_url: string; expires_in: number; interval: number }> => {
+  // Step 1: Get device code for user authorization
+  getDeviceCode: async (): Promise<{
+    device_code: string;
+    user_code: string;
+    verification_url: string;
+    expires_in: number;
+    interval: number;
+  }> => {
     console.log('[Real-Debrid] Getting device code...');
-    const response = await axios.get(`${REAL_DEBRID_BASE_URL}/oauth/v2/device/code`, {
-      params: { client_id: REAL_DEBRID_CLIENT_ID, new_credentials: 'yes' },
-    });
-    console.log('[Real-Debrid] Got device code:', response.data.user_code);
-    console.log('[Real-Debrid] Device code response:', JSON.stringify(response.data));
-    return response.data;
-  },
-
-  // Poll for credentials (client_id + client_secret) after user authorizes
-  pollForCredentials: async (deviceCode: string): Promise<{ client_id: string; client_secret: string } | null> => {
+    const useProxy = shouldUseProxy();
+    console.log('[Real-Debrid] useProxy:', useProxy);
+    
     try {
-      console.log('[Real-Debrid] Polling for credentials with device_code:', deviceCode);
-      const response = await axios.get(`${REAL_DEBRID_BASE_URL}/oauth/v2/device/credentials`, {
-        params: {
-          client_id: REAL_DEBRID_CLIENT_ID,
-          code: deviceCode,
-        },
-      });
+      let response;
       
-      console.log('[Real-Debrid] Credentials response status:', response.status);
-      console.log('[Real-Debrid] Credentials response data:', JSON.stringify(response.data));
-      
-      // Returns { client_id, client_secret } when user has authorized
-      if (response.data && response.data.client_id && response.data.client_secret) {
-        console.log('[Real-Debrid] SUCCESS! Got credentials! client_id:', response.data.client_id);
-        return {
-          client_id: response.data.client_id,
-          client_secret: response.data.client_secret,
-        };
+      if (useProxy) {
+        // On web, use backend proxy to avoid CORS
+        console.log('[Real-Debrid] Using proxy endpoint');
+        response = await axios.get(`${getBackendUrl()}/api/debrid/real-debrid/device-code`);
+      } else {
+        // On native, call Real-Debrid directly
+        console.log('[Real-Debrid] Calling API directly');
+        response = await axios.get(`${REAL_DEBRID_BASE_URL}/oauth/v2/device/code`, {
+          params: {
+            client_id: REAL_DEBRID_CLIENT_ID,
+            new_credentials: 'yes',
+          },
+        });
       }
-      console.log('[Real-Debrid] Response received but no credentials yet');
-      return null;
+      
+      console.log('[Real-Debrid] Device code response:', JSON.stringify(response.data));
+      
+      return {
+        device_code: response.data.device_code,
+        user_code: response.data.user_code,
+        verification_url: response.data.verification_url || 'https://real-debrid.com/device',
+        expires_in: response.data.expires_in || 600,
+        interval: response.data.interval || 5,
+      };
     } catch (error: any) {
-      // 403 means user hasn't authorized yet - this is expected
-      if (error.response?.status === 403) {
-        console.log('[Real-Debrid] Still waiting for user authorization (403) - this is normal');
-        return null;
-      }
-      // Log full error details for debugging
-      console.error('[Real-Debrid] Credentials poll error:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
-      throw error;
+      console.error('[Real-Debrid] Error getting device code:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || 'Failed to get device code');
     }
   },
 
-  // Exchange credentials for access token
-  getAccessToken: async (deviceCode: string, clientId: string, clientSecret: string): Promise<string | null> => {
-    try {
-      console.log('[Real-Debrid] Exchanging credentials for access token...');
-      console.log('[Real-Debrid] Using client_id:', clientId);
-      console.log('[Real-Debrid] Using device_code:', deviceCode);
-      
-      // Real-Debrid requires POST with form data, not query params
-      const formData = new URLSearchParams();
-      formData.append('client_id', clientId);
-      formData.append('client_secret', clientSecret);
-      formData.append('code', deviceCode);
-      formData.append('grant_type', 'http://oauth.net/grant_type/device/1.0');
-      
-      const response = await axios.post(`${REAL_DEBRID_BASE_URL}/oauth/v2/token`, formData.toString(), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-      
-      console.log('[Real-Debrid] Token response status:', response.status);
-      console.log('[Real-Debrid] Token response data:', JSON.stringify(response.data));
-      
-      if (response.data.access_token) {
-        console.log('[Real-Debrid] SUCCESS! Got access token!');
-        return response.data.access_token;
-      }
-      
-      console.error('[Real-Debrid] Token response missing access_token');
-      return null;
-    } catch (error: any) {
-      console.error('[Real-Debrid] Error getting access token:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
-      return null;
-    }
-  },
-
-  // Combined poll function - polls for credentials, then gets token
+  // Step 2: Poll for token - Real-Debrid uses a two-step process:
+  // First poll /device/credentials to get client_id + client_secret
+  // Then exchange those for access_token via /token
   pollForToken: async (deviceCode: string): Promise<{ access_token: string } | null> => {
+    const useProxy = shouldUseProxy();
+    
     try {
-      console.log('[Real-Debrid] pollForToken called with device_code:', deviceCode);
+      console.log('[Real-Debrid] Polling for credentials...');
       
-      // Step 1: Poll for credentials
-      const credentials = await realDebridService.pollForCredentials(deviceCode);
+      let credResponse;
       
-      if (!credentials) {
-        console.log('[Real-Debrid] No credentials yet, user still needs to authorize');
-        return null; // User hasn't authorized yet
+      if (useProxy) {
+        // On web, use backend proxy
+        credResponse = await axios.get(`${getBackendUrl()}/api/debrid/real-debrid/credentials`, {
+          params: { code: deviceCode },
+        });
+        
+        // Handle proxy response format
+        if (credResponse.data.status_code !== 200 || !credResponse.data.data) {
+          console.log('[Real-Debrid] User has not authorized yet');
+          return null;
+        }
+        credResponse = { data: credResponse.data.data, status: 200 };
+      } else {
+        // On native, call Real-Debrid directly
+        credResponse = await axios.get(`${REAL_DEBRID_BASE_URL}/oauth/v2/device/credentials`, {
+          params: {
+            client_id: REAL_DEBRID_CLIENT_ID,
+            code: deviceCode,
+          },
+          validateStatus: (status) => status < 500,
+        });
+        
+        if (credResponse.status === 403 || credResponse.data?.error) {
+          console.log('[Real-Debrid] User has not authorized yet (this is normal)');
+          return null;
+        }
       }
       
-      console.log('[Real-Debrid] Got credentials! Now exchanging for token...');
+      console.log('[Real-Debrid] Credentials response:', JSON.stringify(credResponse.data));
       
-      // Step 2: Exchange for access token
-      const accessToken = await realDebridService.getAccessToken(
-        deviceCode,
-        credentials.client_id,
-        credentials.client_secret
-      );
-      
-      if (accessToken) {
-        console.log('[Real-Debrid] Auth flow COMPLETE! Token received!');
-        return { access_token: accessToken };
-      }
-      
-      console.error('[Real-Debrid] Token exchange returned null - this should not happen');
-      return null;
-    } catch (error: any) {
-      if (error.response?.status === 403) {
-        console.log('[Real-Debrid] 403 in pollForToken - still pending');
+      // Check if we have client credentials
+      if (!credResponse.data?.client_id || !credResponse.data?.client_secret) {
+        console.log('[Real-Debrid] No credentials in response yet');
         return null;
       }
-      console.error('[Real-Debrid] Poll for token error:', error.message);
-      // Don't throw - return null so polling continues
+      
+      const { client_id, client_secret } = credResponse.data;
+      console.log('[Real-Debrid] Got credentials! Exchanging for token...');
+      
+      // Step 2b: Exchange credentials for access token
+      let tokenResponse;
+      
+      if (useProxy) {
+        // On web, use backend proxy
+        tokenResponse = await axios.post(
+          `${getBackendUrl()}/api/debrid/real-debrid/token`,
+          null,
+          {
+            params: {
+              client_id,
+              client_secret,
+              code: deviceCode,
+            },
+          }
+        );
+      } else {
+        // On native, call Real-Debrid directly
+        const tokenParams = new URLSearchParams();
+        tokenParams.append('client_id', client_id);
+        tokenParams.append('client_secret', client_secret);
+        tokenParams.append('code', deviceCode);
+        tokenParams.append('grant_type', 'http://oauth.net/grant_type/device/1.0');
+        
+        tokenResponse = await axios.post(
+          `${REAL_DEBRID_BASE_URL}/oauth/v2/token`,
+          tokenParams.toString(),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+          }
+        );
+      }
+      
+      console.log('[Real-Debrid] Token response:', JSON.stringify(tokenResponse.data));
+      
+      if (tokenResponse.data?.access_token) {
+        console.log('[Real-Debrid] SUCCESS! Got access token!');
+        
+        // Store refresh token for future use
+        if (tokenResponse.data.refresh_token) {
+          await storage.setItem('rd_refresh_token', tokenResponse.data.refresh_token);
+          await storage.setItem('rd_client_id', client_id);
+          await storage.setItem('rd_client_secret', client_secret);
+        }
+        
+        return { access_token: tokenResponse.data.access_token };
+      }
+      
       return null;
+    } catch (error: any) {
+      // 403 means user hasn't authorized yet - this is expected during polling
+      if (error.response?.status === 403) {
+        console.log('[Real-Debrid] Still waiting for user authorization (403)');
+        return null;
+      }
+      console.error('[Real-Debrid] Poll error:', error.response?.data || error.message);
+      return null; // Return null to continue polling instead of throwing
     }
   },
 
   saveToken: async (token: string): Promise<void> => {
-    console.log('[Real-Debrid] Saving token to storage...');
+    console.log('[Real-Debrid] Saving token...');
     await storage.setItem(STORAGE_KEYS.REAL_DEBRID_TOKEN, token);
-    // Verify it was saved
-    const savedToken = await storage.getItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
-    if (savedToken) {
-      console.log('[Real-Debrid] Token saved successfully!');
-    } else {
-      console.error('[Real-Debrid] ERROR: Token was not saved properly!');
-    }
+    const saved = await storage.getItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
+    console.log('[Real-Debrid] Token saved:', saved ? 'YES' : 'NO');
   },
 
   getToken: async (): Promise<string | null> => {
     const token = await storage.getItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
-    console.log('[Real-Debrid] Retrieved token:', token ? 'EXISTS' : 'NULL');
     return token;
   },
 
   logout: async (): Promise<void> => {
-    console.log('[Real-Debrid] Logging out, deleting token...');
     await storage.deleteItem(STORAGE_KEYS.REAL_DEBRID_TOKEN);
+    await storage.deleteItem('rd_refresh_token');
+    await storage.deleteItem('rd_client_id');
+    await storage.deleteItem('rd_client_secret');
   },
 
   getAccountInfo: async (): Promise<DebridAccount | null> => {
@@ -189,130 +231,122 @@ export const realDebridService = {
         points: data.points,
       };
     } catch (error) {
-      console.error('Error fetching Real-Debrid account:', error);
+      console.error('[Real-Debrid] Error fetching account:', error);
       return null;
     }
   },
 
-  // Complete Real-Debrid streaming flow
+  // Unrestrict a link to get direct streaming URL
+  unrestrictLink: async (link: string): Promise<string | null> => {
+    try {
+      const token = await realDebridService.getToken();
+      if (!token) return null;
+
+      const response = await axios.post(
+        `${REAL_DEBRID_BASE_URL}/rest/1.0/unrestrict/link`,
+        `link=${encodeURIComponent(link)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      return response.data?.download || null;
+    } catch (error) {
+      console.error('[Real-Debrid] Error unrestricting link:', error);
+      return null;
+    }
+  },
+
+  // Add magnet and get streaming link
   addMagnetAndGetLink: async (magnet: string, title: string): Promise<string | null> => {
     try {
       const token = await realDebridService.getToken();
       if (!token) {
-        console.error('No Real-Debrid token available');
+        console.error('[Real-Debrid] No token available');
         return null;
       }
 
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
-      // Step 1: Add magnet to Real-Debrid
-      console.log('Adding magnet to Real-Debrid...');
+      // Step 1: Add magnet
+      console.log('[Real-Debrid] Adding magnet...');
       const addResponse = await axios.post(`${backendUrl}/api/debrid/real-debrid/add-magnet`, null, {
-        params: { magnet, token }
+        params: { magnet, token },
       });
 
       if (!addResponse.data.success) {
-        console.error('Failed to add magnet');
+        console.error('[Real-Debrid] Failed to add magnet');
         return null;
       }
 
       const torrentId = addResponse.data.data.id;
-      console.log('Torrent added, ID:', torrentId);
 
-      // Step 2: Select all files
-      console.log('Selecting files...');
+      // Step 2: Select files
+      console.log('[Real-Debrid] Selecting files...');
       await axios.post(`${backendUrl}/api/debrid/real-debrid/select-files`, null, {
-        params: { torrent_id: torrentId, file_ids: 'all', token }
+        params: { torrent_id: torrentId, file_ids: 'all', token },
       });
 
-      // Step 3: Wait for torrent to be ready (poll status)
-      console.log('Waiting for torrent to be ready...');
+      // Step 3: Wait for torrent to be ready
+      console.log('[Real-Debrid] Waiting for torrent...');
       let attempts = 0;
       let torrentInfo;
-      
-      while (attempts < 30) { // Max 30 seconds
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
+      while (attempts < 30) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         const infoResponse = await axios.get(`${backendUrl}/api/debrid/real-debrid/torrent-info`, {
-          params: { torrent_id: torrentId, token }
+          params: { torrent_id: torrentId, token },
         });
 
         torrentInfo = infoResponse.data.data;
-        console.log('Torrent status:', torrentInfo.status);
-
         if (torrentInfo.status === 'downloaded' || torrentInfo.status === 'waiting_files_selection') {
           break;
         }
-
         attempts++;
       }
 
       if (!torrentInfo || torrentInfo.status !== 'downloaded') {
-        console.error('Torrent not ready');
         return null;
       }
 
-      // Step 4: Get the download link
-      console.log('Getting download link...');
+      // Step 4: Get download link
       const links = torrentInfo.links || [];
-      if (links.length === 0) {
-        console.error('No links available');
-        return null;
-      }
+      if (links.length === 0) return null;
 
-      // Use the first/largest file
-      const linkToUnrestrict = links[0];
-
-      // Step 5: Unrestrict the link to get direct streaming URL
-      console.log('Unrestricting link...');
+      // Step 5: Unrestrict
       const unrestrictResponse = await axios.post(`${backendUrl}/api/debrid/real-debrid/unrestrict`, null, {
-        params: { link: linkToUnrestrict, token }
+        params: { link: links[0], token },
       });
 
-      if (!unrestrictResponse.data.success) {
-        console.error('Failed to unrestrict link');
-        return null;
-      }
-
-      const directLink = unrestrictResponse.data.data.download;
-      console.log('Got direct link!');
-      
-      return directLink;
-
+      return unrestrictResponse.data?.data?.download || null;
     } catch (error) {
-      console.error('Error in Real-Debrid flow:', error);
+      console.error('[Real-Debrid] Error in magnet flow:', error);
       return null;
     }
   },
 
-  // Get stream links from torrents + debrid
   getStreamLinks: async (imdbId: string, type: 'movie' | 'tv', title: string, year?: number): Promise<StreamLink[]> => {
     try {
       const token = await realDebridService.getToken();
-      if (!token) {
-        console.log('No Real-Debrid token, returning empty links');
-        return [];
-      }
+      if (!token) return [];
 
-      // Use backend torrent scraper
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-      const endpoint = type === 'movie' 
-        ? `${backendUrl}/api/torrents/movie?title=${encodeURIComponent(title)}${year ? `&year=${year}` : ''}`
-        : `${backendUrl}/api/torrents/tv?title=${encodeURIComponent(title)}`;
+      const endpoint =
+        type === 'movie'
+          ? `${backendUrl}/api/torrents/movie?title=${encodeURIComponent(title)}${year ? `&year=${year}` : ''}`
+          : `${backendUrl}/api/torrents/tv?title=${encodeURIComponent(title)}`;
 
       const response = await axios.get(endpoint);
-      
-      if (!response.data.success || !response.data.results) {
-        return [];
-      }
+
+      if (!response.data.success || !response.data.results) return [];
 
       const torrents = response.data.results;
-      const streamLinks: StreamLink[] = [];
-
-      // Convert torrents to stream links
-      // Group by quality and take best seeders
       const qualityGroups: { [key: string]: any } = {};
-      
+
       torrents.forEach((torrent: any) => {
         const quality = torrent.quality || '720p';
         if (!qualityGroups[quality] || torrent.seeders > qualityGroups[quality].seeders) {
@@ -320,54 +354,114 @@ export const realDebridService = {
         }
       });
 
-      // Convert to stream links
-      Object.entries(qualityGroups).forEach(([quality, torrent]) => {
-        streamLinks.push({
-          quality,
-          url: torrent.magnet,
-          source: 'real-debrid',
-          size: torrent.size,
-          seeders: torrent.seeders,
-        });
-      });
+      const streamLinks: StreamLink[] = Object.entries(qualityGroups).map(([quality, torrent]) => ({
+        quality,
+        url: torrent.magnet,
+        source: 'real-debrid',
+        size: torrent.size,
+        seeders: torrent.seeders,
+      }));
 
       return streamLinks.sort((a, b) => {
-        const qualityOrder: { [key: string]: number } = { '2160p': 1, '1080p': 2, '720p': 3, '480p': 4 };
-        return (qualityOrder[a.quality] || 999) - (qualityOrder[b.quality] || 999);
+        const order: { [key: string]: number } = { '2160p': 1, '1080p': 2, '720p': 3, '480p': 4 };
+        return (order[a.quality] || 999) - (order[b.quality] || 999);
       });
     } catch (error) {
-      console.error('Error fetching Real-Debrid stream links:', error);
+      console.error('[Real-Debrid] Error fetching stream links:', error);
       return [];
     }
   },
 };
 
-// AllDebrid Service
+// ============================================
+// ALLDEBRID SERVICE
+// PIN Authentication Flow (Correct Implementation)
+// ============================================
 export const allDebridService = {
-  getDeviceCode: async (): Promise<{ device_code: string; user_code: string; verification_url: string; expires_in: number; interval: number }> => {
-    const response = await axios.get(`${ALLDEBRID_BASE_URL}/v4/pin/get`, {
-      params: { agent: ALLDEBRID_CLIENT_ID },
-    });
-    const data = response.data.data;
-    return {
-      device_code: data.pin,
-      user_code: data.pin,
-      verification_url: data.check_url || 'https://alldebrid.com/pin',
-      expires_in: data.expires_in || 600,
-      interval: 5,
-    };
+  // Step 1: Get PIN code
+  getDeviceCode: async (): Promise<{
+    device_code: string;
+    user_code: string;
+    verification_url: string;
+    expires_in: number;
+    interval: number;
+  }> => {
+    console.log('[AllDebrid] Getting PIN code...');
+    const useProxy = shouldUseProxy();
+    console.log('[AllDebrid] useProxy:', useProxy);
+    
+    try {
+      let response;
+      
+      if (useProxy) {
+        // On web, use backend proxy
+        response = await axios.get(`${getBackendUrl()}/api/debrid/alldebrid/pin`);
+      } else {
+        // On native, call AllDebrid directly
+        response = await axios.get(`${ALLDEBRID_BASE_URL}/v4/pin/get`, {
+          params: {
+            agent: 'zeus-glass',
+          },
+        });
+      }
+
+      console.log('[AllDebrid] PIN response:', JSON.stringify(response.data));
+
+      if (response.data.status !== 'success') {
+        throw new Error(response.data.error?.message || 'Failed to get PIN');
+      }
+
+      const pinData = response.data.data;
+      
+      return {
+        device_code: pinData.pin, // The PIN itself is used for checking
+        user_code: pinData.pin,
+        verification_url: pinData.user_url || 'https://alldebrid.com/pin/',
+        expires_in: pinData.expires_in || 600,
+        interval: 5,
+      };
+    } catch (error: any) {
+      console.error('[AllDebrid] Error getting PIN:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error?.message || 'Failed to get PIN code');
+    }
   },
 
-  pollForToken: async (pin: string): Promise<any> => {
+  // Step 2: Poll for API key
+  pollForToken: async (pin: string): Promise<{ access_token: string } | null> => {
+    const useProxy = shouldUseProxy();
+    
     try {
-      const response = await axios.get(`${ALLDEBRID_BASE_URL}/v4/pin/check`, {
-        params: { agent: ALLDEBRID_CLIENT_ID, pin, check: pin },
-      });
-      if (response.data.status === 'success' && response.data.data.activated) {
+      console.log('[AllDebrid] Checking PIN:', pin);
+      
+      let response;
+      
+      if (useProxy) {
+        // On web, use backend proxy
+        response = await axios.get(`${getBackendUrl()}/api/debrid/alldebrid/pin-check`, {
+          params: { pin },
+        });
+      } else {
+        // On native, call AllDebrid directly
+        response = await axios.get(`${ALLDEBRID_BASE_URL}/v4/pin/check`, {
+          params: {
+            agent: 'zeus-glass',
+            pin: pin,
+          },
+          validateStatus: (status) => status < 500,
+        });
+      }
+
+      console.log('[AllDebrid] Check response:', JSON.stringify(response.data));
+
+      if (response.data.status === 'success' && response.data.data?.activated) {
+        console.log('[AllDebrid] SUCCESS! Got API key!');
         return { access_token: response.data.data.apikey };
       }
+
+      // Not activated yet
       return null;
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[AllDebrid] Poll error:', error.response?.data || error.message);
       return null;
     }
   },
@@ -390,8 +484,10 @@ export const allDebridService = {
       if (!token) return null;
 
       const response = await axios.get(`${ALLDEBRID_BASE_URL}/v4/user`, {
-        params: { agent: ALLDEBRID_CLIENT_ID, apikey: token },
+        params: { agent: 'zeus-glass', apikey: token },
       });
+
+      if (response.data.status !== 'success') return null;
 
       const data = response.data.data.user;
       const expiryTimestamp = data.premiumUntil * 1000;
@@ -406,51 +502,109 @@ export const allDebridService = {
         type: data.isPremium ? 'premium' : 'free',
       };
     } catch (error) {
-      console.error('Error fetching AllDebrid account:', error);
+      console.error('[AllDebrid] Error fetching account:', error);
       return null;
     }
   },
 
   getStreamLinks: async (imdbId: string, type: 'movie' | 'tv'): Promise<StreamLink[]> => {
-    // AllDebrid would use same torrent scraping but different unrestrict API
-    // For now returning empty to avoid duplicates with Real-Debrid
     return [];
   },
 };
 
-// Premiumize Service
+// ============================================
+// PREMIUMIZE SERVICE
+// API Key Authentication (Correct Implementation)
+// Note: Premiumize uses a simpler auth - direct API key entry
+// For TV apps, we provide a manual API key entry method
+// ============================================
 export const premiumizeService = {
-  getDeviceCode: async (): Promise<{ device_code: string; user_code: string; verification_url: string; expires_in: number; interval: number }> => {
-    const response = await axios.post(`${PREMIUMIZE_BASE_URL}/token`, null, {
-      params: {
-        grant_type: 'device_code',
-        client_id: PREMIUMIZE_CLIENT_ID,
-      },
-    });
+  // Premiumize doesn't have device code flow in the same way
+  // We'll use a simplified approach where user enters API key directly
+  // Or we provide the verification URL for them to get their key
+  getDeviceCode: async (): Promise<{
+    device_code: string;
+    user_code: string;
+    verification_url: string;
+    expires_in: number;
+    interval: number;
+  }> => {
+    console.log('[Premiumize] Initializing auth...');
+    
+    // Premiumize uses direct API key auth
+    // Generate a session ID for this auth attempt
+    const sessionId = `pm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     return {
-      device_code: response.data.device_code,
-      user_code: response.data.user_code,
-      verification_url: response.data.verification_uri || 'https://www.premiumize.me/device',
-      expires_in: response.data.expires_in || 600,
-      interval: response.data.interval || 5,
+      device_code: sessionId,
+      user_code: 'GET API KEY',
+      verification_url: 'https://www.premiumize.me/account',
+      expires_in: 600,
+      interval: 5,
     };
   },
 
-  pollForToken: async (deviceCode: string): Promise<any> => {
-    try {
-      const response = await axios.post(`${PREMIUMIZE_BASE_URL}/token`, null, {
-        params: {
-          grant_type: 'device_code',
-          client_id: PREMIUMIZE_CLIENT_ID,
-          code: deviceCode,
-        },
-      });
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 400) {
-        return null;
+  // For Premiumize, we actually just need the user to enter their API key
+  // This poll function will check if they've entered it via another method
+  pollForToken: async (deviceCode: string): Promise<{ access_token: string } | null> => {
+    // This won't work for Premiumize the same way
+    // Instead, we should prompt user to enter their API key manually
+    console.log('[Premiumize] Checking for API key...');
+    
+    // Check if user has manually entered their API key
+    const manualKey = await storage.getItem('premiumize_pending_key');
+    if (manualKey) {
+      await storage.deleteItem('premiumize_pending_key');
+      
+      // Verify the key works
+      try {
+        const response = await axios.get(`${PREMIUMIZE_BASE_URL}/account/info`, {
+          params: { apikey: manualKey },
+        });
+        
+        if (response.data.status === 'success') {
+          console.log('[Premiumize] API key verified!');
+          return { access_token: manualKey };
+        }
+      } catch (error) {
+        console.error('[Premiumize] Invalid API key');
       }
-      throw error;
+    }
+    
+    return null;
+  },
+
+  // Method for direct API key entry
+  authenticateWithApiKey: async (apiKey: string): Promise<boolean> => {
+    const useProxy = shouldUseProxy();
+    
+    try {
+      console.log('[Premiumize] Verifying API key...');
+      
+      let response;
+      
+      if (useProxy) {
+        // On web, use backend proxy
+        response = await axios.get(`${getBackendUrl()}/api/debrid/premiumize/account-info`, {
+          params: { apikey: apiKey },
+        });
+      } else {
+        // On native, call Premiumize directly
+        response = await axios.get(`${PREMIUMIZE_BASE_URL}/account/info`, {
+          params: { apikey: apiKey },
+        });
+      }
+
+      if (response.data.status === 'success') {
+        await premiumizeService.saveToken(apiKey);
+        console.log('[Premiumize] API key verified and saved!');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('[Premiumize] API key verification failed:', error);
+      return false;
     }
   },
 
@@ -475,37 +629,34 @@ export const premiumizeService = {
         params: { apikey: token },
       });
 
+      if (response.data.status !== 'success') return null;
+
       const data = response.data;
       const expiryTimestamp = data.premium_until * 1000;
       const expiryDate = new Date(expiryTimestamp);
       const daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
       return {
-        username: data.customer_id,
+        username: data.customer_id?.toString() || 'Premium User',
         expiryDate: expiryDate.toISOString(),
         daysLeft,
-        type: data.premium ? 'premium' : 'free',
+        type: data.status === 'premium' ? 'premium' : 'free',
       };
     } catch (error) {
-      console.error('Error fetching Premiumize account:', error);
+      console.error('[Premiumize] Error fetching account:', error);
       return null;
     }
   },
 
   getStreamLinks: async (imdbId: string, type: 'movie' | 'tv'): Promise<StreamLink[]> => {
-    // Premiumize would use same torrent scraping but different unrestrict API
-    // For now returning empty to avoid duplicates with Real-Debrid
     return [];
   },
 };
 
 // ============================================
 // DEBRID CACHE SEARCH SERVICE
-// Main streaming feature - searches for cached torrents
 // ============================================
-
 export const debridCacheService = {
-  // Search for cached movie torrents on Real-Debrid
   searchCachedMovie: async (
     title: string,
     year?: number,
@@ -519,38 +670,24 @@ export const debridCacheService = {
       }
 
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-      const params = new URLSearchParams({
-        title,
-        token,
-      });
-      
+      const params = new URLSearchParams({ title, token });
+
       if (year) params.append('year', year.toString());
       if (imdbId) params.append('imdb_id', imdbId);
 
-      const response = await axios.get(
-        `${backendUrl}/api/debrid/cache/search/movie?${params.toString()}`
-      );
+      const response = await axios.get(`${backendUrl}/api/debrid/cache/search/movie?${params.toString()}`);
 
       if (response.data.success) {
-        errorLogService.info(
-          `Found ${response.data.count} cached torrents for "${title}"`,
-          'DebridCache'
-        );
         return response.data.results || [];
       }
 
       return [];
     } catch (error: any) {
-      errorLogService.error(
-        `Cache search failed: ${error.message}`,
-        'DebridCache',
-        error
-      );
+      errorLogService.error(`Cache search failed: ${error.message}`, 'DebridCache', error);
       return [];
     }
   },
 
-  // Search for cached TV show torrents
   searchCachedTV: async (
     title: string,
     season: number = 1,
@@ -571,37 +708,23 @@ export const debridCacheService = {
         season: season.toString(),
         episode: episode.toString(),
       });
-      
+
       if (imdbId) params.append('imdb_id', imdbId);
 
-      const response = await axios.get(
-        `${backendUrl}/api/debrid/cache/search/tv?${params.toString()}`
-      );
+      const response = await axios.get(`${backendUrl}/api/debrid/cache/search/tv?${params.toString()}`);
 
       if (response.data.success) {
-        errorLogService.info(
-          `Found ${response.data.count} cached torrents for "${title}" S${season}E${episode}`,
-          'DebridCache'
-        );
         return response.data.results || [];
       }
 
       return [];
     } catch (error: any) {
-      errorLogService.error(
-        `TV cache search failed: ${error.message}`,
-        'DebridCache',
-        error
-      );
+      errorLogService.error(`TV cache search failed: ${error.message}`, 'DebridCache', error);
       return [];
     }
   },
 
-  // Get direct stream URL from cached torrent
-  getStreamUrl: async (
-    hash: string,
-    fileId?: string
-  ): Promise<string | null> => {
+  getStreamUrl: async (hash: string, fileId?: string): Promise<string | null> => {
     try {
       const token = await realDebridService.getToken();
       if (!token) {
@@ -610,41 +733,30 @@ export const debridCacheService = {
       }
 
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-      const params = new URLSearchParams({
-        hash,
-        token,
-      });
-      
+      const params = new URLSearchParams({ hash, token });
+
       if (fileId) params.append('file_id', fileId);
 
-      const response = await axios.get(
-        `${backendUrl}/api/debrid/cache/stream?${params.toString()}`
-      );
+      const response = await axios.get(`${backendUrl}/api/debrid/cache/stream?${params.toString()}`);
 
       if (response.data.success && response.data.stream_url) {
-        errorLogService.info('Got stream URL from Real-Debrid', 'DebridCache');
         return response.data.stream_url;
       }
 
       return null;
     } catch (error: any) {
-      errorLogService.error(
-        `Failed to get stream URL: ${error.message}`,
-        'DebridCache',
-        error
-      );
+      errorLogService.error(`Failed to get stream URL: ${error.message}`, 'DebridCache', error);
       return null;
     }
   },
 
-  // Convert cached torrents to StreamLink format
   convertToStreamLinks: (
     cachedTorrents: CachedTorrent[],
     source: 'real-debrid' | 'alldebrid' | 'premiumize' = 'real-debrid'
   ): StreamLink[] => {
-    return cachedTorrents.map(torrent => ({
+    return cachedTorrents.map((torrent) => ({
       quality: torrent.quality,
-      url: torrent.hash, // We'll use hash to get actual URL later
+      url: torrent.hash,
       source,
       size: torrent.size,
       seeders: torrent.seeders,

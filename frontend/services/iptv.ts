@@ -1,22 +1,64 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { STORAGE_KEYS } from '../config/constants';
 import { IPTVConfig, IPTVChannel, EPGProgram, VODItem } from '../types';
 import { parentalControlService } from './parentalControlService';
 
+// Helper function for web storage (localStorage as fallback for AsyncStorage issues)
+const webStorage = {
+  getItem: (key: string): string | null => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(key);
+    }
+    return null;
+  },
+  setItem: (key: string, value: string): void => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(key, value);
+    }
+  },
+  removeItem: (key: string): void => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(key);
+    }
+  },
+};
+
 // Real Xtreme Codes IPTV Service
 export const iptvService = {
   saveConfig: async (config: IPTVConfig): Promise<void> => {
-    await AsyncStorage.setItem(STORAGE_KEYS.IPTV_CONFIG, JSON.stringify(config));
+    const configStr = JSON.stringify(config);
+    // Save to both AsyncStorage and localStorage (for web reliability)
+    await AsyncStorage.setItem(STORAGE_KEYS.IPTV_CONFIG, configStr);
+    webStorage.setItem(STORAGE_KEYS.IPTV_CONFIG, configStr);
+    console.log('[IPTV] Config saved:', config.domain, config.username);
   },
 
   getConfig: async (): Promise<IPTVConfig | null> => {
-    const config = await AsyncStorage.getItem(STORAGE_KEYS.IPTV_CONFIG);
-    return config ? JSON.parse(config) : null;
+    // Try AsyncStorage first
+    let config = await AsyncStorage.getItem(STORAGE_KEYS.IPTV_CONFIG);
+    
+    // Fallback to localStorage on web
+    if (!config && Platform.OS === 'web') {
+      config = webStorage.getItem(STORAGE_KEYS.IPTV_CONFIG);
+      console.log('[IPTV] Config from localStorage fallback');
+    }
+    
+    if (config) {
+      const parsed = JSON.parse(config);
+      console.log('[IPTV] Config loaded:', parsed.domain, parsed.enabled);
+      return parsed;
+    }
+    
+    console.log('[IPTV] No config found');
+    return null;
   },
 
   logout: async (): Promise<void> => {
     await AsyncStorage.removeItem(STORAGE_KEYS.IPTV_CONFIG);
+    webStorage.removeItem(STORAGE_KEYS.IPTV_CONFIG);
+    console.log('[IPTV] Logged out');
   },
 
   // Real Xtreme Codes authentication
@@ -552,13 +594,32 @@ export const iptvService = {
       const epgData = response.data?.epg_listings || [];
       const programs: EPGProgram[] = [];
 
+      // Helper to decode base64 (works in both web and native)
+      const decodeBase64 = (str: string): string => {
+        try {
+          if (typeof atob !== 'undefined') {
+            // Web
+            return decodeURIComponent(escape(atob(str)));
+          } else {
+            // Native - use Buffer
+            return Buffer.from(str, 'base64').toString('utf8');
+          }
+        } catch {
+          return str; // Return original if decode fails
+        }
+      };
+
       for (const epg of epgData.slice(0, 10)) {
+        // Decode base64 encoded title and description
+        const title = epg.title ? decodeBase64(epg.title) : 'Program';
+        const description = epg.description ? decodeBase64(epg.description) : '';
+        
         programs.push({
           id: epg.id || `${channelId}-${epg.start}`,
-          title: epg.title || 'Program',
-          description: epg.description || '',
-          start: new Date(parseInt(epg.start) * 1000).toISOString(),
-          end: new Date(parseInt(epg.end) * 1000).toISOString(),
+          title: title,
+          description: description,
+          start: new Date(parseInt(epg.start_timestamp || epg.start) * 1000).toISOString(),
+          end: new Date(parseInt(epg.stop_timestamp || epg.end) * 1000).toISOString(),
           channel_id: channelId,
         });
       }

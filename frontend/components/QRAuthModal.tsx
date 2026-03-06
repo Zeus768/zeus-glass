@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Dimensions, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Dimensions, Platform, ScrollView, Alert, TextInput } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { BlurView } from 'expo-blur';
 import QRCode from 'react-native-qrcode-svg';
@@ -35,6 +35,11 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
   const [error, setError] = useState<string>('');
   const [pollStatus, setPollStatus] = useState<string>('Waiting for authorization...');
   const [pollCount, setPollCount] = useState<number>(0);
+  const [pollIntervalId, setPollIntervalId] = useState<NodeJS.Timeout | null>(null);
+  
+  // Premiumize API key input
+  const [premiumizeApiKey, setPremiumizeApiKey] = useState<string>('');
+  const [verifyingApiKey, setVerifyingApiKey] = useState<boolean>(false);
 
   const serviceNames = {
     'real-debrid': 'Real-Debrid',
@@ -46,20 +51,40 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
   useEffect(() => {
     if (visible) {
       initializeAuth();
-    } else {
-      // Reset state when modal closes
-      setDeviceCode('');
-      setUserCode('');
-      setVerificationUrl('');
-      setLoading(true);
-      setPolling(false);
-      setError('');
-      setPollStatus('Waiting for authorization...');
-      setPollCount(0);
     }
+    
+    return () => {
+      // Cleanup polling on unmount or close
+      if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+      }
+    };
   }, [visible, service]);
 
+  const resetState = () => {
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId);
+      setPollIntervalId(null);
+    }
+    setDeviceCode('');
+    setUserCode('');
+    setVerificationUrl('');
+    setLoading(true);
+    setPolling(false);
+    setError('');
+    setPollStatus('Waiting for authorization...');
+    setPollCount(0);
+    setPremiumizeApiKey('');
+    setVerifyingApiKey(false);
+  };
+
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
+
   const initializeAuth = async () => {
+    resetState();
     setLoading(true);
     setError('');
     
@@ -81,15 +106,19 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           break;
       }
 
+      console.log(`[QRAuthModal] ${service} device code:`, codeData);
+      
       setDeviceCode(codeData.device_code);
       setUserCode(codeData.user_code);
       setVerificationUrl(codeData.verification_url);
       setLoading(false);
       
-      // Start polling
-      startPolling(codeData.device_code, codeData.interval || 5);
+      // Start polling (except for Premiumize which uses direct API key entry)
+      if (service !== 'premiumize') {
+        startPolling(codeData.device_code, codeData.interval || 5);
+      }
     } catch (err: any) {
-      console.error('Auth initialization error:', err);
+      console.error('[QRAuthModal] Auth initialization error:', err);
       setError(err.message || 'Failed to initialize authentication');
       setLoading(false);
     }
@@ -108,64 +137,60 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
         switch (service) {
           case 'real-debrid':
             setPollStatus(`Checking authorization... (attempt ${pollCount + 1})`);
-            // Real-Debrid polling now handles credentials internally
             tokenData = await realDebridService.pollForToken(code);
             if (tokenData && tokenData.access_token) {
               setPollStatus('Authorization successful! Saving...');
-              console.log('Real-Debrid auth successful, saving token...');
+              console.log('[QRAuthModal] Real-Debrid auth successful!');
               await realDebridService.saveToken(tokenData.access_token);
               clearInterval(pollInterval);
+              setPollIntervalId(null);
               setPolling(false);
               setPollStatus('Complete!');
-              // Small delay to show success message
               setTimeout(() => {
                 onSuccess();
-                onClose();
+                handleClose();
               }, 500);
             }
             break;
+            
           case 'alldebrid':
+            setPollStatus(`Checking PIN... (attempt ${pollCount + 1})`);
             tokenData = await allDebridService.pollForToken(code);
             if (tokenData && tokenData.access_token) {
               setPollStatus('Authorization successful! Saving...');
-              console.log('AllDebrid auth successful, saving token...');
+              console.log('[QRAuthModal] AllDebrid auth successful!');
               await allDebridService.saveToken(tokenData.access_token);
               clearInterval(pollInterval);
+              setPollIntervalId(null);
               setPolling(false);
               onSuccess();
-              onClose();
+              handleClose();
             }
             break;
-          case 'premiumize':
-            tokenData = await premiumizeService.pollForToken(code);
-            if (tokenData && tokenData.access_token) {
-              setPollStatus('Authorization successful! Saving...');
-              console.log('Premiumize auth successful, saving token...');
-              await premiumizeService.saveToken(tokenData.access_token);
-              clearInterval(pollInterval);
-              setPolling(false);
-              onSuccess();
-              onClose();
-            }
-            break;
+            
           case 'trakt':
+            setPollStatus(`Checking authorization... (attempt ${pollCount + 1})`);
             tokenData = await traktService.pollForToken(code);
             if (tokenData) {
               setPollStatus('Authorization successful! Saving...');
-              console.log('Trakt auth successful, saving token...');
+              console.log('[QRAuthModal] Trakt auth successful!');
               await traktService.saveToken(tokenData);
               clearInterval(pollInterval);
+              setPollIntervalId(null);
               setPolling(false);
               onSuccess();
-              onClose();
+              handleClose();
             }
             break;
         }
       } catch (err: any) {
-        console.error('Polling error:', err);
-        setPollStatus(`Error: ${err.message || 'Unknown error'}`);
+        console.error('[QRAuthModal] Polling error:', err);
+        // Don't stop polling on error, just update status
+        setPollStatus(`Waiting... (${err.message || 'checking'})`);
       }
     }, interval * 1000);
+
+    setPollIntervalId(pollInterval);
 
     // Stop polling after 10 minutes
     setTimeout(() => {
@@ -178,12 +203,178 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
     }, 600000);
   };
 
+  // Handle Premiumize API key submission
+  const handlePremiumizeApiKeySubmit = async () => {
+    if (!premiumizeApiKey.trim()) {
+      Alert.alert('Error', 'Please enter your API key');
+      return;
+    }
+
+    setVerifyingApiKey(true);
+    setPollStatus('Verifying API key...');
+
+    try {
+      const success = await premiumizeService.authenticateWithApiKey(premiumizeApiKey.trim());
+      
+      if (success) {
+        setPollStatus('API key verified! Saving...');
+        onSuccess();
+        handleClose();
+      } else {
+        setError('Invalid API key. Please check and try again.');
+        setPollStatus('');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify API key');
+      setPollStatus('');
+    } finally {
+      setVerifyingApiKey(false);
+    }
+  };
+
+  // Render Premiumize-specific content (API key input)
+  const renderPremiumizeContent = () => (
+    <View style={[styles.content, isTV && styles.contentTV]}>
+      <Text style={[styles.instructions, isTV && styles.instructionsTV]}>
+        Premiumize requires your API key. Get it from your account page:
+      </Text>
+
+      {/* URL to get API key */}
+      <View style={[styles.urlContainer, isTV && styles.urlContainerTV]}>
+        <Text style={[styles.urlText, isTV && styles.urlTextTV]}>
+          {verificationUrl}
+        </Text>
+        <Pressable 
+          style={[styles.copyButton, isTV && styles.copyButtonTV]}
+          onPress={async () => {
+            await Clipboard.setStringAsync(verificationUrl);
+            Alert.alert('Copied!', 'URL copied to clipboard');
+          }}
+        >
+          <Ionicons name="link-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
+          <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Open in Browser</Text>
+        </Pressable>
+      </View>
+
+      {/* API Key Input */}
+      <View style={styles.apiKeyInputContainer}>
+        <Text style={[styles.inputLabel, isTV && styles.inputLabelTV]}>Enter your API Key:</Text>
+        <TextInput
+          style={[styles.apiKeyInput, isTV && styles.apiKeyInputTV]}
+          placeholder="Paste your API key here"
+          placeholderTextColor={theme.colors.textMuted}
+          value={premiumizeApiKey}
+          onChangeText={setPremiumizeApiKey}
+          autoCapitalize="none"
+          autoCorrect={false}
+          secureTextEntry={false}
+        />
+        <Pressable 
+          style={[styles.submitButton, isTV && styles.submitButtonTV, verifyingApiKey && styles.submitButtonDisabled]}
+          onPress={handlePremiumizeApiKeySubmit}
+          disabled={verifyingApiKey}
+        >
+          {verifyingApiKey ? (
+            <ActivityIndicator size="small" color="#000" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={isTV ? 24 : 20} color="#000" />
+              <Text style={[styles.submitButtonText, isTV && styles.submitButtonTextTV]}>Verify & Save</Text>
+            </>
+          )}
+        </Pressable>
+      </View>
+
+      {/* Status */}
+      {pollStatus && (
+        <View style={[styles.statusContainer, isTV && styles.statusContainerTV]}>
+          <ActivityIndicator size={isTV ? "large" : "small"} color={theme.colors.primary} />
+          <Text style={[styles.statusText, isTV && styles.statusTextTV]}>{pollStatus}</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  // Render QR code auth content (Real-Debrid, AllDebrid, Trakt)
+  const renderQRContent = () => (
+    <View style={[styles.content, isTV && styles.contentTV]}>
+      <Text style={[styles.instructions, isTV && styles.instructionsTV]}>
+        Scan the QR code or enter the code at the URL below:
+      </Text>
+
+      <View style={[styles.authContainer, isSmallScreen && styles.authContainerStacked]}>
+        {/* QR Code */}
+        <View style={[styles.qrContainer, isSmallScreen && styles.qrContainerStacked]}>
+          <View style={[styles.qrWrapper, isTV && styles.qrWrapperTV]}>
+            <QRCode
+              value={verificationUrl}
+              size={isTV ? 300 : isSmallScreen ? 150 : 180}
+              backgroundColor="white"
+              color="black"
+            />
+          </View>
+          <Text style={[styles.qrLabel, isTV && styles.qrLabelTV]}>Scan with Phone</Text>
+        </View>
+
+        {/* Divider */}
+        {isSmallScreen ? (
+          <View style={styles.dividerHorizontal} />
+        ) : (
+          <View style={[styles.divider, isTV && styles.dividerTV]} />
+        )}
+
+        {/* User Code */}
+        <View style={[styles.codeContainer, isSmallScreen && styles.codeContainerStacked]}>
+          <Text style={[styles.codeLabel, isTV && styles.codeLabelTV]}>Enter this code:</Text>
+          <View style={[styles.codeBadge, isTV && styles.codeBadgeTV]}>
+            <Text style={[styles.codeText, isTV && styles.codeTextTV]}>{userCode}</Text>
+          </View>
+          
+          <Pressable 
+            style={[styles.copyButton, isTV && styles.copyButtonTV]}
+            onPress={async () => {
+              await Clipboard.setStringAsync(userCode);
+              Alert.alert('Copied!', `Code "${userCode}" copied to clipboard`);
+            }}
+          >
+            <Ionicons name="copy-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
+            <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Copy Code</Text>
+          </Pressable>
+          
+          <Text style={[styles.urlLabel, isTV && styles.urlLabelTV]}>at this URL:</Text>
+          <Text style={[styles.urlTextSmall, isTV && styles.urlTextSmallTV]} numberOfLines={2}>
+            {verificationUrl}
+          </Text>
+          
+          <Pressable 
+            style={[styles.copyButton, isTV && styles.copyButtonTV]}
+            onPress={async () => {
+              await Clipboard.setStringAsync(verificationUrl);
+              Alert.alert('Copied!', 'URL copied to clipboard');
+            }}
+          >
+            <Ionicons name="link-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
+            <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Copy URL</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Status */}
+      {polling && (
+        <View style={[styles.statusContainer, isTV && styles.statusContainerTV]}>
+          <ActivityIndicator size={isTV ? "large" : "small"} color={theme.colors.primary} />
+          <Text style={[styles.statusText, isTV && styles.statusTextTV]}>{pollStatus}</Text>
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <BlurView intensity={80} style={styles.blurContainer}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -192,7 +383,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
               {/* Header */}
               <View style={[styles.header, isTV && styles.headerTV]}>
                 <Text style={[styles.title, isTV && styles.titleTV]}>Authorize {serviceNames[service]}</Text>
-                <Pressable onPress={onClose} style={styles.closeButton}>
+                <Pressable onPress={handleClose} style={styles.closeButton}>
                   <Ionicons name="close" size={isTV ? 36 : 24} color={theme.colors.text} />
                 </Pressable>
               </View>
@@ -210,83 +401,10 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
                     <Text style={[styles.retryButtonText, isTV && styles.retryButtonTextTV]}>Retry</Text>
                   </Pressable>
                 </View>
+              ) : service === 'premiumize' ? (
+                renderPremiumizeContent()
               ) : (
-                <View style={[styles.content, isTV && styles.contentTV]}>
-                  {/* Instructions */}
-                  <Text style={[styles.instructions, isTV && styles.instructionsTV]}>
-                    Scan the QR code or enter the code at the URL below:
-                  </Text>
-
-                  {/* Responsive layout: Stack on mobile, side-by-side on tablet/TV */}
-                  <View style={[styles.authContainer, isSmallScreen && styles.authContainerStacked]}>
-                    {/* QR Code */}
-                    <View style={[styles.qrContainer, isSmallScreen && styles.qrContainerStacked]}>
-                      <View style={[styles.qrWrapper, isTV && styles.qrWrapperTV]}>
-                        <QRCode
-                          value={verificationUrl}
-                          size={isTV ? 300 : isSmallScreen ? 150 : 180}
-                          backgroundColor="white"
-                          color="black"
-                        />
-                      </View>
-                      <Text style={[styles.qrLabel, isTV && styles.qrLabelTV]}>Scan with Phone</Text>
-                    </View>
-
-                    {/* Divider - horizontal on mobile, vertical on larger screens */}
-                    {isSmallScreen ? (
-                      <View style={styles.dividerHorizontal} />
-                    ) : (
-                      <View style={[styles.divider, isTV && styles.dividerTV]} />
-                    )}
-
-                    {/* User Code */}
-                    <View style={[styles.codeContainer, isSmallScreen && styles.codeContainerStacked]}>
-                      <Text style={[styles.codeLabel, isTV && styles.codeLabelTV]}>Enter this code:</Text>
-                      <View style={[styles.codeBadge, isTV && styles.codeBadgeTV]}>
-                        <Text style={[styles.codeText, isTV && styles.codeTextTV]}>{userCode}</Text>
-                      </View>
-                      
-                      {/* Copy Code Button - especially useful for mobile */}
-                      <Pressable 
-                        style={[styles.copyButton, isTV && styles.copyButtonTV]}
-                        onPress={async () => {
-                          await Clipboard.setStringAsync(userCode);
-                          Alert.alert('Copied!', `Code "${userCode}" copied to clipboard`);
-                        }}
-                      >
-                        <Ionicons name="copy-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
-                        <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Copy Code</Text>
-                      </Pressable>
-                      
-                      <Text style={[styles.urlLabel, isTV && styles.urlLabelTV]}>at this URL:</Text>
-                      <Text style={[styles.urlText, isTV && styles.urlTextTV]} numberOfLines={2}>
-                        {verificationUrl}
-                      </Text>
-                      
-                      {/* Copy URL Button */}
-                      <Pressable 
-                        style={[styles.copyButton, isTV && styles.copyButtonTV]}
-                        onPress={async () => {
-                          await Clipboard.setStringAsync(verificationUrl);
-                          Alert.alert('Copied!', 'URL copied to clipboard');
-                        }}
-                      >
-                        <Ionicons name="link-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
-                        <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Copy URL</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-
-                  {/* Status */}
-                  {polling && (
-                    <View style={[styles.statusContainer, isTV && styles.statusContainerTV]}>
-                      <ActivityIndicator size={isTV ? "large" : "small"} color={theme.colors.primary} />
-                      <Text style={[styles.statusText, isTV && styles.statusTextTV]}>
-                        {pollStatus}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                renderQRContent()
               )}
             </View>
           </View>
@@ -512,13 +630,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: 12,
   },
-  urlText: {
+  urlTextSmall: {
     fontSize: 12,
     color: theme.colors.primary,
     textAlign: 'center',
     fontWeight: '500',
   },
-  urlTextTV: {
+  urlTextSmallTV: {
     fontSize: 20,
   },
   copyButton: {
@@ -572,5 +690,79 @@ const styles = StyleSheet.create({
   statusTextTV: {
     fontSize: 22,
     marginLeft: 20,
+  },
+  // Premiumize-specific styles
+  urlContainer: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  urlContainerTV: {
+    marginBottom: 30,
+  },
+  urlText: {
+    fontSize: 16,
+    color: theme.colors.primary,
+    fontWeight: '600',
+    marginBottom: theme.spacing.md,
+  },
+  urlTextTV: {
+    fontSize: 24,
+    marginBottom: 20,
+  },
+  apiKeyInputContainer: {
+    width: '100%',
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+    fontWeight: '600',
+  },
+  inputLabelTV: {
+    fontSize: 22,
+    marginBottom: 15,
+  },
+  apiKeyInput: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    fontSize: 16,
+    color: theme.colors.text,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.md,
+  },
+  apiKeyInputTV: {
+    padding: 20,
+    fontSize: 22,
+    marginBottom: 20,
+    borderRadius: 16,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    gap: 8,
+  },
+  submitButtonTV: {
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    borderRadius: 16,
+    gap: 12,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  submitButtonTextTV: {
+    fontSize: 24,
   },
 });
