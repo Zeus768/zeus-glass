@@ -45,6 +45,14 @@ export default function MovieDetailScreen() {
   // One-click play
   const [oneClickEnabled, setOneClickEnabled] = useState(false);
 
+  // Search progress state
+  interface SearchProgress {
+    source: string;
+    status: 'searching' | 'done' | 'error';
+    count: number;
+  }
+  const [searchProgress, setSearchProgress] = useState<SearchProgress[]>([]);
+
   useEffect(() => {
     if (id) {
       loadMovieDetails();
@@ -68,68 +76,124 @@ export default function MovieDetailScreen() {
     setShowLinksModal(true);
     setCachedTorrents([]);
     setDirectStreams([]);
+    setSearchProgress([]);
     
     try {
       if (!movie) return;
       
       const year = movie.release_date ? parseInt(movie.release_date.split('-')[0]) : undefined;
-      // Use IMDB ID from movie data (fetched with external_ids)
       const imdbId = movie.imdb_id || undefined;
+      
+      // Initialize progress tracking
+      const initialProgress: SearchProgress[] = [
+        { source: 'Torrentio', status: 'searching', count: 0 },
+        { source: 'VidSrc', status: 'searching', count: 0 },
+        { source: 'VidSrc Pro', status: 'searching', count: 0 },
+        { source: 'SuperEmbed', status: 'searching', count: 0 },
+        { source: 'SmashyStream', status: 'searching', count: 0 },
+        { source: 'Other Sources', status: 'searching', count: 0 },
+      ];
+      setSearchProgress(initialProgress);
       
       errorLogService.info(`Searching streams for "${movie.title}" (IMDB: ${imdbId || 'N/A'})`, 'MovieDetail');
       
-      // Fetch both debrid and direct streams in parallel
-      const [debridResults, directResults] = await Promise.allSettled([
-        // Debrid cache search (only if logged in)
-        (async () => {
-          try {
-            const token = await realDebridService.getToken();
-            if (!token) {
-              errorLogService.info('No Real-Debrid token, skipping debrid search', 'MovieDetail');
-              return [];
-            }
-            errorLogService.info(`Searching cached torrents for "${movie.title}" with token`, 'MovieDetail');
-            const results = await debridCacheService.searchCachedMovie(movie.title, year, imdbId);
-            errorLogService.info(`Debrid search returned ${results.length} results`, 'MovieDetail');
-            return results;
-          } catch (err: any) {
-            errorLogService.error(`Debrid search error: ${err.message}`, 'MovieDetail', err);
-            return [];
-          }
-        })(),
-        // Direct streaming sources
-        (async () => {
-          try {
-            errorLogService.info(`Searching direct streams for "${movie.title}"`, 'MovieDetail');
-            return await streamScraperService.getMovieStreams(id, imdbId, movie.title, year);
-          } catch (err: any) {
-            errorLogService.error(`Direct stream error: ${err.message}`, 'MovieDetail', err);
-            return [];
-          }
-        })(),
-      ]);
+      // Update progress helper
+      const updateProgress = (source: string, status: 'searching' | 'done' | 'error', count: number) => {
+        setSearchProgress(prev => prev.map(p => 
+          p.source === source ? { ...p, status, count } : p
+        ));
+      };
       
-      // Process debrid results
+      // Fetch debrid streams with progress
+      const debridPromise = (async () => {
+        try {
+          const token = await realDebridService.getToken();
+          if (!token) {
+            updateProgress('Torrentio', 'done', 0);
+            return [];
+          }
+          const results = await debridCacheService.searchCachedMovie(movie.title, year, imdbId);
+          updateProgress('Torrentio', 'done', results.length);
+          return results;
+        } catch (err: any) {
+          updateProgress('Torrentio', 'error', 0);
+          return [];
+        }
+      })();
+      
+      // Fetch direct streams with individual progress
+      const directPromise = (async () => {
+        const allStreams: StreamSource[] = [];
+        
+        // VidSrc
+        try {
+          const vidSrcStreams = await streamScraperService.scrapeVidSrc('movie', id);
+          updateProgress('VidSrc', 'done', vidSrcStreams.length);
+          allStreams.push(...vidSrcStreams);
+        } catch { updateProgress('VidSrc', 'error', 0); }
+        
+        // VidSrc Pro
+        try {
+          const vidSrcProStreams = await streamScraperService.scrapeVidSrcPro('movie', id);
+          updateProgress('VidSrc Pro', 'done', vidSrcProStreams.length);
+          allStreams.push(...vidSrcProStreams);
+        } catch { updateProgress('VidSrc Pro', 'error', 0); }
+        
+        // SuperEmbed
+        try {
+          const superEmbedStreams = await streamScraperService.scrapeSuperEmbed('movie', id, imdbId);
+          updateProgress('SuperEmbed', 'done', superEmbedStreams.length);
+          allStreams.push(...superEmbedStreams);
+        } catch { updateProgress('SuperEmbed', 'error', 0); }
+        
+        // SmashyStream
+        try {
+          const smashyStreams = await streamScraperService.scrapeSmashyStream('movie', id);
+          updateProgress('SmashyStream', 'done', smashyStreams.length);
+          allStreams.push(...smashyStreams);
+        } catch { updateProgress('SmashyStream', 'error', 0); }
+        
+        // Other sources in parallel
+        try {
+          const otherResults = await Promise.allSettled([
+            streamScraperService.scrapeVidSrcXyz('movie', id),
+            streamScraperService.scrapeVidSrcNl('movie', id),
+            streamScraperService.scrapeTwoEmbed('movie', id, imdbId),
+            streamScraperService.scrapeAutoEmbed('movie', id),
+            streamScraperService.scrapeEmbedSu('movie', id),
+            streamScraperService.scrapeMoviesApi('movie', id),
+            streamScraperService.scrapeVideasy('movie', id),
+            streamScraperService.scrapeRive('movie', id, imdbId),
+            streamScraperService.scrapeFrembed('movie', id),
+            streamScraperService.scrapeWarezCDN('movie', id, imdbId),
+          ]);
+          
+          let otherCount = 0;
+          otherResults.forEach(result => {
+            if (result.status === 'fulfilled' && result.value) {
+              otherCount += result.value.length;
+              allStreams.push(...result.value);
+            }
+          });
+          updateProgress('Other Sources', 'done', otherCount);
+        } catch { updateProgress('Other Sources', 'error', 0); }
+        
+        return allStreams;
+      })();
+      
+      // Wait for all results
+      const [debridResults, directResults] = await Promise.allSettled([debridPromise, directPromise]);
+      
+      // Process results
       if (debridResults.status === 'fulfilled') {
         setCachedTorrents(debridResults.value);
-        if (debridResults.value.length === 0) {
-          errorLogService.warn(`No cached torrents found for "${movie.title}"`, 'MovieDetail');
-        } else {
-          errorLogService.info(`Found ${debridResults.value.length} debrid sources`, 'MovieDetail');
-        }
-      } else {
-        errorLogService.error(`Debrid promise rejected: ${debridResults.reason}`, 'MovieDetail');
       }
       
-      // Process direct stream results
       if (directResults.status === 'fulfilled') {
         setDirectStreams(directResults.value);
-        errorLogService.info(`Found ${directResults.value.length} direct streams`, 'MovieDetail');
-      } else {
-        errorLogService.error(`Direct streams promise rejected: ${directResults.reason}`, 'MovieDetail');
       }
       
-      // If we have direct streams but no debrid, switch to direct tab
+      // Switch to direct tab if no debrid results
       if (debridResults.status === 'fulfilled' && debridResults.value.length === 0 && 
           directResults.status === 'fulfilled' && directResults.value.length > 0) {
         setActiveTab('direct');
@@ -503,7 +567,34 @@ export default function MovieDetailScreen() {
               <View style={styles.modalLoading}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
                 <Text style={styles.loadingText}>Searching sources...</Text>
-                <Text style={styles.loadingSubtext}>Torrentio • VidSrc • FlixMomo • YTS • More...</Text>
+                
+                {/* Progress List */}
+                <View style={styles.progressContainer}>
+                  {searchProgress.map((progress, index) => (
+                    <View key={index} style={styles.progressItem}>
+                      <View style={styles.progressLeft}>
+                        {progress.status === 'searching' ? (
+                          <ActivityIndicator size="small" color={theme.colors.primary} />
+                        ) : progress.status === 'done' ? (
+                          <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
+                        ) : (
+                          <Ionicons name="close-circle" size={18} color={theme.colors.error} />
+                        )}
+                        <Text style={styles.progressSource}>{progress.source}</Text>
+                      </View>
+                      <Text style={[
+                        styles.progressCount,
+                        progress.count > 0 && styles.progressCountActive
+                      ]}>
+                        {progress.status === 'searching' ? '...' : `${progress.count} links`}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                
+                <Text style={styles.loadingSubtext}>
+                  Found: {cachedTorrents.length} debrid + {directStreams.length} direct
+                </Text>
               </View>
             ) : activeTab === 'debrid' ? (
               // Debrid Tab Content
@@ -940,6 +1031,40 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.xs,
     color: theme.colors.textMuted,
     textAlign: 'center',
+  },
+  progressContainer: {
+    width: '100%',
+    maxWidth: 300,
+    marginVertical: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+  },
+  progressItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  progressLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  progressSource: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text,
+    fontWeight: '500',
+  },
+  progressCount: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textMuted,
+    fontWeight: '600',
+  },
+  progressCountActive: {
+    color: theme.colors.success,
   },
   statsBar: {
     flexDirection: 'row',

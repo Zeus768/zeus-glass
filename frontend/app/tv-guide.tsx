@@ -38,6 +38,15 @@ export default function TVGuideScreen() {
   const [focusedChannel, setFocusedChannel] = useState<string | null>(null);
   const [focusedCategory, setFocusedCategory] = useState<string | null>(null);
 
+  // Progress state
+  const [loadProgress, setLoadProgress] = useState({
+    status: 'Loading...',
+    channelsLoaded: 0,
+    categoriesLoaded: 0,
+    epgLoaded: 0,
+    total: 0,
+  });
+
   useEffect(() => {
     loadChannels();
     checkActiveRecordings();
@@ -45,7 +54,11 @@ export default function TVGuideScreen() {
 
   const loadChannels = async () => {
     setLoading(true);
+    setLoadProgress({ status: 'Connecting to IPTV server...', channelsLoaded: 0, categoriesLoaded: 0, epgLoaded: 0, total: 0 });
+    
     try {
+      setLoadProgress(prev => ({ ...prev, status: 'Loading channels...' }));
+      
       const [channelData, categoryData] = await Promise.allSettled([
         iptvService.getLiveChannels(),
         iptvService.getLiveCategories(),
@@ -54,16 +67,26 @@ export default function TVGuideScreen() {
       const channels = channelData.status === 'fulfilled' ? channelData.value : [];
       const categories = categoryData.status === 'fulfilled' ? categoryData.value : [];
       
+      setLoadProgress(prev => ({ 
+        ...prev, 
+        status: 'Channels loaded!', 
+        channelsLoaded: channels?.length || 0,
+        categoriesLoaded: categories?.length || 0,
+        total: channels?.length || 0,
+      }));
+      
       setChannels(channels || []);
       setCategories([{ id: 'all', name: 'All' }, ...(categories || [])]);
       
-      // Load EPG for first 10 channels only (reduced to prevent crash)
+      // Load EPG for first 10 channels only
       if (channels && channels.length > 0) {
+        setLoadProgress(prev => ({ ...prev, status: 'Loading TV Guide data...' }));
         const first10 = channels.slice(0, 10);
         loadEPGForChannels(first10);
       }
     } catch (error) {
       console.error('Error loading channels:', error);
+      setLoadProgress(prev => ({ ...prev, status: 'Error loading channels' }));
       setChannels([]);
       setCategories([{ id: 'all', name: 'All' }]);
     } finally {
@@ -228,7 +251,41 @@ export default function TVGuideScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading TV Guide...</Text>
+        <Text style={styles.loadingText}>{loadProgress.status}</Text>
+        
+        {/* Progress Details */}
+        <View style={styles.loadProgressBox}>
+          <View style={styles.loadProgressRow}>
+            <Ionicons 
+              name={loadProgress.channelsLoaded > 0 ? "checkmark-circle" : "radio-button-on"} 
+              size={18} 
+              color={loadProgress.channelsLoaded > 0 ? theme.colors.success : theme.colors.primary} 
+            />
+            <Text style={styles.loadProgressText}>
+              Channels: {loadProgress.channelsLoaded > 0 ? `${loadProgress.channelsLoaded} loaded` : 'Loading...'}
+            </Text>
+          </View>
+          <View style={styles.loadProgressRow}>
+            <Ionicons 
+              name={loadProgress.categoriesLoaded > 0 ? "checkmark-circle" : "radio-button-on"} 
+              size={18} 
+              color={loadProgress.categoriesLoaded > 0 ? theme.colors.success : theme.colors.textMuted} 
+            />
+            <Text style={styles.loadProgressText}>
+              Categories: {loadProgress.categoriesLoaded > 0 ? `${loadProgress.categoriesLoaded} loaded` : 'Waiting...'}
+            </Text>
+          </View>
+          <View style={styles.loadProgressRow}>
+            <Ionicons 
+              name="time-outline" 
+              size={18} 
+              color={theme.colors.textMuted} 
+            />
+            <Text style={styles.loadProgressText}>
+              EPG Data: Loading after channels...
+            </Text>
+          </View>
+        </View>
       </View>
     );
   }
@@ -599,6 +656,25 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     color: theme.colors.textSecondary,
     fontSize: theme.fontSize.md,
+  },
+  loadProgressBox: {
+    marginTop: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    minWidth: 250,
+  },
+  loadProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  loadProgressText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text,
   },
   emptyContainer: {
     flex: 1,
