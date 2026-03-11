@@ -3,6 +3,55 @@
 ## Original Problem Statement
 Build a cross-platform mobile application for Android, Android TV, and Fire TV called "Zeus Glass" with a Sky Glass-style UI aesthetic.
 
+## Session 6 Updates (December 2025)
+
+### Critical Bug Fixes
+
+#### 1. Debrid Links Not Showing - FIXED ✅
+- **Issue**: Movies were not showing debrid links because IMDB ID wasn't being passed
+- **Fix**: Modified `tmdbService.getMovieDetails()` and `getTVShowDetails()` to include `external_ids` in API request
+- **Result**: IMDB ID now extracted from TMDB response and passed to debrid cache search
+
+#### 2. App Crashes/Force Close Prevention ✅
+- **Added**: `ErrorBoundary` component to wrap the entire app
+- **Location**: `/app/frontend/components/ErrorBoundary.tsx`
+- **Benefit**: Graceful error handling prevents full app crashes, shows retry button
+
+#### 3. Mobile Carousel Compression - FIXED ✅
+- **Issue**: Carousel cards were compressed on mobile
+- **Fix**: Reduced mobile card sizes to `130x195` (from 150x220) for better fit
+- **Location**: `/app/frontend/constants/theme.ts`
+
+### New Features
+
+#### 4. Trending Categories Added ✅
+- **Movies Page**: Added "Trending" and "Top Rated" filter buttons with flame/star icons
+- **TV Shows Page**: Added "Trending" and "Top Rated" filter buttons with flame/star icons
+- **Home Page**: Reordered carousels to show Trending first with flame icons
+- **Status**: IMPLEMENTED & CODE VERIFIED
+
+### API Updates
+
+#### 5. Backend Debrid Search Enhanced ✅
+- **Endpoint**: `/api/debrid/cache/search/movie`
+- **Change**: Now accepts and passes `imdb_id` parameter to indexers
+- **Logging**: Added detailed logging for debugging
+- **Status**: TESTED - 18/18 backend tests passed
+
+### Files Modified
+- `/app/frontend/services/tmdb.ts` - Added external_ids to movie/TV detail requests
+- `/app/frontend/types/index.ts` - Added imdb_id to Movie and TVShow interfaces
+- `/app/frontend/app/movies.tsx` - Added Trending/Top Rated category buttons
+- `/app/frontend/app/tv-shows.tsx` - Added Trending/Top Rated category buttons
+- `/app/frontend/app/index.tsx` - Updated carousel order with flame icons
+- `/app/frontend/app/_layout.tsx` - Wrapped app with ErrorBoundary
+- `/app/frontend/app/movie/[id].tsx` - Enhanced debrid search with IMDB ID
+- `/app/frontend/constants/theme.ts` - Adjusted mobile card sizes
+- `/app/backend/server.py` - Enhanced logging for debrid cache search
+
+### Files Created
+- `/app/frontend/components/ErrorBoundary.tsx` - Error boundary component
+
 ## Session 5 Updates (March 11, 2026)
 
 ### Features Implemented & Tested ✅
