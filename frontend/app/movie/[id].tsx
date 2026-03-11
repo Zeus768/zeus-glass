@@ -313,7 +313,11 @@ export default function MovieDetailScreen() {
                   <Ionicons name="star" size={16} color={theme.colors.gold} />
                   <Text style={styles.ratingText}>{movie.vote_average.toFixed(1)}</Text>
                 </View>
-                {year && <Text style={styles.metaText}>{year}</Text>}
+                {movie.release_date && (
+                  <Text style={styles.releaseDateText}>
+                    {new Date(movie.release_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </Text>
+                )}
                 {movie.genres && movie.genres.length > 0 && (
                   <Text style={styles.metaText}>{movie.genres[0].name}</Text>
                 )}
@@ -723,6 +727,11 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
+  },
+  releaseDateText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
   overview: {
     fontSize: theme.fontSize.md,

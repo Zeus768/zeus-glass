@@ -375,6 +375,11 @@ export default function TVShowDetailScreen() {
                         </Text>
                       )}
                       <View style={styles.episodeMeta}>
+                        {episode.air_date && (
+                          <Text style={styles.episodeAirDate}>
+                            {new Date(episode.air_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </Text>
+                        )}
                         {episode.runtime && (
                           <Text style={styles.episodeRuntime}>{episode.runtime}m</Text>
                         )}
@@ -781,6 +786,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.md,
+    flexWrap: 'wrap',
+  },
+  episodeAirDate: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
   episodeRuntime: {
     fontSize: theme.fontSize.xs,

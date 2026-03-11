@@ -143,16 +143,14 @@ export default function SettingsScreen() {
   const handleSaveVault = async () => {
     setVaultLoading(true);
     try {
-      const success = await zeusVaultService.saveVault();
+      // Use file export for proper backup
+      const success = await zeusVaultService.exportToFile();
       if (success) {
         const status = await zeusVaultService.getVaultStatus();
         setVaultStatus(status);
-        Alert.alert('Zeus Vault', 'All accounts and settings saved to vault!');
-      } else {
-        Alert.alert('Error', 'Failed to save vault');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to save vault');
+      Alert.alert('Error', 'Failed to export vault');
     } finally {
       setVaultLoading(false);
     }
@@ -161,17 +159,14 @@ export default function SettingsScreen() {
   const handleRestoreVault = async () => {
     setVaultLoading(true);
     try {
-      const vault = await zeusVaultService.restoreVault();
-      if (vault) {
-        await zeusVaultService.applyVaultData(vault);
+      // Use file import for proper restore
+      const success = await zeusVaultService.importFromFile();
+      if (success) {
         const status = await zeusVaultService.getVaultStatus();
         setVaultStatus(status);
-        Alert.alert('Zeus Vault', 'Vault restored successfully! Please restart the app to apply all changes.');
-      } else {
-        Alert.alert('Zeus Vault', 'No vault backup found');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to restore vault');
+      Alert.alert('Error', 'Failed to import vault');
     } finally {
       setVaultLoading(false);
     }
@@ -683,8 +678,8 @@ export default function SettingsScreen() {
                   <ActivityIndicator size="small" color="#000" />
                 ) : (
                   <>
-                    <Ionicons name="save" size={18} color="#000" />
-                    <Text style={styles.vaultButtonTextPrimary}>Save to Vault</Text>
+                    <Ionicons name="download-outline" size={18} color="#000" />
+                    <Text style={styles.vaultButtonTextPrimary}>Export to File</Text>
                   </>
                 )}
               </Pressable>
@@ -696,8 +691,8 @@ export default function SettingsScreen() {
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
               >
-                <Ionicons name="cloud-download" size={18} color={theme.colors.text} />
-                <Text style={styles.vaultButtonText}>Restore</Text>
+                <Ionicons name="folder-open-outline" size={18} color={theme.colors.text} />
+                <Text style={styles.vaultButtonText}>Import from File</Text>
               </Pressable>
 
               <Pressable 

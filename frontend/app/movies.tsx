@@ -349,23 +349,23 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   genresContainer: {
-    minHeight: isTV ? 90 : 60,
-    maxHeight: isTV ? 90 : 60,
+    minHeight: isTV ? 60 : 60,  // Reduced height
+    maxHeight: isTV ? 60 : 60,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   genresContent: {
     paddingHorizontal: isTV ? 50 : 16,
-    paddingVertical: isTV ? 20 : 12,
+    paddingVertical: isTV ? 10 : 12,  // Reduced padding
     alignItems: 'center',
-    gap: isTV ? 16 : 10,
+    gap: isTV ? 10 : 10,
   },
   genreButton: {
-    paddingHorizontal: isTV ? 32 : 18,
-    paddingVertical: isTV ? 14 : 10,
-    borderRadius: isTV ? 28 : 20,
+    paddingHorizontal: isTV ? 18 : 18,  // Reduced padding
+    paddingVertical: isTV ? 8 : 10,  // Reduced padding
+    borderRadius: isTV ? 20 : 20,
     backgroundColor: theme.colors.surfaceLight,
-    marginRight: isTV ? 12 : 8,
+    marginRight: isTV ? 8 : 8,
     borderWidth: 2,
     borderColor: 'transparent',
   },
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.05 }],
   },
   genreText: {
-    fontSize: isTV ? 22 : 15,
+    fontSize: isTV ? 15 : 15,  // Reduced font
     color: theme.colors.textSecondary,
     fontWeight: '600',
   },
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: isTV ? 8 : 6,
+    gap: isTV ? 6 : 6,
     borderWidth: 1,
     borderColor: theme.colors.gold,
     backgroundColor: 'rgba(255, 215, 0, 0.1)',
