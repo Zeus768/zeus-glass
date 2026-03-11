@@ -49,6 +49,12 @@ const SCRAPERS = {
     embedUrl: 'https://vidsrc.xyz/embed',
     type: 'embed' as const,
   },
+  vidsrcNl: {
+    name: 'VidSrc.nl',
+    baseUrl: 'https://vidsrc.nl',
+    embedUrl: 'https://vidsrc.nl/embed',
+    type: 'embed' as const,
+  },
   superEmbed: {
     name: 'SuperEmbed',
     baseUrl: 'https://multiembed.mov',
@@ -69,6 +75,42 @@ const SCRAPERS = {
     baseUrl: 'https://player.autoembed.cc',
     type: 'embed' as const,
   },
+  // New scrapers from fmhy.net
+  embedsu: {
+    name: 'Embed.su',
+    baseUrl: 'https://embed.su',
+    type: 'embed' as const,
+  },
+  moviesapi: {
+    name: 'MoviesAPI',
+    baseUrl: 'https://moviesapi.club',
+    type: 'embed' as const,
+  },
+  nontongo: {
+    name: 'NontonGo',
+    baseUrl: 'https://www.nontongo.win',
+    type: 'embed' as const,
+  },
+  videasy: {
+    name: 'Videasy',
+    baseUrl: 'https://player.videasy.net',
+    type: 'embed' as const,
+  },
+  rive: {
+    name: 'Rive',
+    baseUrl: 'https://rivestream.live',
+    type: 'embed' as const,
+  },
+  frembed: {
+    name: 'FrEmbed',
+    baseUrl: 'https://frembed.pro',
+    type: 'embed' as const,
+  },
+  warezcdn: {
+    name: 'WarezCDN',
+    baseUrl: 'https://embed.warezcdn.com',
+    type: 'embed' as const,
+  },
 };
 
 export const streamScraperService = {
@@ -85,11 +127,19 @@ export const streamScraperService = {
       streamScraperService.scrapeVidSrc('movie', tmdbId),
       streamScraperService.scrapeVidSrcPro('movie', tmdbId),
       streamScraperService.scrapeVidSrcXyz('movie', tmdbId),
+      streamScraperService.scrapeVidSrcNl('movie', tmdbId),
       // Other embeds
       streamScraperService.scrapeSuperEmbed('movie', tmdbId, imdbId),
       streamScraperService.scrapeSmashyStream('movie', tmdbId),
       streamScraperService.scrapeTwoEmbed('movie', tmdbId, imdbId),
       streamScraperService.scrapeAutoEmbed('movie', tmdbId),
+      // New scrapers from fmhy.net
+      streamScraperService.scrapeEmbedSu('movie', tmdbId),
+      streamScraperService.scrapeMoviesApi('movie', tmdbId),
+      streamScraperService.scrapeVideasy('movie', tmdbId),
+      streamScraperService.scrapeRive('movie', tmdbId, imdbId),
+      streamScraperService.scrapeFrembed('movie', tmdbId),
+      streamScraperService.scrapeWarezCDN('movie', tmdbId, imdbId),
     ];
     
     // Torrentio only if we have IMDB ID (required for Stremio addons)
@@ -124,11 +174,19 @@ export const streamScraperService = {
       streamScraperService.scrapeVidSrc('tv', tmdbId, season, episode),
       streamScraperService.scrapeVidSrcPro('tv', tmdbId, season, episode),
       streamScraperService.scrapeVidSrcXyz('tv', tmdbId, season, episode),
+      streamScraperService.scrapeVidSrcNl('tv', tmdbId, season, episode),
       // Other embeds
       streamScraperService.scrapeSuperEmbed('tv', tmdbId, imdbId, season, episode),
       streamScraperService.scrapeSmashyStream('tv', tmdbId, season, episode),
       streamScraperService.scrapeTwoEmbed('tv', tmdbId, imdbId, season, episode),
       streamScraperService.scrapeAutoEmbed('tv', tmdbId, season, episode),
+      // New scrapers from fmhy.net
+      streamScraperService.scrapeEmbedSu('tv', tmdbId, season, episode),
+      streamScraperService.scrapeMoviesApi('tv', tmdbId, season, episode),
+      streamScraperService.scrapeVideasy('tv', tmdbId, season, episode),
+      streamScraperService.scrapeRive('tv', tmdbId, imdbId, season, episode),
+      streamScraperService.scrapeFrembed('tv', tmdbId, season, episode),
+      streamScraperService.scrapeWarezCDN('tv', tmdbId, imdbId, season, episode),
     ];
     
     // Torrentio only if we have IMDB ID
@@ -323,6 +381,120 @@ export const streamScraperService = {
       quality: 'HD',
       type: 'embed' as const,
       source: 'AutoEmbed',
+    }];
+  },
+
+  // New scrapers from fmhy.net
+  scrapeVidSrcNl: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    let embedUrl = `${SCRAPERS.vidsrcNl.embedUrl}/${type}/${tmdbId}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `/${season}/${episode}`;
+    }
+    
+    return [{
+      name: 'VidSrc.nl',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'VidSrc.nl',
+    }];
+  },
+
+  scrapeEmbedSu: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    let embedUrl = `${SCRAPERS.embedsu.baseUrl}/embed/${type}/${tmdbId}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `/${season}/${episode}`;
+    }
+    
+    return [{
+      name: 'Embed.su',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'Embed.su',
+    }];
+  },
+
+  scrapeMoviesApi: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    let embedUrl = '';
+    if (type === 'movie') {
+      embedUrl = `${SCRAPERS.moviesapi.baseUrl}/movie/${tmdbId}`;
+    } else {
+      embedUrl = `${SCRAPERS.moviesapi.baseUrl}/tv/${tmdbId}-${season}-${episode}`;
+    }
+    
+    return [{
+      name: 'MoviesAPI',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'MoviesAPI',
+    }];
+  },
+
+  scrapeVideasy: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    let embedUrl = `${SCRAPERS.videasy.baseUrl}/${type}/${tmdbId}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `/${season}/${episode}`;
+    }
+    
+    return [{
+      name: 'Videasy',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'Videasy',
+    }];
+  },
+
+  scrapeRive: async (type: 'movie' | 'tv', tmdbId: string, imdbId?: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    const id = imdbId || tmdbId;
+    let embedUrl = `${SCRAPERS.rive.baseUrl}/embed?type=${type}&id=${id}`;
+    if (type === 'tv' && season !== undefined && episode !== undefined) {
+      embedUrl += `&season=${season}&episode=${episode}`;
+    }
+    
+    return [{
+      name: 'Rive',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'Rive',
+    }];
+  },
+
+  scrapeFrembed: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    let embedUrl = '';
+    if (type === 'movie') {
+      embedUrl = `${SCRAPERS.frembed.baseUrl}/api/film.php?id=${tmdbId}`;
+    } else {
+      embedUrl = `${SCRAPERS.frembed.baseUrl}/api/serie.php?id=${tmdbId}&sa=${season}&epi=${episode}`;
+    }
+    
+    return [{
+      name: 'FrEmbed',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'FrEmbed',
+    }];
+  },
+
+  scrapeWarezCDN: async (type: 'movie' | 'tv', tmdbId: string, imdbId?: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    const id = imdbId || tmdbId;
+    let embedUrl = '';
+    if (type === 'movie') {
+      embedUrl = `${SCRAPERS.warezcdn.baseUrl}/filme/${id}`;
+    } else {
+      embedUrl = `${SCRAPERS.warezcdn.baseUrl}/serie/${id}/${season}/${episode}`;
+    }
+    
+    return [{
+      name: 'WarezCDN',
+      url: embedUrl,
+      quality: 'HD',
+      type: 'embed' as const,
+      source: 'WarezCDN',
     }];
   },
 };

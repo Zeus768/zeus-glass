@@ -374,7 +374,105 @@ export default function MovieDetailScreen() {
                   Direct ({directStreams.length})
                 </Text>
               </Pressable>
+              {iptvVODStream && (
+                <Pressable 
+                  style={[styles.tabButton, styles.tabButtonIPTV, activeTab === 'iptv' && styles.tabButtonActive]}
+                  onPress={() => setActiveTab('iptv')}
+                >
+                  <Ionicons name="diamond" size={16} color={activeTab === 'iptv' ? '#000' : '#FFD700'} />
+                  <Text style={[styles.tabButtonText, styles.tabButtonTextIPTV, activeTab === 'iptv' && styles.tabButtonTextActive]}>
+                    IPTV
+                  </Text>
+                </Pressable>
+              )}
             </View>
+            
+            {/* Filter Bar */}
+            {!loadingLinks && (cachedTorrents.length > 0 || directStreams.length > 0) && (
+              <View style={styles.filterBar}>
+                <Pressable 
+                  style={[styles.filterButton, showFilters && styles.filterButtonActive]}
+                  onPress={() => setShowFilters(!showFilters)}
+                >
+                  <Ionicons name="filter" size={16} color={showFilters ? '#000' : theme.colors.text} />
+                  <Text style={[styles.filterButtonText, showFilters && styles.filterButtonTextActive]}>
+                    Filters
+                  </Text>
+                </Pressable>
+                
+                {/* Quick Quality Filters */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickFilters}>
+                  {['4K', '1080p', '720p'].map((q) => (
+                    <Pressable
+                      key={q}
+                      style={[styles.quickFilterChip, filterQuality === q && styles.quickFilterChipActive]}
+                      onPress={() => setFilterQuality(filterQuality === q ? null : q)}
+                    >
+                      <Text style={[styles.quickFilterText, filterQuality === q && styles.quickFilterTextActive]}>
+                        {q}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            
+            {/* Expanded Filter Panel */}
+            {showFilters && (
+              <View style={styles.filterPanel}>
+                <View style={styles.filterRow}>
+                  <Text style={styles.filterLabel}>Size:</Text>
+                  <View style={styles.sizeFilters}>
+                    {[
+                      { label: '< 2GB', max: 2 },
+                      { label: '2-5GB', min: 2, max: 5 },
+                      { label: '5-10GB', min: 5, max: 10 },
+                      { label: '> 10GB', min: 10 },
+                    ].map((size) => (
+                      <Pressable
+                        key={size.label}
+                        style={[
+                          styles.sizeFilterChip,
+                          filterMinSize === size.min && filterMaxSize === size.max && styles.sizeFilterChipActive,
+                        ]}
+                        onPress={() => {
+                          if (filterMinSize === size.min && filterMaxSize === size.max) {
+                            setFilterMinSize(null);
+                            setFilterMaxSize(null);
+                          } else {
+                            setFilterMinSize(size.min || null);
+                            setFilterMaxSize(size.max || null);
+                          }
+                        }}
+                      >
+                        <Text style={styles.sizeFilterText}>{size.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+                <View style={styles.filterRow}>
+                  <Text style={styles.filterLabel}>Sort:</Text>
+                  <View style={styles.sortButtons}>
+                    {[
+                      { key: 'quality', icon: 'diamond', label: 'Quality' },
+                      { key: 'size', icon: 'resize', label: 'Size' },
+                      { key: 'seeders', icon: 'people', label: 'Seeders' },
+                    ].map((s) => (
+                      <Pressable
+                        key={s.key}
+                        style={[styles.sortButton, sortBy === s.key && styles.sortButtonActive]}
+                        onPress={() => setSortBy(s.key as 'quality' | 'size' | 'seeders')}
+                      >
+                        <Ionicons name={s.icon as any} size={14} color={sortBy === s.key ? '#000' : theme.colors.text} />
+                        <Text style={[styles.sortButtonText, sortBy === s.key && styles.sortButtonTextActive]}>
+                          {s.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            )}
             
             {loadingLinks ? (
               <View style={styles.modalLoading}>
@@ -921,5 +1019,137 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: theme.fontWeight.bold,
     color: '#fff',
+  },
+  // IPTV Tab Button
+  tabButtonIPTV: {
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  tabButtonTextIPTV: {
+    color: '#FFD700',
+  },
+  // Filter Bar Styles
+  filterBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    gap: theme.spacing.sm,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    gap: 4,
+  },
+  filterButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  filterButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  filterButtonTextActive: {
+    color: '#000',
+  },
+  quickFilters: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 16,
+  },
+  quickFilterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  quickFilterChipActive: {
+    backgroundColor: 'rgba(0, 217, 255, 0.2)',
+    borderColor: theme.colors.primary,
+  },
+  quickFilterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  quickFilterTextActive: {
+    color: theme.colors.primary,
+  },
+  filterPanel: {
+    padding: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    gap: theme.spacing.sm,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  filterLabel: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    minWidth: 40,
+  },
+  sizeFilters: {
+    flexDirection: 'row',
+    gap: 8,
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  sizeFilterChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  sizeFilterChipActive: {
+    backgroundColor: 'rgba(0, 217, 255, 0.2)',
+    borderColor: theme.colors.primary,
+  },
+  sizeFilterText: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+  },
+  sortButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    gap: 4,
+  },
+  sortButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  sortButtonText: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+  },
+  sortButtonTextActive: {
+    color: '#000',
   },
 });

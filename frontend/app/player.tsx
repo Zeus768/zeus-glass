@@ -40,7 +40,17 @@ export default function PlayerScreen() {
   const [loadingSubtitles, setLoadingSubtitles] = useState(false);
   const [showSubtitleSettings, setShowSubtitleSettings] = useState(false);
   
+  // Quick Settings overlay
+  const [showQuickSettings, setShowQuickSettings] = useState(false);
+  
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Load subtitle settings on mount
+  useEffect(() => {
+    subtitleService.init().then(() => {
+      setSubtitleSettings(subtitleService.getSettings());
+    });
+  }, []);
 
   useEffect(() => {
     // Determine if this is an embed URL
@@ -203,10 +213,84 @@ export default function PlayerScreen() {
           <Ionicons name="close" size={isTV ? 36 : 28} color="#fff" />
         </Pressable>
         
+        {/* Quick Settings Button */}
+        <Pressable 
+          onPress={() => setShowQuickSettings(!showQuickSettings)}
+          style={[styles.quickSettingsButton, focusedButton === 'quicksettings' && styles.buttonFocused]}
+          onFocus={() => setFocusedButton('quicksettings')}
+          onBlur={() => setFocusedButton(null)}
+        >
+          <Ionicons name="settings-outline" size={isTV ? 32 : 24} color="#fff" />
+        </Pressable>
+        
         {/* Title */}
         <View style={styles.embedTitleBar}>
           <Text style={styles.embedTitle} numberOfLines={1}>{title || 'Playing'}</Text>
         </View>
+        
+        {/* Quick Settings Panel */}
+        {showQuickSettings && (
+          <View style={styles.quickSettingsPanel}>
+            <Text style={styles.quickSettingsTitle}>Quick Settings</Text>
+            
+            {/* Subtitles Toggle */}
+            <Pressable 
+              style={styles.quickSettingRow}
+              onPress={() => {
+                if (subtitleSettings) {
+                  const newEnabled = !subtitleSettings.enabled;
+                  subtitleService.saveSettings({ enabled: newEnabled });
+                  setSubtitleSettings({ ...subtitleSettings, enabled: newEnabled });
+                }
+              }}
+            >
+              <View style={styles.quickSettingInfo}>
+                <Ionicons name="text" size={20} color={theme.colors.primary} />
+                <Text style={styles.quickSettingLabel}>Subtitles</Text>
+              </View>
+              <View style={[
+                styles.quickSettingToggle,
+                subtitleSettings?.enabled && styles.quickSettingToggleOn,
+              ]}>
+                <Text style={styles.quickSettingToggleText}>
+                  {subtitleSettings?.enabled ? 'ON' : 'OFF'}
+                </Text>
+              </View>
+            </Pressable>
+
+            {/* Subtitle Size */}
+            <View style={styles.quickSettingSizeRow}>
+              <Text style={styles.quickSettingSizeLabel}>Size:</Text>
+              {(['small', 'medium', 'large', 'extra-large'] as const).map((size) => (
+                <Pressable
+                  key={size}
+                  style={[
+                    styles.sizeButton,
+                    subtitleSettings?.fontSize === size && styles.sizeButtonActive,
+                  ]}
+                  onPress={() => {
+                    subtitleService.saveSettings({ fontSize: size });
+                    setSubtitleSettings(subtitleService.getSettings());
+                  }}
+                >
+                  <Text style={[
+                    styles.sizeButtonText,
+                    subtitleSettings?.fontSize === size && styles.sizeButtonTextActive,
+                  ]}>
+                    {size === 'extra-large' ? 'XL' : size.charAt(0).toUpperCase()}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            
+            <Pressable 
+              style={styles.closeQuickSettings}
+              onPress={() => setShowQuickSettings(false)}
+            >
+              <Text style={styles.closeQuickSettingsText}>Close</Text>
+            </Pressable>
+          </View>
+        )}
         
         <WebView
           source={{ uri: url }}
@@ -559,5 +643,113 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: theme.colors.primary,
     borderRadius: 4,
+  },
+  // Quick Settings Styles
+  quickSettingsButton: {
+    position: 'absolute',
+    top: isTV ? 28 : 20,
+    right: isTV ? 100 : 70,
+    zIndex: 1001,
+    padding: isTV ? 16 : 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  quickSettingsPanel: {
+    position: 'absolute',
+    top: isTV ? 80 : 60,
+    right: isTV ? 30 : 20,
+    zIndex: 1002,
+    backgroundColor: 'rgba(20, 20, 30, 0.95)',
+    borderRadius: 16,
+    padding: isTV ? 24 : 20,
+    minWidth: isTV ? 320 : 280,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 20,
+  },
+  quickSettingsTitle: {
+    fontSize: isTV ? 20 : 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: isTV ? 20 : 16,
+  },
+  quickSettingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: isTV ? 16 : 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  quickSettingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  quickSettingLabel: {
+    fontSize: isTV ? 18 : 14,
+    color: theme.colors.text,
+  },
+  quickSettingToggle: {
+    paddingHorizontal: isTV ? 16 : 12,
+    paddingVertical: isTV ? 8 : 6,
+    borderRadius: 20,
+    backgroundColor: theme.colors.surface,
+  },
+  quickSettingToggleOn: {
+    backgroundColor: theme.colors.primary,
+  },
+  quickSettingToggleText: {
+    fontSize: isTV ? 14 : 12,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  quickSettingSizeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: isTV ? 16 : 12,
+    gap: 10,
+  },
+  quickSettingSizeLabel: {
+    fontSize: isTV ? 16 : 14,
+    color: theme.colors.textSecondary,
+  },
+  sizeButton: {
+    paddingHorizontal: isTV ? 14 : 10,
+    paddingVertical: isTV ? 8 : 6,
+    borderRadius: 8,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  sizeButtonActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(0, 217, 255, 0.2)',
+  },
+  sizeButtonText: {
+    fontSize: isTV ? 14 : 12,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  sizeButtonTextActive: {
+    color: theme.colors.primary,
+  },
+  closeQuickSettings: {
+    marginTop: isTV ? 20 : 16,
+    alignItems: 'center',
+    paddingVertical: isTV ? 12 : 10,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 10,
+  },
+  closeQuickSettingsText: {
+    fontSize: isTV ? 16 : 14,
+    color: theme.colors.text,
+    fontWeight: '500',
   },
 });
