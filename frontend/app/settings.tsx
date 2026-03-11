@@ -21,7 +21,9 @@ import { QRAuthModal } from '../components/QRAuthModal';
 import { useAuthStore } from '../store/authStore';
 import { iptvService } from '../services/iptv';
 import { errorLogService, LogEntry } from '../services/errorLogService';
-import { parentalControlService, ParentalSettings } from '../services/parentalControlService';
+import { parentalControlService, ParentalControlSettings } from '../services/parentalControlService';
+import { subtitleService, SubtitleSettings } from '../services/subtitleService';
+import { streamFilterService, OneClickPlaySettings } from '../services/streamFilterService';
 import { formatDistanceToNow, format } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -62,11 +64,25 @@ export default function SettingsScreen() {
 
   // Parental control state
   const [parentalModalVisible, setParentalModalVisible] = useState(false);
-  const [parentalSettings, setParentalSettings] = useState<ParentalSettings | null>(null);
+  const [parentalSettings, setParentalSettings] = useState<ParentalControlSettings | null>(null);
   const [pinInput, setPinInput] = useState('');
   const [newPinInput, setNewPinInput] = useState('');
   const [confirmPinInput, setConfirmPinInput] = useState('');
   const [pinMode, setPinMode] = useState<'setup' | 'verify' | 'change'>('setup');
+
+  // Subtitle settings state
+  const [subtitleModalVisible, setSubtitleModalVisible] = useState(false);
+  const [subtitleSettings, setSubtitleSettings] = useState<SubtitleSettings | null>(null);
+  const [openSubtitlesApiKey, setOpenSubtitlesApiKey] = useState('');
+  const [openSubtitlesUsername, setOpenSubtitlesUsername] = useState('');
+  const [openSubtitlesPassword, setOpenSubtitlesPassword] = useState('');
+
+  // One-click play settings
+  const [oneClickModalVisible, setOneClickModalVisible] = useState(false);
+  const [oneClickSettings, setOneClickSettings] = useState<OneClickPlaySettings | null>(null);
+
+  // Focus state for TV navigation
+  const [focusedElement, setFocusedElement] = useState<string | null>(null);
 
   // Torrentio configuration state
   const [torrentioModalVisible, setTorrentioModalVisible] = useState(false);
@@ -82,6 +98,12 @@ export default function SettingsScreen() {
     errorLogService.init();
     parentalControlService.init().then(() => {
       setParentalSettings(parentalControlService.getSettings());
+    });
+    subtitleService.init().then(() => {
+      setSubtitleSettings(subtitleService.getSettings());
+    });
+    streamFilterService.init().then(() => {
+      setOneClickSettings(streamFilterService.getOneClickSettings());
     });
     
     // Load Torrentio config
@@ -557,6 +579,76 @@ export default function SettingsScreen() {
           </View>
         </AccountSection>
 
+        {/* Subtitles & Player Settings */}
+        <AccountSection title="Player Settings">
+          <View style={styles.settingsCard}>
+            {/* Subtitle Settings */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Ionicons name="text" size={24} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                <View>
+                  <Text style={styles.settingLabel}>Subtitles</Text>
+                  <Text style={styles.settingDescription}>
+                    {subtitleSettings?.enabled ? 'Enabled' : 'Disabled'} • Size: {subtitleSettings?.fontSize || 'Medium'}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                style={[styles.configureButton, focusedElement === 'subtitles' && styles.buttonFocused]}
+                onPress={() => setSubtitleModalVisible(true)}
+                onFocus={() => setFocusedElement('subtitles')}
+                onBlur={() => setFocusedElement(null)}
+              >
+                <Text style={styles.configureButtonText}>Configure</Text>
+              </Pressable>
+            </View>
+
+            {/* OpenSubtitles Account */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Ionicons name="cloud-download" size={24} color={theme.colors.gold} style={{ marginRight: 12 }} />
+                <View>
+                  <Text style={styles.settingLabel}>OpenSubtitles</Text>
+                  <Text style={styles.settingDescription}>
+                    {openSubtitlesApiKey ? 'Connected' : 'Not configured'}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                style={[styles.configureButton, focusedElement === 'opensubtitles' && styles.buttonFocused]}
+                onPress={() => setSubtitleModalVisible(true)}
+                onFocus={() => setFocusedElement('opensubtitles')}
+                onBlur={() => setFocusedElement(null)}
+              >
+                <Text style={styles.configureButtonText}>Setup</Text>
+              </Pressable>
+            </View>
+
+            {/* One-Click Play */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Ionicons name="flash" size={24} color="#FFD700" style={{ marginRight: 12 }} />
+                <View>
+                  <Text style={styles.settingLabel}>One-Click Play</Text>
+                  <Text style={styles.settingDescription}>
+                    {oneClickSettings?.enabled 
+                      ? `${oneClickSettings.preferredQuality} • ${oneClickSettings.preferredHoster || 'Any Hoster'}` 
+                      : 'Disabled'}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                style={[styles.configureButton, focusedElement === 'oneclick' && styles.buttonFocused]}
+                onPress={() => setOneClickModalVisible(true)}
+                onFocus={() => setFocusedElement('oneclick')}
+                onBlur={() => setFocusedElement(null)}
+              >
+                <Text style={styles.configureButtonText}>Configure</Text>
+              </Pressable>
+            </View>
+          </View>
+        </AccountSection>
+
         {/* Error Logs Section */}
         <AccountSection title="Debug & Support">
           <View style={styles.settingsCard}>
@@ -1026,6 +1118,42 @@ const styles = StyleSheet.create({
     padding: isTV ? 28 : theme.spacing.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: isTV ? 20 : theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  settingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  settingLabel: {
+    fontSize: isTV ? 22 : theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  settingDescription: {
+    fontSize: isTV ? 16 : theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  configureButton: {
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: isTV ? 24 : theme.spacing.md,
+    paddingVertical: isTV ? 12 : theme.spacing.sm,
+    borderRadius: isTV ? 12 : theme.borderRadius.md,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+  },
+  configureButtonText: {
+    fontSize: isTV ? 18 : theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
   },
   parentalHeader: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, BackHandler, Platform, StatusBar as RNStatusBar } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, BackHandler, Platform, StatusBar as RNStatusBar, Modal, ScrollView, TextInput } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { WebView } from 'react-native-webview';
 import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
@@ -8,11 +8,20 @@ import { theme, isTV } from '../constants/theme';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
+import * as DocumentPicker from 'expo-document-picker';
+import { subtitleService, SubtitleTrack, SubtitleSettings } from '../services/subtitleService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function PlayerScreen() {
-  const { url, title, type } = useLocalSearchParams<{ url: string; title: string; type?: 'video' | 'embed' }>();
+  const { url, title, type, imdbId, season, episode } = useLocalSearchParams<{ 
+    url: string; 
+    title: string; 
+    type?: 'video' | 'embed';
+    imdbId?: string;
+    season?: string;
+    episode?: string;
+  }>();
   const router = useRouter();
   const videoRef = useRef<Video>(null);
   
@@ -22,6 +31,14 @@ export default function PlayerScreen() {
   const [showControls, setShowControls] = useState(true);
   const [focusedButton, setFocusedButton] = useState<string | null>(null);
   const [isEmbed, setIsEmbed] = useState(false);
+  
+  // Subtitle state
+  const [showSubtitleModal, setShowSubtitleModal] = useState(false);
+  const [subtitles, setSubtitles] = useState<SubtitleTrack[]>([]);
+  const [selectedSubtitle, setSelectedSubtitle] = useState<SubtitleTrack | null>(null);
+  const [subtitleSettings, setSubtitleSettings] = useState<SubtitleSettings | null>(null);
+  const [loadingSubtitles, setLoadingSubtitles] = useState(false);
+  const [showSubtitleSettings, setShowSubtitleSettings] = useState(false);
   
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
 

@@ -1,279 +1,245 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { storage } from '../utils/storage';
 
-// Parental control settings interface
-export interface ParentalSettings {
+const STORAGE_KEY_PARENTAL = 'parental_controls';
+
+export interface ParentalControlSettings {
   enabled: boolean;
-  pin: string;
-  hideAdultContent: boolean;
-  hideAdultChannels: boolean;
-  hideXXXCategories: boolean;
-  maxRating: 'G' | 'PG' | 'PG-13' | 'R' | 'NC-17' | 'ALL';
-  blockedCategories: string[];
-  requirePinForSettings: boolean;
-  lockTime: number; // Minutes before re-requiring PIN
-  lastUnlockTime?: string;
+  pin: string | null;
+  pinHash: string | null;
+  adultContentBlocked: boolean;
+  requirePinForAdult: boolean;
+  setupComplete: boolean;
+  lastUnlockedAt: number | null;
+  unlockDuration: number; // minutes to stay unlocked
 }
 
-// Adult content keywords to filter
-const ADULT_KEYWORDS = [
-  'xxx', 'adult', 'porn', 'erotic', 'sex', '18+', 'mature',
-  'playboy', 'brazzers', 'vivid', 'hustler', 'penthouse',
-  'xvideos', 'pornhub', 'redtube', 'youporn', 'xnxx',
-  'hot girls', 'nude', 'naked', 'strip', 'escort',
-];
-
-// Adult category names commonly used in IPTV
-const ADULT_CATEGORIES = [
-  'xxx', 'adult', '18+', 'mature', 'erotic', 'x-rated',
-  'porn', 'adults only', 'for adults', 'adult entertainment',
-];
-
-const STORAGE_KEYS = {
-  PARENTAL_SETTINGS: '@zeus_glass_parental_settings',
-  PARENTAL_PIN: 'zeus_glass_parental_pin',
-};
-
-const DEFAULT_SETTINGS: ParentalSettings = {
+const DEFAULT_SETTINGS: ParentalControlSettings = {
   enabled: false,
-  pin: '',
-  hideAdultContent: true,
-  hideAdultChannels: true,
-  hideXXXCategories: true,
-  maxRating: 'ALL',
-  blockedCategories: [],
-  requirePinForSettings: false,
-  lockTime: 30,
+  pin: null,
+  pinHash: null,
+  adultContentBlocked: true,
+  requirePinForAdult: true,
+  setupComplete: false,
+  lastUnlockedAt: null,
+  unlockDuration: 30, // Stay unlocked for 30 minutes
 };
 
-export const parentalControlService = {
-  settings: { ...DEFAULT_SETTINGS } as ParentalSettings,
-  isUnlocked: false,
+// Adult content category keywords
+const ADULT_KEYWORDS = [
+  'xxx', 'adult', 'porn', '18+', 'mature', 'erotic', 'sex',
+  'playboy', 'hustler', 'brazzers', 'bangbros', 'naughty',
+];
 
-  // Initialize parental controls
-  init: async (): Promise<void> => {
+class ParentalControlService {
+  private settings: ParentalControlSettings = DEFAULT_SETTINGS;
+  private isUnlocked: boolean = false;
+
+  async init() {
+    await this.loadSettings();
+    this.checkUnlockStatus();
+  }
+
+  async loadSettings(): Promise<ParentalControlSettings> {
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.PARENTAL_SETTINGS);
+      const stored = await AsyncStorage.getItem(STORAGE_KEY_PARENTAL);
       if (stored) {
-        parentalControlService.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+        this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
       }
-      
-      // Get PIN from secure storage
-      const pin = await storage.getItem(STORAGE_KEYS.PARENTAL_PIN);
-      if (pin) {
-        parentalControlService.settings.pin = pin;
-      }
-
-      // Check if still unlocked from last session
-      if (parentalControlService.settings.lastUnlockTime) {
-        const lastUnlock = new Date(parentalControlService.settings.lastUnlockTime);
-        const now = new Date();
-        const minutesSinceUnlock = (now.getTime() - lastUnlock.getTime()) / (1000 * 60);
-        parentalControlService.isUnlocked = minutesSinceUnlock < parentalControlService.settings.lockTime;
-      }
-    } catch (error) {
-      console.error('Error loading parental settings:', error);
+    } catch (e) {
+      console.error('[Parental] Error loading settings:', e);
     }
-  },
+    return this.settings;
+  }
 
-  // Get current settings
-  getSettings: (): ParentalSettings => {
-    return parentalControlService.settings;
-  },
+  async saveSettings(settings: Partial<ParentalControlSettings>): Promise<void> {
+    this.settings = { ...this.settings, ...settings };
+    await AsyncStorage.setItem(STORAGE_KEY_PARENTAL, JSON.stringify(this.settings));
+  }
 
-  // Save settings
-  saveSettings: async (settings: Partial<ParentalSettings>): Promise<void> => {
-    parentalControlService.settings = { ...parentalControlService.settings, ...settings };
-    
-    // Save PIN separately in secure storage
-    if (settings.pin !== undefined) {
-      if (settings.pin) {
-        await storage.setItem(STORAGE_KEYS.PARENTAL_PIN, settings.pin);
-      } else {
-        await storage.deleteItem(STORAGE_KEYS.PARENTAL_PIN);
-      }
+  getSettings(): ParentalControlSettings {
+    return { ...this.settings };
+  }
+
+  // Simple hash function for PIN (not cryptographically secure, but adequate for local use)
+  private hashPin(pin: string): string {
+    let hash = 0;
+    for (let i = 0; i < pin.length; i++) {
+      const char = pin.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
     }
-    
-    // Save other settings (excluding PIN) to AsyncStorage
-    const settingsToSave = { ...parentalControlService.settings };
-    delete settingsToSave.pin;
-    await AsyncStorage.setItem(STORAGE_KEYS.PARENTAL_SETTINGS, JSON.stringify(settingsToSave));
-  },
+    return Math.abs(hash).toString(16);
+  }
 
-  // Enable parental controls with PIN
-  enable: async (pin: string): Promise<boolean> => {
+  // Setup PIN for parental controls
+  async setupPin(pin: string): Promise<boolean> {
     if (pin.length < 4) {
       return false;
     }
-    
-    await parentalControlService.saveSettings({
-      enabled: true,
-      pin,
-      hideAdultContent: true,
-      hideAdultChannels: true,
-      hideXXXCategories: true,
-    });
-    
-    return true;
-  },
 
-  // Disable parental controls (requires PIN)
-  disable: async (pin: string): Promise<boolean> => {
-    if (!parentalControlService.verifyPin(pin)) {
-      return false;
-    }
-    
-    await parentalControlService.saveSettings({
-      enabled: false,
+    const pinHash = this.hashPin(pin);
+    await this.saveSettings({
+      enabled: true,
+      pin: null, // Don't store plain PIN
+      pinHash,
+      adultContentBlocked: true,
+      requirePinForAdult: true,
+      setupComplete: true,
     });
-    
-    parentalControlService.isUnlocked = true;
+
     return true;
-  },
+  }
 
   // Verify PIN
-  verifyPin: (pin: string): boolean => {
-    return parentalControlService.settings.pin === pin;
-  },
+  verifyPin(pin: string): boolean {
+    if (!this.settings.pinHash) return false;
+    return this.hashPin(pin) === this.settings.pinHash;
+  }
 
-  // Unlock with PIN
-  unlock: async (pin: string): Promise<boolean> => {
-    if (parentalControlService.verifyPin(pin)) {
-      parentalControlService.isUnlocked = true;
-      await parentalControlService.saveSettings({
-        lastUnlockTime: new Date().toISOString(),
+  // Unlock with PIN (temporary access)
+  async unlockWithPin(pin: string): Promise<boolean> {
+    if (this.verifyPin(pin)) {
+      this.isUnlocked = true;
+      await this.saveSettings({
+        lastUnlockedAt: Date.now(),
       });
       return true;
     }
     return false;
-  },
+  }
 
-  // Lock
-  lock: (): void => {
-    parentalControlService.isUnlocked = false;
-  },
-
-  // Check if content should be hidden
-  isContentBlocked: (): boolean => {
-    return parentalControlService.settings.enabled && 
-           !parentalControlService.isUnlocked &&
-           parentalControlService.settings.hideAdultContent;
-  },
-
-  // Check if a specific channel/content should be filtered
-  shouldFilterContent: (name: string, category?: string): boolean => {
-    if (!parentalControlService.settings.enabled) {
+  // Check if currently unlocked
+  private checkUnlockStatus(): boolean {
+    if (!this.settings.lastUnlockedAt) {
+      this.isUnlocked = false;
       return false;
     }
+
+    const unlockDurationMs = this.settings.unlockDuration * 60 * 1000;
+    const elapsed = Date.now() - this.settings.lastUnlockedAt;
     
-    if (parentalControlService.isUnlocked) {
+    this.isUnlocked = elapsed < unlockDurationMs;
+    return this.isUnlocked;
+  }
+
+  // Lock parental controls again
+  async lock(): Promise<void> {
+    this.isUnlocked = false;
+    await this.saveSettings({ lastUnlockedAt: null });
+  }
+
+  // Check if user can access adult content
+  canAccessAdultContent(): boolean {
+    if (!this.settings.enabled) return true;
+    if (!this.settings.adultContentBlocked) return true;
+    return this.checkUnlockStatus();
+  }
+
+  // Disable parental controls entirely (requires PIN)
+  async disableParentalControls(pin: string): Promise<boolean> {
+    if (!this.verifyPin(pin)) {
       return false;
     }
 
-    const nameLower = name.toLowerCase();
-    const categoryLower = (category || '').toLowerCase();
+    await this.saveSettings({
+      enabled: false,
+      adultContentBlocked: false,
+      requirePinForAdult: false,
+    });
 
-    // Check adult keywords in name
-    if (parentalControlService.settings.hideAdultContent) {
-      for (const keyword of ADULT_KEYWORDS) {
-        if (nameLower.includes(keyword)) {
-          return true;
-        }
-      }
+    this.isUnlocked = true;
+    return true;
+  }
+
+  // Enable parental controls
+  async enableParentalControls(): Promise<void> {
+    if (!this.settings.pinHash) {
+      // Can't enable without PIN setup
+      return;
     }
 
-    // Check adult categories
-    if (parentalControlService.settings.hideXXXCategories) {
-      for (const adultCat of ADULT_CATEGORIES) {
-        if (categoryLower.includes(adultCat)) {
-          return true;
-        }
-      }
-    }
+    await this.saveSettings({
+      enabled: true,
+      adultContentBlocked: true,
+      requirePinForAdult: true,
+    });
 
-    // Check custom blocked categories
-    if (parentalControlService.settings.blockedCategories.length > 0) {
-      for (const blocked of parentalControlService.settings.blockedCategories) {
-        if (categoryLower.includes(blocked.toLowerCase())) {
-          return true;
-        }
-      }
-    }
+    this.isUnlocked = false;
+  }
 
-    return false;
-  },
-
-  // Filter an array of channels/content
-  filterContent: <T extends { name: string; category?: string }>(items: T[]): T[] => {
-    if (!parentalControlService.settings.enabled || parentalControlService.isUnlocked) {
-      return items;
-    }
-
-    return items.filter(item => !parentalControlService.shouldFilterContent(item.name, item.category));
-  },
-
-  // Check rating
-  isRatingAllowed: (rating: string): boolean => {
-    if (!parentalControlService.settings.enabled || parentalControlService.isUnlocked) {
-      return true;
-    }
-
-    const maxRating = parentalControlService.settings.maxRating;
-    if (maxRating === 'ALL') {
-      return true;
-    }
-
-    const ratingOrder = ['G', 'PG', 'PG-13', 'R', 'NC-17'];
-    const maxIndex = ratingOrder.indexOf(maxRating);
-    const contentIndex = ratingOrder.indexOf(rating);
-
-    if (contentIndex === -1) {
-      return true; // Unknown rating, allow
-    }
-
-    return contentIndex <= maxIndex;
-  },
-
-  // Change PIN
-  changePin: async (oldPin: string, newPin: string): Promise<boolean> => {
-    if (!parentalControlService.verifyPin(oldPin)) {
+  // Change PIN (requires old PIN)
+  async changePin(oldPin: string, newPin: string): Promise<boolean> {
+    if (!this.verifyPin(oldPin)) {
       return false;
     }
-    
+
     if (newPin.length < 4) {
       return false;
     }
 
-    await parentalControlService.saveSettings({ pin: newPin });
-    return true;
-  },
+    await this.saveSettings({
+      pinHash: this.hashPin(newPin),
+    });
 
-  // Reset (requires current PIN)
-  reset: async (pin: string): Promise<boolean> => {
-    if (!parentalControlService.verifyPin(pin)) {
-      return false;
+    return true;
+  }
+
+  // Check if content contains adult material
+  isAdultContent(categoryName: string, channelName?: string): boolean {
+    const lowerCategory = categoryName.toLowerCase();
+    const lowerChannel = channelName?.toLowerCase() || '';
+
+    return ADULT_KEYWORDS.some(keyword => 
+      lowerCategory.includes(keyword) || lowerChannel.includes(keyword)
+    );
+  }
+
+  // Filter channels/categories - remove adult content if blocked
+  filterAdultContent<T extends { category?: string; name?: string }>(items: T[]): T[] {
+    if (this.canAccessAdultContent()) {
+      return items; // No filtering needed
     }
 
-    await AsyncStorage.removeItem(STORAGE_KEYS.PARENTAL_SETTINGS);
-    await storage.deleteItem(STORAGE_KEYS.PARENTAL_PIN);
-    parentalControlService.settings = { ...DEFAULT_SETTINGS };
-    parentalControlService.isUnlocked = false;
-    
-    return true;
-  },
+    return items.filter(item => 
+      !this.isAdultContent(item.category || '', item.name || '')
+    );
+  }
 
-  // Add category to blocked list
-  addBlockedCategory: async (category: string): Promise<void> => {
-    const categories = [...parentalControlService.settings.blockedCategories];
-    if (!categories.includes(category)) {
-      categories.push(category);
-      await parentalControlService.saveSettings({ blockedCategories: categories });
-    }
-  },
+  // Check if IPTV has adult categories
+  checkIPTVForAdultContent(categories: { category_name: string }[]): boolean {
+    return categories.some(cat => this.isAdultContent(cat.category_name));
+  }
 
-  // Remove category from blocked list
-  removeBlockedCategory: async (category: string): Promise<void> => {
-    const categories = parentalControlService.settings.blockedCategories.filter(c => c !== category);
-    await parentalControlService.saveSettings({ blockedCategories: categories });
-  },
-};
+  // Requirements check - does user need to set up parental controls?
+  needsParentalSetup(hasAdultContent: boolean): boolean {
+    return hasAdultContent && !this.settings.setupComplete;
+  }
+
+  // Get setup instructions
+  getSetupInstructions(): string[] {
+    return [
+      'Your IPTV provider includes adult content categories.',
+      'To protect your viewing experience, please set up a 4-digit PIN.',
+      'This PIN will be required to access adult content.',
+      '',
+      'To disable parental controls later:',
+      '1. Go to Settings',
+      '2. Tap "Parental Controls"',
+      '3. Enter your PIN',
+      '4. Select "Disable Parental Controls"',
+    ];
+  }
+
+  // Get removal instructions (shown in settings)
+  getRemovalInstructions(): string[] {
+    return [
+      'To disable parental controls:',
+      '1. Enter your current PIN below',
+      '2. Tap "Disable Parental Controls"',
+      '',
+      'Note: Adult content will become visible after disabling.',
+    ];
+  }
+}
+
+export const parentalControlService = new ParentalControlService();

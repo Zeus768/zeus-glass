@@ -1,110 +1,92 @@
 # Zeus Glass - Product Requirements Document
 
 ## Original Problem Statement
-Build a cross-platform mobile application for Android, Android TV, and Fire TV called "Zeus Glass", with a UI/UX that replicates "Sky Glass" aesthetic. The app integrates streaming services via Debrid providers (Real-Debrid, AllDebrid, Premiumize), IPTV with Xtreme Codes, and movie/TV metadata from TMDB and Trakt.
+Build a cross-platform mobile application for Android, Android TV, and Fire TV called "Zeus Glass" with a Sky Glass-style UI aesthetic.
 
-## What's Been Fixed (Session 3 - March 6, 2026)
+## Core Features Implemented
 
-### Issues Fixed From User Feedback:
+### Session 5 Updates (March 11, 2026)
 
-1. **Player Screen Improvements**
-   - Added `Stack.Screen options={{ headerShown: false }}` for true fullscreen
-   - Fixed screen orientation lock to landscape during playback
-   - Added proper orientation reset to portrait when exiting player
-   - Added WebView player for embed sources (VidSrc, etc.)
-   - Status bar now hidden during playback
+#### 1. Comprehensive Search with IPTV VOD
+- Search across TMDB (movies/TV shows) + IPTV VOD
+- IPTV VOD results display with **gold "IPTV PREMIUM" badge**
+- Filter tabs: All, Movies, TV Shows, IPTV Premium
+- VOD results shown only when user has IPTV credentials
 
-2. **Stream Scrapers Rewrite**
-   - Rewrote all embed scrapers to use working URLs
-   - Added: VidSrc.xyz, SuperEmbed, SmashyStream, 2Embed, AutoEmbed
-   - Fixed Torrentio to require valid IMDB ID (starts with 'tt')
-   - Added logging for debugging stream fetching
-   - Added size and seeders info to torrent results
+#### 2. ResolveURL Service (All Hosters)
+- Support for Real-Debrid, AllDebrid, Premiumize
+- Automatic link resolution through all configured debrid services
+- Torrent/magnet resolution support
+- Quality detection from filenames
+- File size formatting
 
-3. **EPG & TV Guide Caching**
-   - Added 5-minute EPG cache to prevent crashes from API overload
-   - Added 10-minute channels cache
-   - Added 30-minute categories cache
-   - Added batch EPG loading with rate limiting (5 concurrent requests)
-   - Added cache clearing on logout/config change
+#### 3. Subtitle Service
+- OpenSubtitles API integration
+- Manual subtitle file upload support
+- Custom subtitle size settings: Small (18px), Medium (24px), Large (32px), Extra-Large (42px)
+- Subtitle styling: background color, text color
+- Preferred language selection
+- Auto-download option
 
-4. **Trakt Lists Integration**
-   - Watchlist Movies carousel
-   - Watchlist TV Shows carousel
-   - Continue Watching carousel
-   - Recently Watched history
-   - Add/Remove from Watchlist functionality
+#### 4. Parental Controls
+- Auto-enable when adult content detected in IPTV
+- 4-digit PIN setup forced before accessing adult content
+- PIN verification for unlocking
+- Settings option to disable with PIN
+- 30-minute unlock duration
+- Clear instructions for removal in Settings
 
-5. **Focus Highlighting Enhancement**
-   - Increased border width (5px TV, 4px mobile)
-   - Stronger glow effect (25px shadow radius)
-   - Higher scale transform (1.12x)
+#### 5. Stream Filter Service
+- Filter by: Quality (4K, REMUX, 1080p, 720p, 480p)
+- Filter by: Size (min/max GB)
+- Filter by: Hoster (preferred/excluded)
+- Sort by: Quality, Size, Seeders, Hoster
+- Reset filters on new movie selection
+- Default settings saved in AsyncStorage
 
-## Known Remaining Issues
+#### 6. One-Click Play Settings
+- Enable/disable one-click auto-play
+- Preferred quality selection (4K, REMUX, 1080p, etc.)
+- Preferred hoster selection
+- Preferred debrid service
+- Min/max file size constraints
+- IPTV Premium prioritization option
 
-1. **Debrid Links (0 showing)**: This happens when:
-   - User is not authenticated with Real-Debrid/AllDebrid/Premiumize
-   - Movie/show doesn't have a valid IMDB ID
-   - Torrentio server is down/slow
-   - Note: User MUST complete OAuth auth flow first
+### Settings Page Updates
+- **Player Settings** section added:
+  - Subtitles configuration (size, auto-download)
+  - OpenSubtitles account setup
+  - One-Click Play configuration
 
-2. **Direct Links Not Playing**: 
-   - Some embed sites may be blocked by the provider
-   - The WebView player now handles embed URLs properly
-   - User may need to interact with the player (click play, close ads)
+### Services Created
+1. `/app/frontend/services/resolveUrl.ts` - Debrid link resolver
+2. `/app/frontend/services/subtitleService.ts` - Subtitle management
+3. `/app/frontend/services/streamFilterService.ts` - Stream filtering & one-click play
+4. `/app/frontend/services/parentalControlService.ts` - Parental controls (enhanced)
 
-3. **Shield TV Focus**: 
-   - Focus highlighting is implemented but needs testing on real device
-   - The styles use cyan border + scale transform + shadow glow
+### Search Page Enhancements
+- IPTV VOD search integration
+- Gold badge for premium IPTV content
+- Tab filtering (All/Movies/TV Shows/IPTV Premium)
 
-## Test Credentials (DO NOT COMMIT)
-IPTV credentials stored separately for testing purposes.
-
-## Technical Changes Summary
-
-### Files Modified:
-- `/app/frontend/app/player.tsx` - Fullscreen fix, orientation lock, WebView for embeds
-- `/app/frontend/services/iptv.ts` - EPG caching, batch loading, cache clear
-- `/app/frontend/services/streamScrapers.ts` - New embed sources, better torrent handling
-- `/app/frontend/services/trakt.ts` - Watchlist, collection, history functions
-- `/app/frontend/store/contentStore.ts` - Trakt lists loading
-- `/app/frontend/components/Carousel.tsx` - Icon support
-- `/app/frontend/components/FocusableView.tsx` - Enhanced focus styles
-
-### Architecture:
-- **Caching Strategy**: In-memory caches with TTL (EPG: 5min, Channels: 10min, Categories: 30min)
-- **Player Types**: Native video player for direct streams, WebView for embed sources
-- **Orientation**: Lock to landscape on player open, unlock/reset on close
-
-## Session 4 Updates (March 7, 2026)
-
-### P0 Fixes Implemented:
-1. **Enhanced TV Focus Highlighting** - White borders (#FFFFFF), 1.15-1.18x scale transform, cyan glow (#00D9FF) with 30-45px shadow radius for maximum visibility on TV devices
-2. **Player Fullscreen Fix** - Added expo-navigation-bar to hide Android nav bar, improved orientation lock to landscape, useFocusEffect for proper cleanup
-3. **TV Guide Performance** - Replaced ScrollView with FlashList for virtualized rendering of large channel lists
-4. **Direct Streams Fix** - Embed sources now open in player's WebView instead of external browser
-
-### Files Modified:
-- `FocusableView.tsx` - Enhanced focus styles
-- `FocusableCard.tsx` - Enhanced card focus with massive glow
-- `player.tsx` - Added expo-navigation-bar, useFocusEffect
-- `tv-guide.tsx` - FlashList implementation
-- `movie/[id].tsx` - Direct streams open in player
-- `settings.tsx` - Enhanced button focus styles
+## Previous Session Fixes (Session 4)
+- Enhanced TV focus highlighting (white borders, cyan glow, 1.15-1.18x scale)
+- Player fullscreen with expo-navigation-bar
+- TV Guide using FlashList for performance
+- Direct streams open in player WebView
 
 ## Prioritized Backlog
 
-### P0 (Critical) - ADDRESSED
-- [x] TV focus highlighting enhanced with white borders and cyan glow
-- [x] Player fullscreen mode improved with navigation bar hiding
-- [x] TV Guide virtualized with FlashList
-- [ ] Test on real Shield TV / Fire TV device (requires device testing)
+### P0 (Critical)
+- [ ] Complete subtitle modal UI with all settings
+- [ ] Complete one-click play modal UI
+- [ ] Stream filter modal in movie detail page
+- [ ] Test on real Shield TV / Fire TV device
 
 ### P1 (High Priority)
-- [ ] TV show seasons/episodes selection flow
-- [ ] Add scrapers from fmhy.net/video
+- [ ] Add more scrapers from fmhy.net/video
 - [ ] "Providers" tab for filtering by streaming service
-- [ ] IMDB/Trakt login clarification
+- [ ] TV show seasons/episodes selection flow
 
 ### P2 (Medium Priority)
 - [ ] External player (VLC) integration
@@ -112,4 +94,11 @@ IPTV credentials stored separately for testing purposes.
 
 ### P3 (Low Priority)
 - [ ] GitLab CI/CD setup
-- [ ] Comprehensive search functionality
+- [ ] Comprehensive search voice input
+
+## Tech Stack
+- **Frontend**: React Native, Expo, Expo Router, TypeScript, Zustand
+- **Backend**: Python, FastAPI (Debrid auth proxies)
+- **State**: AsyncStorage for persistence
+- **Video**: expo-av (Video), react-native-webview (embeds)
+- **Performance**: @shopify/flash-list for large lists

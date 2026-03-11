@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,9 @@ import { theme, isTV } from '../../constants/theme';
 import { tmdbService } from '../../services/tmdb';
 import { debridCacheService, realDebridService } from '../../services/debrid';
 import { streamScraperService, StreamSource } from '../../services/streamScrapers';
+import { streamFilterService, FilterableStream, StreamFilterSettings } from '../../services/streamFilterService';
+import { resolveUrlService } from '../../services/resolveUrl';
+import { iptvService } from '../../services/iptv';
 import { useContentStore } from '../../store/contentStore';
 import { Movie, CachedTorrent } from '../../types';
 import { QUALITY_OPTIONS } from '../../config/constants';
@@ -24,11 +27,23 @@ export default function MovieDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [cachedTorrents, setCachedTorrents] = useState<CachedTorrent[]>([]);
   const [directStreams, setDirectStreams] = useState<StreamSource[]>([]);
+  const [iptvVODStream, setIptvVODStream] = useState<any>(null);
   const [showLinksModal, setShowLinksModal] = useState(false);
   const [loadingLinks, setLoadingLinks] = useState(false);
   const [selectedTorrent, setSelectedTorrent] = useState<CachedTorrent | null>(null);
   const [gettingStream, setGettingStream] = useState(false);
-  const [activeTab, setActiveTab] = useState<'debrid' | 'direct'>('debrid');
+  const [activeTab, setActiveTab] = useState<'debrid' | 'direct' | 'iptv'>('debrid');
+  
+  // Filter state
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterQuality, setFilterQuality] = useState<string | null>(null);
+  const [filterMinSize, setFilterMinSize] = useState<number | null>(null);
+  const [filterMaxSize, setFilterMaxSize] = useState<number | null>(null);
+  const [filterHoster, setFilterHoster] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'quality' | 'size' | 'seeders'>('quality');
+  
+  // One-click play
+  const [oneClickEnabled, setOneClickEnabled] = useState(false);
 
   useEffect(() => {
     if (id) {

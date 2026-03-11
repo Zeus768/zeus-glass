@@ -721,4 +721,139 @@ export const iptvService = {
 
     return results;
   },
+
+  // Search VOD Movies by title
+  searchVODMovies: async (query: string): Promise<any[]> => {
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) return [];
+
+      const queryLower = query.toLowerCase().trim();
+      if (queryLower.length < 2) return [];
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      
+      const protocols = ['https', 'http'];
+      let response = null;
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+                action: 'get_vod_streams',
+              },
+              timeout: 20000,
+            }
+          );
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!response || !response.data) return [];
+      
+      const allMovies = response.data || [];
+      
+      // Filter by search query (search in name/title)
+      const matches = allMovies.filter((movie: any) => {
+        const title = (movie.name || movie.title || '').toLowerCase();
+        return title.includes(queryLower);
+      }).slice(0, 20); // Limit to 20 results
+
+      return matches.map((movie: any) => ({
+        stream_id: movie.stream_id,
+        name: movie.name || movie.title,
+        stream_icon: movie.stream_icon || movie.cover,
+        cover: movie.cover || movie.stream_icon,
+        plot: movie.plot || movie.description,
+        rating: movie.rating,
+        year: movie.releaseDate || movie.year,
+        stream_url: movie.stream_url || `${cleanDomain}/movie/${config.username}/${config.password}/${movie.stream_id}.mp4`,
+        type: 'movie',
+      }));
+    } catch (error) {
+      console.error('[IPTV] Search VOD movies error:', error);
+      return [];
+    }
+  },
+
+  // Search VOD Series by title
+  searchVODSeries: async (query: string): Promise<any[]> => {
+    try {
+      const config = await iptvService.getConfig();
+      if (!config || !config.enabled) return [];
+
+      const queryLower = query.toLowerCase().trim();
+      if (queryLower.length < 2) return [];
+
+      let cleanDomain = config.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      
+      const protocols = ['https', 'http'];
+      let response = null;
+      
+      for (const p of protocols) {
+        try {
+          response = await axios.get(
+            `${p}://${cleanDomain}/player_api.php`,
+            {
+              params: {
+                username: config.username,
+                password: config.password,
+                action: 'get_series',
+              },
+              timeout: 20000,
+            }
+          );
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!response || !response.data) return [];
+      
+      const allSeries = response.data || [];
+      
+      // Filter by search query (search in name/title)
+      const matches = allSeries.filter((series: any) => {
+        const title = (series.name || series.title || '').toLowerCase();
+        return title.includes(queryLower);
+      }).slice(0, 20); // Limit to 20 results
+
+      return matches.map((series: any) => ({
+        stream_id: series.series_id,
+        series_id: series.series_id,
+        name: series.name || series.title,
+        stream_icon: series.cover || series.stream_icon,
+        cover: series.cover || series.stream_icon,
+        plot: series.plot || series.description,
+        rating: series.rating,
+        year: series.releaseDate || series.year,
+        type: 'series',
+      }));
+    } catch (error) {
+      console.error('[IPTV] Search VOD series error:', error);
+      return [];
+    }
+  },
+
+  // Check if IPTV is logged in
+  isLoggedIn: (): boolean => {
+    // Synchronous check using cached state - will be updated on app load
+    return iptvService._isLoggedIn;
+  },
+
+  _isLoggedIn: false,
+
+  // Initialize the logged in state
+  initLoginState: async (): Promise<boolean> => {
+    const config = await iptvService.getConfig();
+    iptvService._isLoggedIn = !!(config && config.enabled);
+    return iptvService._isLoggedIn;
+  },
 };
