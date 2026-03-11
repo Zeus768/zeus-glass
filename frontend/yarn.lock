@@ -3988,6 +3988,11 @@ expo-constants@~18.0.12, expo-constants@~18.0.13:
     "@expo/config" "~12.0.13"
     "@expo/env" "~2.0.8"
 
+expo-crypto@^55.0.9:
+  version "55.0.9"
+  resolved "https://registry.yarnpkg.com/expo-crypto/-/expo-crypto-55.0.9.tgz#bab058ffa7c7ffd2c04fd2257a6a77882a5d4625"
+  integrity sha512-hYiZYRPMXGQXSgKjp/m84l/6Uq8mTeMts1C7bFZXN5M5TUOiRhrLeqMSYZFXrAlkFpXeO46V+Ts1CFauMBLuCw==
+
 expo-document-picker@^55.0.8:
   version "55.0.8"
   resolved "https://registry.yarnpkg.com/expo-document-picker/-/expo-document-picker-55.0.8.tgz#e82da1d1dfde109a66f47696cb9df3d798714dcb"

@@ -12,6 +12,7 @@ import {
   Alert,
   Clipboard,
   Linking,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
@@ -24,6 +25,7 @@ import { errorLogService, LogEntry } from '../services/errorLogService';
 import { parentalControlService, ParentalControlSettings } from '../services/parentalControlService';
 import { subtitleService, SubtitleSettings } from '../services/subtitleService';
 import { streamFilterService, OneClickPlaySettings } from '../services/streamFilterService';
+import { zeusVaultService, VaultData } from '../services/zeusVaultService';
 import { formatDistanceToNow, format } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -84,6 +86,17 @@ export default function SettingsScreen() {
   // Focus state for TV navigation
   const [focusedElement, setFocusedElement] = useState<string | null>(null);
 
+  // Zeus Vault state
+  const [vaultModalVisible, setVaultModalVisible] = useState(false);
+  const [vaultStatus, setVaultStatus] = useState<{
+    exists: boolean;
+    lastSaved: string | null;
+    lastRestored: string | null;
+    accountCount: number;
+  } | null>(null);
+  const [vaultLoading, setVaultLoading] = useState(false);
+  const [vaultImportText, setVaultImportText] = useState('');
+
   // Torrentio configuration state
   const [torrentioModalVisible, setTorrentioModalVisible] = useState(false);
   const [torrentioConfig, setTorrentioConfig] = useState<string | null>(null);
@@ -106,9 +119,104 @@ export default function SettingsScreen() {
       setOneClickSettings(streamFilterService.getOneClickSettings());
     });
     
+    // Initialize Zeus Vault
+    zeusVaultService.init().then(async () => {
+      const status = await zeusVaultService.getVaultStatus();
+      setVaultStatus(status);
+      
+      // Auto-restore on first launch
+      const result = await zeusVaultService.autoRestore();
+      if (result.restored && result.accountsRestored.length > 0) {
+        Alert.alert(
+          'Zeus Vault',
+          `Restored ${result.accountsRestored.length} account(s): ${result.accountsRestored.join(', ')}`,
+          [{ text: 'OK' }]
+        );
+      }
+    });
+    
     // Load Torrentio config
     loadTorrentioConfig();
   }, []);
+
+  // Zeus Vault functions
+  const handleSaveVault = async () => {
+    setVaultLoading(true);
+    try {
+      const success = await zeusVaultService.saveVault();
+      if (success) {
+        const status = await zeusVaultService.getVaultStatus();
+        setVaultStatus(status);
+        Alert.alert('Zeus Vault', 'All accounts and settings saved to vault!');
+      } else {
+        Alert.alert('Error', 'Failed to save vault');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save vault');
+    } finally {
+      setVaultLoading(false);
+    }
+  };
+
+  const handleRestoreVault = async () => {
+    setVaultLoading(true);
+    try {
+      const vault = await zeusVaultService.restoreVault();
+      if (vault) {
+        await zeusVaultService.applyVaultData(vault);
+        const status = await zeusVaultService.getVaultStatus();
+        setVaultStatus(status);
+        Alert.alert('Zeus Vault', 'Vault restored successfully! Please restart the app to apply all changes.');
+      } else {
+        Alert.alert('Zeus Vault', 'No vault backup found');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to restore vault');
+    } finally {
+      setVaultLoading(false);
+    }
+  };
+
+  const handleExportVault = async () => {
+    setVaultLoading(true);
+    try {
+      const vaultJson = await zeusVaultService.exportVault();
+      if (vaultJson) {
+        await Share.share({
+          message: vaultJson,
+          title: 'Zeus Vault Backup',
+        });
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to export vault');
+    } finally {
+      setVaultLoading(false);
+    }
+  };
+
+  const handleImportVault = async () => {
+    if (!vaultImportText.trim()) {
+      Alert.alert('Error', 'Please paste vault data first');
+      return;
+    }
+    
+    setVaultLoading(true);
+    try {
+      const success = await zeusVaultService.importVault(vaultImportText);
+      if (success) {
+        const status = await zeusVaultService.getVaultStatus();
+        setVaultStatus(status);
+        setVaultImportText('');
+        Alert.alert('Zeus Vault', 'Vault imported successfully! Please restart the app.');
+      } else {
+        Alert.alert('Error', 'Invalid vault data');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to import vault');
+    } finally {
+      setVaultLoading(false);
+    }
+  };
 
   const loadTorrentioConfig = async () => {
     try {
@@ -526,6 +634,92 @@ export default function SettingsScreen() {
                   <Text style={styles.accountButtonText}>Edit</Text>
                 </Pressable>
               )}
+            </View>
+          </View>
+        </AccountSection>
+
+        {/* Zeus Vault Section */}
+        <AccountSection title="Zeus Vault">
+          <View style={styles.vaultCard}>
+            <View style={styles.vaultHeader}>
+              <View style={styles.vaultTitleRow}>
+                <Ionicons name="shield" size={isTV ? 36 : 28} color="#FFD700" />
+                <View style={styles.vaultTitleContainer}>
+                  <Text style={styles.vaultTitle}>Zeus Vault</Text>
+                  <Text style={styles.vaultSubtitle}>Secure account backup</Text>
+                </View>
+              </View>
+              <View style={styles.vaultStatusBadge}>
+                <View style={[
+                  styles.vaultStatusDot,
+                  { backgroundColor: vaultStatus?.exists ? theme.colors.success : theme.colors.textMuted }
+                ]} />
+                <Text style={styles.vaultStatusText}>
+                  {vaultStatus?.exists ? `${vaultStatus.accountCount} accounts saved` : 'No backup'}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.vaultDescription}>
+              Save all your accounts (IPTV, Debrid, Trakt) to device storage. 
+              If you reinstall the app, Zeus Vault will automatically restore your settings.
+            </Text>
+
+            {vaultStatus?.lastSaved && (
+              <Text style={styles.vaultLastSaved}>
+                Last saved: {formatDistanceToNow(new Date(vaultStatus.lastSaved), { addSuffix: true })}
+              </Text>
+            )}
+
+            <View style={styles.vaultActions}>
+              <Pressable 
+                style={[styles.vaultButton, styles.vaultButtonPrimary, focusedElement === 'vault-save' && styles.buttonFocused]}
+                onPress={handleSaveVault}
+                onFocus={() => setFocusedElement('vault-save')}
+                onBlur={() => setFocusedElement(null)}
+                disabled={vaultLoading}
+              >
+                {vaultLoading ? (
+                  <ActivityIndicator size="small" color="#000" />
+                ) : (
+                  <>
+                    <Ionicons name="save" size={18} color="#000" />
+                    <Text style={styles.vaultButtonTextPrimary}>Save to Vault</Text>
+                  </>
+                )}
+              </Pressable>
+
+              <Pressable 
+                style={[styles.vaultButton, focusedElement === 'vault-restore' && styles.buttonFocused]}
+                onPress={handleRestoreVault}
+                onFocus={() => setFocusedElement('vault-restore')}
+                onBlur={() => setFocusedElement(null)}
+                disabled={vaultLoading}
+              >
+                <Ionicons name="cloud-download" size={18} color={theme.colors.text} />
+                <Text style={styles.vaultButtonText}>Restore</Text>
+              </Pressable>
+
+              <Pressable 
+                style={[styles.vaultButton, focusedElement === 'vault-export' && styles.buttonFocused]}
+                onPress={handleExportVault}
+                onFocus={() => setFocusedElement('vault-export')}
+                onBlur={() => setFocusedElement(null)}
+                disabled={vaultLoading}
+              >
+                <Ionicons name="share" size={18} color={theme.colors.text} />
+                <Text style={styles.vaultButtonText}>Export</Text>
+              </Pressable>
+
+              <Pressable 
+                style={[styles.vaultButton, focusedElement === 'vault-modal' && styles.buttonFocused]}
+                onPress={() => setVaultModalVisible(true)}
+                onFocus={() => setFocusedElement('vault-modal')}
+                onBlur={() => setFocusedElement(null)}
+              >
+                <Ionicons name="settings" size={18} color={theme.colors.text} />
+                <Text style={styles.vaultButtonText}>Import</Text>
+              </Pressable>
             </View>
           </View>
         </AccountSection>
@@ -1094,6 +1288,96 @@ const styles = StyleSheet.create({
   },
   buttonTextFocused: {
     fontWeight: '900' as const,
+  },
+  // Zeus Vault styles
+  vaultCard: {
+    backgroundColor: theme.colors.card,
+    borderRadius: isTV ? 20 : theme.borderRadius.md,
+    padding: isTV ? 28 : theme.spacing.md,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  vaultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: isTV ? 20 : theme.spacing.md,
+  },
+  vaultTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: isTV ? 16 : 12,
+  },
+  vaultTitleContainer: {
+    gap: 2,
+  },
+  vaultTitle: {
+    fontSize: isTV ? 26 : 20,
+    fontWeight: '700',
+    color: '#FFD700',
+  },
+  vaultSubtitle: {
+    fontSize: isTV ? 14 : 12,
+    color: theme.colors.textSecondary,
+  },
+  vaultStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: isTV ? 16 : 12,
+    paddingVertical: isTV ? 10 : 6,
+    borderRadius: 20,
+    gap: 8,
+  },
+  vaultStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  vaultStatusText: {
+    fontSize: isTV ? 14 : 12,
+    color: theme.colors.text,
+  },
+  vaultDescription: {
+    fontSize: isTV ? 16 : 14,
+    color: theme.colors.textSecondary,
+    lineHeight: isTV ? 24 : 20,
+    marginBottom: isTV ? 16 : 12,
+  },
+  vaultLastSaved: {
+    fontSize: isTV ? 14 : 12,
+    color: theme.colors.textMuted,
+    marginBottom: isTV ? 20 : 16,
+  },
+  vaultActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: isTV ? 16 : 12,
+  },
+  vaultButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: isTV ? 20 : 16,
+    paddingVertical: isTV ? 14 : 10,
+    borderRadius: isTV ? 14 : 10,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    gap: 8,
+  },
+  vaultButtonPrimary: {
+    backgroundColor: '#FFD700',
+    borderColor: '#FFD700',
+  },
+  vaultButtonText: {
+    fontSize: isTV ? 16 : 14,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  vaultButtonTextPrimary: {
+    fontSize: isTV ? 16 : 14,
+    fontWeight: '600',
+    color: '#000',
   },
   accountInfo: {
     gap: isTV ? 16 : theme.spacing.sm,
