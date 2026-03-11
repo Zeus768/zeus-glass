@@ -265,66 +265,178 @@ export const realDebridService = {
     try {
       const token = await realDebridService.getToken();
       if (!token) {
-        console.error('[Real-Debrid] No token available');
+        errorLogService.error('No Real-Debrid token available', 'RealDebrid');
         return null;
       }
 
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      errorLogService.info(`Adding magnet for: ${title}`, 'RealDebrid');
 
-      // Step 1: Add magnet
-      console.log('[Real-Debrid] Adding magnet...');
-      const addResponse = await axios.post(`${backendUrl}/api/debrid/real-debrid/add-magnet`, null, {
-        params: { magnet, token },
-      });
+      // Try direct API first (works from mobile)
+      try {
+        // Step 1: Add magnet directly to Real-Debrid
+        const formData = new URLSearchParams();
+        formData.append('magnet', magnet);
+        
+        const addResponse = await axios.post(
+          'https://api.real-debrid.com/rest/1.0/torrents/addMagnet',
+          formData.toString(),
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            timeout: 15000,
+          }
+        );
 
-      if (!addResponse.data.success) {
-        console.error('[Real-Debrid] Failed to add magnet');
+        if (!addResponse.data?.id) {
+          errorLogService.error('Failed to add magnet - no ID returned', 'RealDebrid');
+          return null;
+        }
+
+        const torrentId = addResponse.data.id;
+        errorLogService.info(`Magnet added, ID: ${torrentId}`, 'RealDebrid');
+
+        // Step 2: Select all files
+        const selectFormData = new URLSearchParams();
+        selectFormData.append('files', 'all');
+        
+        await axios.post(
+          `https://api.real-debrid.com/rest/1.0/torrents/selectFiles/${torrentId}`,
+          selectFormData.toString(),
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            timeout: 10000,
+          }
+        );
+
+        errorLogService.info('Files selected, waiting for download...', 'RealDebrid');
+
+        // Step 3: Wait for torrent to be ready (up to 30 seconds)
+        let attempts = 0;
+        let torrentInfo;
+
+        while (attempts < 30) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          const infoResponse = await axios.get(
+            `https://api.real-debrid.com/rest/1.0/torrents/info/${torrentId}`,
+            {
+              headers: { 'Authorization': `Bearer ${token}` },
+              timeout: 10000,
+            }
+          );
+
+          torrentInfo = infoResponse.data;
+          errorLogService.info(`Status: ${torrentInfo.status}`, 'RealDebrid');
+          
+          if (torrentInfo.status === 'downloaded') {
+            break;
+          }
+          if (torrentInfo.status === 'error' || torrentInfo.status === 'virus' || torrentInfo.status === 'dead') {
+            errorLogService.error(`Torrent error: ${torrentInfo.status}`, 'RealDebrid');
+            return null;
+          }
+          attempts++;
+        }
+
+        if (!torrentInfo || torrentInfo.status !== 'downloaded') {
+          errorLogService.warn('Torrent not ready after 30 seconds', 'RealDebrid');
+          return null;
+        }
+
+        // Step 4: Get the download links
+        const links = torrentInfo.links || [];
+        if (links.length === 0) {
+          errorLogService.error('No links in torrent info', 'RealDebrid');
+          return null;
+        }
+
+        // Step 5: Unrestrict the first link to get direct download URL
+        const unrestrictFormData = new URLSearchParams();
+        unrestrictFormData.append('link', links[0]);
+        
+        const unrestrictResponse = await axios.post(
+          'https://api.real-debrid.com/rest/1.0/unrestrict/link',
+          unrestrictFormData.toString(),
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            timeout: 15000,
+          }
+        );
+
+        const downloadUrl = unrestrictResponse.data?.download;
+        if (downloadUrl) {
+          errorLogService.info(`Got playable link: ${downloadUrl.substring(0, 50)}...`, 'RealDebrid');
+          return downloadUrl;
+        }
+
         return null;
-      }
+      } catch (directError: any) {
+        errorLogService.error(`Direct API failed: ${directError.message}`, 'RealDebrid');
+        
+        // Fallback to backend proxy
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        if (!backendUrl) return null;
 
-      const torrentId = addResponse.data.data.id;
-
-      // Step 2: Select files
-      console.log('[Real-Debrid] Selecting files...');
-      await axios.post(`${backendUrl}/api/debrid/real-debrid/select-files`, null, {
-        params: { torrent_id: torrentId, file_ids: 'all', token },
-      });
-
-      // Step 3: Wait for torrent to be ready
-      console.log('[Real-Debrid] Waiting for torrent...');
-      let attempts = 0;
-      let torrentInfo;
-
-      while (attempts < 30) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        const infoResponse = await axios.get(`${backendUrl}/api/debrid/real-debrid/torrent-info`, {
-          params: { torrent_id: torrentId, token },
+        // Step 1: Add magnet via backend
+        const addResponse = await axios.post(`${backendUrl}/api/debrid/real-debrid/add-magnet`, null, {
+          params: { magnet, token },
+          timeout: 15000,
         });
 
-        torrentInfo = infoResponse.data.data;
-        if (torrentInfo.status === 'downloaded' || torrentInfo.status === 'waiting_files_selection') {
-          break;
+        if (!addResponse.data.success) {
+          return null;
         }
-        attempts++;
+
+        const torrentId = addResponse.data.data.id;
+
+        // Step 2: Select files
+        await axios.post(`${backendUrl}/api/debrid/real-debrid/select-files`, null, {
+          params: { torrent_id: torrentId, file_ids: 'all', token },
+        });
+
+        // Step 3: Wait for torrent to be ready
+        let attempts = 0;
+        let torrentInfo;
+
+        while (attempts < 30) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          const infoResponse = await axios.get(`${backendUrl}/api/debrid/real-debrid/torrent-info`, {
+            params: { torrent_id: torrentId, token },
+          });
+
+          torrentInfo = infoResponse.data.data;
+          if (torrentInfo.status === 'downloaded') {
+            break;
+          }
+          attempts++;
+        }
+
+        if (!torrentInfo || torrentInfo.status !== 'downloaded') {
+          return null;
+        }
+
+        // Step 4: Get download link
+        const links = torrentInfo.links || [];
+        if (links.length === 0) return null;
+
+        // Step 5: Unrestrict
+        const unrestrictResponse = await axios.post(`${backendUrl}/api/debrid/real-debrid/unrestrict`, null, {
+          params: { link: links[0], token },
+        });
+
+        return unrestrictResponse.data?.data?.download || null;
       }
-
-      if (!torrentInfo || torrentInfo.status !== 'downloaded') {
-        return null;
-      }
-
-      // Step 4: Get download link
-      const links = torrentInfo.links || [];
-      if (links.length === 0) return null;
-
-      // Step 5: Unrestrict
-      const unrestrictResponse = await axios.post(`${backendUrl}/api/debrid/real-debrid/unrestrict`, null, {
-        params: { link: links[0], token },
-      });
-
-      return unrestrictResponse.data?.data?.download || null;
-    } catch (error) {
-      console.error('[Real-Debrid] Error in magnet flow:', error);
+    } catch (error: any) {
+      errorLogService.error(`Error in magnet flow: ${error.message}`, 'RealDebrid', error);
       return null;
     }
   },
@@ -721,41 +833,83 @@ export const debridCacheService = {
     }
   },
 
-  // Direct Torrentio API call (bypasses backend)
+  // Direct Torrentio API call (bypasses backend) - Cinema HD style
   searchTorrentio: async (imdbId: string, type: 'movie' | 'series', season?: number, episode?: number): Promise<CachedTorrent[]> => {
     try {
+      // Torrentio with all providers enabled (like Cinema HD)
+      // Using the default config which includes all torrent sites
       let url = `https://torrentio.strem.fun/stream/${type}/${imdbId}`;
       if (type === 'series' && season !== undefined && episode !== undefined) {
         url += `:${season}:${episode}`;
       }
       url += '.json';
 
-      const response = await axios.get(url, { timeout: 10000 });
+      errorLogService.info(`Fetching from Torrentio: ${url}`, 'Torrentio');
+      
+      const response = await axios.get(url, { 
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
+        }
+      });
+      
       const streams = response.data?.streams || [];
+      errorLogService.info(`Torrentio raw streams: ${streams.length}`, 'Torrentio');
 
-      return streams.slice(0, 50).map((stream: any) => {
-        // Parse info from title
+      if (streams.length === 0) {
+        errorLogService.warn('Torrentio returned 0 streams', 'Torrentio');
+        return [];
+      }
+
+      const results = streams.slice(0, 60).map((stream: any) => {
+        // Parse info from title - Cinema HD style parsing
         const title = stream.title || stream.name || '';
-        const quality = title.match(/(4K|2160p|1080p|720p|480p)/i)?.[1] || '720p';
-        const sizeMatch = title.match(/(\d+\.?\d*)\s*(GB|MB)/i);
-        const size = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[2]}` : '';
+        const behaviorHints = stream.behaviorHints || {};
         
-        // Extract hash from URL
-        const hash = stream.infoHash || '';
+        // Extract quality
+        let quality = '720p';
+        if (title.match(/4K|2160p|UHD/i)) quality = '4K';
+        else if (title.match(/1080p|FHD/i)) quality = '1080p';
+        else if (title.match(/720p|HD/i)) quality = '720p';
+        else if (title.match(/480p|SD/i)) quality = '480p';
+        
+        // Extract size
+        const sizeMatch = title.match(/(\d+\.?\d*)\s*(GB|MB|gb|mb)/i);
+        const size = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[2].toUpperCase()}` : '';
+        
+        // Get hash from infoHash or URL
+        let hash = stream.infoHash || '';
+        if (!hash && stream.url) {
+          // Try to extract from magnet link
+          const magnetMatch = stream.url.match(/btih:([a-fA-F0-9]{40})/i);
+          if (magnetMatch) hash = magnetMatch[1];
+        }
+
+        // Get seeders from title if available
+        const seedMatch = title.match(/(\d+)\s*seeder/i);
+        const seeders = seedMatch ? parseInt(seedMatch[1]) : 0;
+
+        // Get source/tracker from title
+        const sourceMatch = title.match(/\[([^\]]+)\]/);
+        const source = sourceMatch ? sourceMatch[1] : 'Torrentio';
 
         return {
-          hash,
-          title: stream.title || stream.name || 'Unknown',
+          hash: hash.toLowerCase(),
+          title: title,
           quality: quality.toUpperCase(),
           size,
-          source: 'Torrentio',
-          seeders: 0,
-          cached: false, // Will be updated after cache check
-          file_id: 0,
+          source,
+          seeders,
+          cached: false,
+          file_id: behaviorHints.videoSize ? 0 : undefined,
+          magnet: stream.url || '',
         };
-      }).filter((t: CachedTorrent) => t.hash);
+      }).filter((t: CachedTorrent) => t.hash && t.hash.length === 40);
+
+      errorLogService.info(`Parsed ${results.length} valid torrents from Torrentio`, 'Torrentio');
+      return results;
     } catch (error: any) {
-      errorLogService.warn(`Torrentio search failed: ${error.message}`, 'DebridCache');
+      errorLogService.error(`Torrentio search failed: ${error.message}`, 'Torrentio', error);
       return [];
     }
   },

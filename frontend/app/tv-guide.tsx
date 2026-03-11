@@ -46,18 +46,26 @@ export default function TVGuideScreen() {
   const loadChannels = async () => {
     setLoading(true);
     try {
-      const [channelData, categoryData] = await Promise.all([
+      const [channelData, categoryData] = await Promise.allSettled([
         iptvService.getLiveChannels(),
         iptvService.getLiveCategories(),
       ]);
-      setChannels(channelData);
-      setCategories([{ id: 'all', name: 'All' }, ...categoryData]);
       
-      // Load EPG for first 20 channels
-      const first20 = channelData.slice(0, 20);
-      loadEPGForChannels(first20);
+      const channels = channelData.status === 'fulfilled' ? channelData.value : [];
+      const categories = categoryData.status === 'fulfilled' ? categoryData.value : [];
+      
+      setChannels(channels || []);
+      setCategories([{ id: 'all', name: 'All' }, ...(categories || [])]);
+      
+      // Load EPG for first 10 channels only (reduced to prevent crash)
+      if (channels && channels.length > 0) {
+        const first10 = channels.slice(0, 10);
+        loadEPGForChannels(first10);
+      }
     } catch (error) {
       console.error('Error loading channels:', error);
+      setChannels([]);
+      setCategories([{ id: 'all', name: 'All' }]);
     } finally {
       setLoading(false);
     }
