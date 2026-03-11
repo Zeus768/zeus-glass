@@ -121,7 +121,7 @@ export const streamScraperService = {
     const streams: StreamSource[] = [];
     console.log(`[Scrapers] Getting movie streams for tmdb:${tmdbId}, imdb:${imdbId}`);
     
-    // Run embed scrapers (these are most reliable)
+    // Run embed scrapers ONLY (Torrentio goes to Debrid tab, NOT direct streams)
     const embedPromises = [
       // VidSrc variants
       streamScraperService.scrapeVidSrc('movie', tmdbId),
@@ -142,23 +142,23 @@ export const streamScraperService = {
       streamScraperService.scrapeWarezCDN('movie', tmdbId, imdbId),
     ];
     
-    // Torrentio only if we have IMDB ID (required for Stremio addons)
-    if (imdbId) {
-      embedPromises.push(streamScraperService.scrapeTorrentio('movie', imdbId));
-    }
+    // NOTE: Torrentio removed from here - it's a DEBRID source, not direct!
+    // Torrent links are fetched via debridCacheService.searchCachedMovie
     
     try {
       const results = await Promise.allSettled(embedPromises);
       results.forEach((result) => {
         if (result.status === 'fulfilled' && result.value) {
-          streams.push(...result.value);
+          // Filter out any torrent types from direct streams
+          const directOnly = result.value.filter((s: StreamSource) => s.type !== 'torrent');
+          streams.push(...directOnly);
         }
       });
     } catch (error) {
       console.error('Error scraping streams:', error);
     }
     
-    console.log(`[Scrapers] Found ${streams.length} streams`);
+    console.log(`[Scrapers] Found ${streams.length} direct streams`);
     return streams;
   },
 

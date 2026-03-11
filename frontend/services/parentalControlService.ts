@@ -71,8 +71,8 @@ class ParentalControlService {
     return Math.abs(hash).toString(16);
   }
 
-  // Setup PIN for parental controls
-  async setupPin(pin: string): Promise<boolean> {
+  // Enable parental controls with a new PIN
+  async enable(pin: string): Promise<boolean> {
     if (pin.length < 4) {
       return false;
     }
@@ -90,14 +90,8 @@ class ParentalControlService {
     return true;
   }
 
-  // Verify PIN
-  verifyPin(pin: string): boolean {
-    if (!this.settings.pinHash) return false;
-    return this.hashPin(pin) === this.settings.pinHash;
-  }
-
   // Unlock with PIN (temporary access)
-  async unlockWithPin(pin: string): Promise<boolean> {
+  async unlock(pin: string): Promise<boolean> {
     if (this.verifyPin(pin)) {
       this.isUnlocked = true;
       await this.saveSettings({
@@ -106,6 +100,28 @@ class ParentalControlService {
       return true;
     }
     return false;
+  }
+
+  // Disable parental controls entirely (requires PIN)
+  async disable(pin: string): Promise<boolean> {
+    if (!this.verifyPin(pin)) {
+      return false;
+    }
+
+    await this.saveSettings({
+      enabled: false,
+      adultContentBlocked: false,
+      requirePinForAdult: false,
+    });
+
+    this.isUnlocked = true;
+    return true;
+  }
+
+  // Verify PIN
+  verifyPin(pin: string): boolean {
+    if (!this.settings.pinHash) return false;
+    return this.hashPin(pin) === this.settings.pinHash;
   }
 
   // Check if currently unlocked
@@ -135,19 +151,22 @@ class ParentalControlService {
     return this.checkUnlockStatus();
   }
 
-  // Disable parental controls entirely (requires PIN)
-  async disableParentalControls(pin: string): Promise<boolean> {
-    if (!this.verifyPin(pin)) {
+  // Setup PIN for parental controls
+  async setupPin(pin: string): Promise<boolean> {
+    if (pin.length < 4) {
       return false;
     }
 
+    const pinHash = this.hashPin(pin);
     await this.saveSettings({
-      enabled: false,
-      adultContentBlocked: false,
-      requirePinForAdult: false,
+      enabled: true,
+      pin: null, // Don't store plain PIN
+      pinHash,
+      adultContentBlocked: true,
+      requirePinForAdult: true,
+      setupComplete: true,
     });
 
-    this.isUnlocked = true;
     return true;
   }
 
@@ -203,6 +222,19 @@ class ParentalControlService {
     return items.filter(item => 
       !this.isAdultContent(item.category || '', item.name || '')
     );
+  }
+
+  // Generic filter method used by IPTV service
+  filterContent<T>(items: T[]): T[] {
+    if (this.canAccessAdultContent()) {
+      return items;
+    }
+    
+    return items.filter((item: any) => {
+      const category = item.category || item.category_name || '';
+      const name = item.name || item.title || '';
+      return !this.isAdultContent(category, name);
+    });
   }
 
   // Check if IPTV has adult categories

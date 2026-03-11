@@ -1,10 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
-import { Platform } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Sharing from 'expo-sharing';
+import { Platform, Alert } from 'react-native';
+import { encode as base64Encode, decode as base64Decode } from 'base-64';
 
 const VAULT_VERSION = '1.0';
-const VAULT_FILENAME = 'zeus_vault.enc';
+const VAULT_FILENAME = 'zeus_vault.json';
 const VAULT_BACKUP_DIR = FileSystem.documentDirectory + 'vault/';
 
 // Keys that should be backed up to the vault
@@ -169,8 +172,8 @@ class ZeusVaultService {
           data.charCodeAt(i) ^ key.charCodeAt(i % key.length)
         );
       }
-      // Use btoa for base64 encoding (works in both web and RN)
-      return btoa(unescape(encodeURIComponent(result)));
+      // Use base-64 library for React Native compatibility
+      return base64Encode(result);
     } catch (error) {
       console.error('[ZeusVault] Encryption error:', error);
       return data;
@@ -180,8 +183,8 @@ class ZeusVaultService {
   private decrypt(encryptedData: string): string {
     try {
       const key = this.encryptionKey;
-      // Use atob for base64 decoding
-      const data = decodeURIComponent(escape(atob(encryptedData)));
+      // Use base-64 library for React Native compatibility
+      const data = base64Decode(encryptedData);
       let result = '';
       for (let i = 0; i < data.length; i++) {
         result += String.fromCharCode(
@@ -519,6 +522,76 @@ class ZeusVaultService {
     } catch (error) {
       console.error('[ZeusVault] Export error:', error);
       return null;
+    }
+  }
+
+  // Export vault to a file and share it
+  async exportToFile(): Promise<boolean> {
+    try {
+      const vaultJson = await this.exportVault();
+      if (!vaultJson) {
+        Alert.alert('Error', 'Failed to collect vault data');
+        return false;
+      }
+
+      // Create a temporary file
+      const tempPath = FileSystem.cacheDirectory + `zeus_vault_${Date.now()}.json`;
+      await FileSystem.writeAsStringAsync(tempPath, vaultJson);
+
+      // Check if sharing is available
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(tempPath, {
+          mimeType: 'application/json',
+          dialogTitle: 'Export Zeus Vault',
+        });
+        console.log('[ZeusVault] Exported via share');
+        return true;
+      } else {
+        Alert.alert('Error', 'Sharing is not available on this device');
+        return false;
+      }
+    } catch (error) {
+      console.error('[ZeusVault] Export to file error:', error);
+      Alert.alert('Error', 'Failed to export vault');
+      return false;
+    }
+  }
+
+  // Import vault from a file picker
+  async importFromFile(): Promise<boolean> {
+    try {
+      // Open file picker
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        console.log('[ZeusVault] Import cancelled');
+        return false;
+      }
+
+      const file = result.assets[0];
+      
+      // Read the file content
+      const content = await FileSystem.readAsStringAsync(file.uri);
+      
+      // Import the vault
+      const success = await this.importVault(content);
+      
+      if (success) {
+        Alert.alert('Success', 'Vault restored successfully! Please restart the app.');
+        console.log('[ZeusVault] Imported from file');
+        return true;
+      } else {
+        Alert.alert('Error', 'Invalid vault file format');
+        return false;
+      }
+    } catch (error) {
+      console.error('[ZeusVault] Import from file error:', error);
+      Alert.alert('Error', 'Failed to import vault');
+      return false;
     }
   }
 

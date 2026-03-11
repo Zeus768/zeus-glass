@@ -669,13 +669,41 @@ export const debridCacheService = {
         return [];
       }
 
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-      const params = new URLSearchParams({ title, token });
+      // For mobile apps, we use the Torrentio API directly instead of going through backend
+      // This avoids network errors when the backend is not accessible
+      if (imdbId) {
+        try {
+          // Try Torrentio for instant results
+          const torrentioResults = await debridCacheService.searchTorrentio(imdbId, 'movie');
+          if (torrentioResults.length > 0) {
+            // Check cache status with Real-Debrid
+            const hashes = torrentioResults.map(t => t.hash);
+            const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
+            
+            return torrentioResults.map(t => ({
+              ...t,
+              cached: cachedHashes.includes(t.hash),
+            }));
+          }
+        } catch (torrentioError) {
+          errorLogService.warn('Torrentio direct call failed, trying backend', 'DebridCache');
+        }
+      }
 
+      // Fallback to backend if available
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      if (!backendUrl) {
+        errorLogService.warn('No backend URL configured', 'DebridCache');
+        return [];
+      }
+
+      const params = new URLSearchParams({ title, token });
       if (year) params.append('year', year.toString());
       if (imdbId) params.append('imdb_id', imdbId);
 
-      const response = await axios.get(`${backendUrl}/api/debrid/cache/search/movie?${params.toString()}`);
+      const response = await axios.get(`${backendUrl}/api/debrid/cache/search/movie?${params.toString()}`, {
+        timeout: 15000,
+      });
 
       if (response.data.success) {
         return response.data.results || [];
@@ -684,6 +712,74 @@ export const debridCacheService = {
       return [];
     } catch (error: any) {
       errorLogService.error(`Cache search failed: ${error.message}`, 'DebridCache', error);
+      return [];
+    }
+  },
+
+  // Direct Torrentio API call (bypasses backend)
+  searchTorrentio: async (imdbId: string, type: 'movie' | 'series', season?: number, episode?: number): Promise<CachedTorrent[]> => {
+    try {
+      let url = `https://torrentio.strem.fun/stream/${type}/${imdbId}`;
+      if (type === 'series' && season !== undefined && episode !== undefined) {
+        url += `:${season}:${episode}`;
+      }
+      url += '.json';
+
+      const response = await axios.get(url, { timeout: 10000 });
+      const streams = response.data?.streams || [];
+
+      return streams.slice(0, 50).map((stream: any) => {
+        // Parse info from title
+        const title = stream.title || stream.name || '';
+        const quality = title.match(/(4K|2160p|1080p|720p|480p)/i)?.[1] || '720p';
+        const sizeMatch = title.match(/(\d+\.?\d*)\s*(GB|MB)/i);
+        const size = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[2]}` : '';
+        
+        // Extract hash from URL
+        const hash = stream.infoHash || '';
+
+        return {
+          hash,
+          title: stream.title || stream.name || 'Unknown',
+          quality: quality.toUpperCase(),
+          size,
+          source: 'Torrentio',
+          seeders: 0,
+          cached: false, // Will be updated after cache check
+          file_id: 0,
+        };
+      }).filter((t: CachedTorrent) => t.hash);
+    } catch (error: any) {
+      errorLogService.warn(`Torrentio search failed: ${error.message}`, 'DebridCache');
+      return [];
+    }
+  },
+
+  // Check cache status directly with Real-Debrid
+  checkCacheStatus: async (hashes: string[], token: string): Promise<string[]> => {
+    try {
+      if (hashes.length === 0) return [];
+      
+      // Real-Debrid instant availability check
+      const hashParam = hashes.join('/');
+      const response = await axios.get(`https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/${hashParam}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000,
+      });
+
+      const cachedHashes: string[] = [];
+      if (response.data) {
+        Object.keys(response.data).forEach(hash => {
+          const data = response.data[hash];
+          if (data && data.rd && data.rd.length > 0) {
+            cachedHashes.push(hash.toLowerCase());
+          }
+        });
+      }
+
+      return cachedHashes;
+    } catch (error: any) {
+      errorLogService.warn(`Cache check failed: ${error.message}`, 'DebridCache');
       return [];
     }
   },
@@ -701,7 +797,31 @@ export const debridCacheService = {
         return [];
       }
 
+      // For mobile apps, use Torrentio directly for TV shows
+      if (imdbId) {
+        try {
+          const torrentioResults = await debridCacheService.searchTorrentio(imdbId, 'series', season, episode);
+          if (torrentioResults.length > 0) {
+            const hashes = torrentioResults.map(t => t.hash);
+            const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
+            
+            return torrentioResults.map(t => ({
+              ...t,
+              cached: cachedHashes.includes(t.hash.toLowerCase()),
+            }));
+          }
+        } catch (torrentioError) {
+          errorLogService.warn('Torrentio TV direct call failed, trying backend', 'DebridCache');
+        }
+      }
+
+      // Fallback to backend
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      if (!backendUrl) {
+        errorLogService.warn('No backend URL configured', 'DebridCache');
+        return [];
+      }
+
       const params = new URLSearchParams({
         title,
         token,
@@ -711,7 +831,9 @@ export const debridCacheService = {
 
       if (imdbId) params.append('imdb_id', imdbId);
 
-      const response = await axios.get(`${backendUrl}/api/debrid/cache/search/tv?${params.toString()}`);
+      const response = await axios.get(`${backendUrl}/api/debrid/cache/search/tv?${params.toString()}`, {
+        timeout: 15000,
+      });
 
       if (response.data.success) {
         return response.data.results || [];
