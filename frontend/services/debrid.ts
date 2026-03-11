@@ -674,19 +674,24 @@ export const debridCacheService = {
       if (imdbId) {
         try {
           // Try Torrentio for instant results
+          errorLogService.info(`Calling Torrentio directly for ${imdbId}`, 'DebridCache');
           const torrentioResults = await debridCacheService.searchTorrentio(imdbId, 'movie');
+          errorLogService.info(`Torrentio returned ${torrentioResults.length} results`, 'DebridCache');
+          
           if (torrentioResults.length > 0) {
             // Check cache status with Real-Debrid
-            const hashes = torrentioResults.map(t => t.hash);
+            const hashes = torrentioResults.map(t => t.hash.toLowerCase());
+            errorLogService.info(`Checking cache for ${hashes.length} hashes`, 'DebridCache');
             const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
+            errorLogService.info(`Found ${cachedHashes.length} cached hashes`, 'DebridCache');
             
             return torrentioResults.map(t => ({
               ...t,
-              cached: cachedHashes.includes(t.hash),
+              cached: cachedHashes.includes(t.hash.toLowerCase()),
             }));
           }
-        } catch (torrentioError) {
-          errorLogService.warn('Torrentio direct call failed, trying backend', 'DebridCache');
+        } catch (torrentioError: any) {
+          errorLogService.warn(`Torrentio direct call failed: ${torrentioError.message}`, 'DebridCache');
         }
       }
 
@@ -800,18 +805,23 @@ export const debridCacheService = {
       // For mobile apps, use Torrentio directly for TV shows
       if (imdbId) {
         try {
+          errorLogService.info(`Calling Torrentio directly for ${imdbId} S${season}E${episode}`, 'DebridCache');
           const torrentioResults = await debridCacheService.searchTorrentio(imdbId, 'series', season, episode);
+          errorLogService.info(`Torrentio returned ${torrentioResults.length} results`, 'DebridCache');
+          
           if (torrentioResults.length > 0) {
-            const hashes = torrentioResults.map(t => t.hash);
+            const hashes = torrentioResults.map(t => t.hash.toLowerCase());
+            errorLogService.info(`Checking cache for ${hashes.length} hashes`, 'DebridCache');
             const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
+            errorLogService.info(`Found ${cachedHashes.length} cached hashes`, 'DebridCache');
             
             return torrentioResults.map(t => ({
               ...t,
               cached: cachedHashes.includes(t.hash.toLowerCase()),
             }));
           }
-        } catch (torrentioError) {
-          errorLogService.warn('Torrentio TV direct call failed, trying backend', 'DebridCache');
+        } catch (torrentioError: any) {
+          errorLogService.warn(`Torrentio TV direct call failed: ${torrentioError.message}`, 'DebridCache');
         }
       }
 
