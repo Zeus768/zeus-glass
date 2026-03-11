@@ -37,9 +37,21 @@ export const tmdbService = {
     return response.data.results;
   },
 
+  getTopRatedMovies: async (page: number = 1): Promise<Movie[]> => {
+    const response = await tmdbApi.get('/movie/top_rated', { params: { page } });
+    return response.data.results;
+  },
+
   getMovieDetails: async (id: number): Promise<Movie> => {
-    const response = await tmdbApi.get(`/movie/${id}`);
-    return response.data;
+    const response = await tmdbApi.get(`/movie/${id}`, {
+      params: { append_to_response: 'external_ids' }
+    });
+    // Include IMDB ID from external_ids
+    const data = response.data;
+    if (data.external_ids?.imdb_id) {
+      data.imdb_id = data.external_ids.imdb_id;
+    }
+    return data;
   },
 
   getMoviesByGenre: async (genreId: number, page: number = 1): Promise<Movie[]> => {
@@ -65,6 +77,11 @@ export const tmdbService = {
     return response.data.results;
   },
 
+  getTopRatedTVShows: async (page: number = 1): Promise<TVShow[]> => {
+    const response = await tmdbApi.get('/tv/top_rated', { params: { page } });
+    return response.data.results;
+  },
+
   getTVShowsByGenre: async (genreId: number, page: number = 1): Promise<TVShow[]> => {
     const response = await tmdbApi.get('/discover/tv', {
       params: { with_genres: genreId, page },
@@ -73,8 +90,15 @@ export const tmdbService = {
   },
 
   getTVShowDetails: async (id: number): Promise<TVShow> => {
-    const response = await tmdbApi.get(`/tv/${id}`);
-    return response.data;
+    const response = await tmdbApi.get(`/tv/${id}`, {
+      params: { append_to_response: 'external_ids' }
+    });
+    // Include IMDB ID from external_ids
+    const data = response.data;
+    if (data.external_ids?.imdb_id) {
+      data.imdb_id = data.external_ids.imdb_id;
+    }
+    return data;
   },
 
   // Get season episodes

@@ -92,9 +92,9 @@ export const theme = {
     carouselItemSpacing: 20,
   },
   mobile: {
-    cardWidth: 150,
-    cardHeight: 220,
-    carouselItemSpacing: 12,
+    cardWidth: 130,
+    cardHeight: 195,
+    carouselItemSpacing: 10,
   },
 };
 

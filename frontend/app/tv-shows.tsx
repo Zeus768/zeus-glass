@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
 import { tmdbService } from '../services/tmdb';
 import { TVShow, Genre } from '../types';
@@ -24,6 +25,7 @@ export default function TVShowsScreen() {
   const router = useRouter();
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'trending' | 'top_rated'>('all');
   const [shows, setShows] = useState<TVShow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -42,10 +44,14 @@ export default function TVShowsScreen() {
     setHasMore(true);
     if (selectedGenre !== null) {
       loadShowsByGenre(1, true);
+    } else if (selectedCategory === 'trending') {
+      loadTrendingShows(1, true);
+    } else if (selectedCategory === 'top_rated') {
+      loadTopRatedShows(1, true);
     } else {
       loadShows(1, true);
     }
-  }, [selectedGenre]);
+  }, [selectedGenre, selectedCategory]);
 
   const loadGenres = async () => {
     try {
@@ -71,6 +77,48 @@ export default function TVShowsScreen() {
       }
     } catch (error) {
       console.error('Error loading shows:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadTrendingShows = async (pageNum: number = 1, reset: boolean = false) => {
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+    
+    try {
+      const showsData = await tmdbService.getTrendingTVShows(pageNum);
+      if (showsData.length < 20) setHasMore(false);
+      
+      if (reset) {
+        setShows(showsData);
+      } else {
+        setShows(prev => [...prev, ...showsData]);
+      }
+    } catch (error) {
+      console.error('Error loading trending shows:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadTopRatedShows = async (pageNum: number = 1, reset: boolean = false) => {
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+    
+    try {
+      const showsData = await tmdbService.getTopRatedTVShows(pageNum);
+      if (showsData.length < 20) setHasMore(false);
+      
+      if (reset) {
+        setShows(showsData);
+      } else {
+        setShows(prev => [...prev, ...showsData]);
+      }
+    } catch (error) {
+      console.error('Error loading top rated shows:', error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -107,10 +155,24 @@ export default function TVShowsScreen() {
     
     if (selectedGenre !== null) {
       loadShowsByGenre(nextPage, false);
+    } else if (selectedCategory === 'trending') {
+      loadTrendingShows(nextPage, false);
+    } else if (selectedCategory === 'top_rated') {
+      loadTopRatedShows(nextPage, false);
     } else {
       loadShows(nextPage, false);
     }
-  }, [page, loadingMore, hasMore, selectedGenre]);
+  }, [page, loadingMore, hasMore, selectedGenre, selectedCategory]);
+
+  const handleCategorySelect = (category: 'all' | 'trending' | 'top_rated') => {
+    setSelectedGenre(null);
+    setSelectedCategory(category);
+  };
+
+  const handleGenreSelect = (genreId: number | null) => {
+    setSelectedCategory('all');
+    setSelectedGenre(genreId);
+  };
 
   const handleShowPress = useCallback((show: TVShow) => {
     router.push(`/tv/${show.id}`);
@@ -170,13 +232,13 @@ export default function TVShowsScreen() {
   }, [loadingMore]);
 
   const renderGenreButton = useCallback((genre: Genre | null, index: number) => {
-    const isSelected = genre === null ? selectedGenre === null : selectedGenre === genre?.id;
+    const isSelected = genre === null ? selectedGenre === null && selectedCategory === 'all' : selectedGenre === genre?.id;
     const isFocused = focusedGenreIndex === index;
     
     return (
       <Pressable
         key={genre?.id ?? 'all'}
-        onPress={() => setSelectedGenre(genre?.id ?? null)}
+        onPress={() => genre === null ? handleCategorySelect('all') : handleGenreSelect(genre.id)}
         onFocus={() => setFocusedGenreIndex(index)}
         onBlur={() => setFocusedGenreIndex(null)}
         style={[
@@ -195,7 +257,38 @@ export default function TVShowsScreen() {
         </Text>
       </Pressable>
     );
-  }, [selectedGenre, focusedGenreIndex]);
+  }, [selectedGenre, selectedCategory, focusedGenreIndex]);
+
+  const renderCategoryButton = useCallback((category: { key: 'trending' | 'top_rated'; label: string; icon: string }, index: number) => {
+    const isSelected = selectedCategory === category.key && selectedGenre === null;
+    const isFocused = focusedGenreIndex === index;
+    
+    return (
+      <Pressable
+        key={category.key}
+        onPress={() => handleCategorySelect(category.key)}
+        onFocus={() => setFocusedGenreIndex(index)}
+        onBlur={() => setFocusedGenreIndex(null)}
+        style={[
+          styles.genreButton,
+          styles.categoryButton,
+          isSelected && styles.categoryButtonActive,
+          isFocused && styles.genreButtonFocused,
+        ]}
+        data-testid={`tv-category-${category.key}`}
+      >
+        <Ionicons name={category.icon as any} size={isTV ? 20 : 14} color={isSelected ? '#000' : theme.colors.gold} />
+        <Text style={[
+          styles.genreText, 
+          styles.categoryText,
+          isSelected && styles.genreTextActive,
+          isFocused && styles.genreTextFocused,
+        ]}>
+          {category.label}
+        </Text>
+      </Pressable>
+    );
+  }, [selectedCategory, selectedGenre, focusedGenreIndex]);
 
   return (
     <View style={styles.container} data-testid="tv-shows-screen">
@@ -206,7 +299,9 @@ export default function TVShowsScreen() {
         contentContainerStyle={styles.genresContent}
       >
         {renderGenreButton(null, 0)}
-        {genres.map((genre, index) => renderGenreButton(genre, index + 1))}
+        {renderCategoryButton({ key: 'trending', label: 'Trending', icon: 'flame' }, 1)}
+        {renderCategoryButton({ key: 'top_rated', label: 'Top Rated', icon: 'star' }, 2)}
+        {genres.map((genre, index) => renderGenreButton(genre, index + 3))}
       </ScrollView>
 
       {loading ? (
@@ -254,6 +349,21 @@ const styles = StyleSheet.create({
   genreText: { fontSize: isTV ? 22 : 15, color: theme.colors.textSecondary, fontWeight: '600' },
   genreTextActive: { color: '#000', fontWeight: '700' },
   genreTextFocused: { color: theme.colors.primary },
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: isTV ? 8 : 6,
+    borderWidth: 1,
+    borderColor: theme.colors.gold,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  categoryButtonActive: {
+    backgroundColor: theme.colors.gold,
+    borderColor: theme.colors.gold,
+  },
+  categoryText: {
+    color: theme.colors.gold,
+  },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 16, fontSize: isTV ? 24 : 16, color: theme.colors.textSecondary },
   showsGrid: { padding: HORIZONTAL_PADDING },

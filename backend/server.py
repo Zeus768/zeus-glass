@@ -197,12 +197,15 @@ async def search_cached_movie(
     This is the main endpoint for finding instant-play movies
     """
     try:
+        logger.info(f"Searching cached movie: title={title}, year={year}, imdb_id={imdb_id}")
         results = RealDebridCacheSearch.search_cached_torrents(
             query=title,
             token=token,
             content_type="movie",
-            year=year
+            year=year,
+            imdb_id=imdb_id  # Pass IMDB ID for better indexer results
         )
+        logger.info(f"Found {len(results)} cached results")
         return {
             "success": True,
             "count": len(results),

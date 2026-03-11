@@ -173,11 +173,20 @@ export default function HomeScreen() {
             />
           )}
 
-          <Carousel title="Trending Movies" data={trendingMovies} />
-          <Carousel title="Popular Movies" data={popularMovies} />
-          <Carousel title="In Cinemas" data={nowPlayingMovies} />
-          <Carousel title="Trending TV Shows" data={trendingTVShows} />
-          <Carousel title="Popular TV Shows" data={popularTVShows} />
+          {/* Trending Movies - with flame icon */}
+          <Carousel title="Trending Movies" data={trendingMovies} icon="flame" />
+          
+          {/* Trending TV Shows - with flame icon */}
+          <Carousel title="Trending TV Shows" data={trendingTVShows} icon="flame" />
+          
+          {/* Popular Movies */}
+          <Carousel title="Popular Movies" data={popularMovies} icon="star" />
+          
+          {/* Popular TV Shows */}
+          <Carousel title="Popular TV Shows" data={popularTVShows} icon="star" />
+          
+          {/* In Cinemas */}
+          <Carousel title="In Cinemas" data={nowPlayingMovies} icon="film" />
         </View>
       </ScrollView>
     </View>

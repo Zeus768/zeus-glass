@@ -73,24 +73,39 @@ export default function MovieDetailScreen() {
       if (!movie) return;
       
       const year = movie.release_date ? parseInt(movie.release_date.split('-')[0]) : undefined;
+      // Use IMDB ID from movie data (fetched with external_ids)
       const imdbId = movie.imdb_id || undefined;
+      
+      errorLogService.info(`Searching streams for "${movie.title}" (IMDB: ${imdbId || 'N/A'})`, 'MovieDetail');
       
       // Fetch both debrid and direct streams in parallel
       const [debridResults, directResults] = await Promise.allSettled([
         // Debrid cache search (only if logged in)
         (async () => {
-          const token = await realDebridService.getToken();
-          if (!token) {
-            errorLogService.info('No Real-Debrid token, skipping debrid search', 'MovieDetail');
+          try {
+            const token = await realDebridService.getToken();
+            if (!token) {
+              errorLogService.info('No Real-Debrid token, skipping debrid search', 'MovieDetail');
+              return [];
+            }
+            errorLogService.info(`Searching cached torrents for "${movie.title}" with token`, 'MovieDetail');
+            const results = await debridCacheService.searchCachedMovie(movie.title, year, imdbId);
+            errorLogService.info(`Debrid search returned ${results.length} results`, 'MovieDetail');
+            return results;
+          } catch (err: any) {
+            errorLogService.error(`Debrid search error: ${err.message}`, 'MovieDetail', err);
             return [];
           }
-          errorLogService.info(`Searching cached torrents for "${movie.title}"`, 'MovieDetail');
-          return await debridCacheService.searchCachedMovie(movie.title, year);
         })(),
         // Direct streaming sources
         (async () => {
-          errorLogService.info(`Searching direct streams for "${movie.title}"`, 'MovieDetail');
-          return await streamScraperService.getMovieStreams(id, imdbId, movie.title, year);
+          try {
+            errorLogService.info(`Searching direct streams for "${movie.title}"`, 'MovieDetail');
+            return await streamScraperService.getMovieStreams(id, imdbId, movie.title, year);
+          } catch (err: any) {
+            errorLogService.error(`Direct stream error: ${err.message}`, 'MovieDetail', err);
+            return [];
+          }
         })(),
       ]);
       
@@ -99,13 +114,19 @@ export default function MovieDetailScreen() {
         setCachedTorrents(debridResults.value);
         if (debridResults.value.length === 0) {
           errorLogService.warn(`No cached torrents found for "${movie.title}"`, 'MovieDetail');
+        } else {
+          errorLogService.info(`Found ${debridResults.value.length} debrid sources`, 'MovieDetail');
         }
+      } else {
+        errorLogService.error(`Debrid promise rejected: ${debridResults.reason}`, 'MovieDetail');
       }
       
       // Process direct stream results
       if (directResults.status === 'fulfilled') {
         setDirectStreams(directResults.value);
         errorLogService.info(`Found ${directResults.value.length} direct streams`, 'MovieDetail');
+      } else {
+        errorLogService.error(`Direct streams promise rejected: ${directResults.reason}`, 'MovieDetail');
       }
       
       // If we have direct streams but no debrid, switch to direct tab

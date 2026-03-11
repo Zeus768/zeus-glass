@@ -11,11 +11,13 @@ interface ContentState {
   popularMovies: Movie[];
   nowPlayingMovies: Movie[];
   upcomingMovies: Movie[];
+  topRatedMovies: Movie[];
   
   // TV Shows
   trendingTVShows: TVShow[];
   popularTVShows: TVShow[];
   onTheAirTVShows: TVShow[];
+  topRatedTVShows: TVShow[];
   
   // Trakt Lists
   continueWatching: ContinueWatching[];
@@ -45,9 +47,11 @@ export const useContentStore = create<ContentState>((set, get) => ({
   popularMovies: [],
   nowPlayingMovies: [],
   upcomingMovies: [],
+  topRatedMovies: [],
   trendingTVShows: [],
   popularTVShows: [],
   onTheAirTVShows: [],
+  topRatedTVShows: [],
   continueWatching: [],
   watchlistMovies: [],
   watchlistShows: [],
@@ -59,21 +63,21 @@ export const useContentStore = create<ContentState>((set, get) => ({
   loadHomeContent: async () => {
     set({ loading: true });
     try {
-      const [trendingMovies, popularMovies, nowPlayingMovies, trendingTVShows, popularTVShows] =
-        await Promise.all([
-          tmdbService.getTrendingMovies(),
-          tmdbService.getPopularMovies(),
-          tmdbService.getNowPlayingMovies(),
-          tmdbService.getTrendingTVShows(),
-          tmdbService.getPopularTVShows(),
-        ]);
+      // Use Promise.allSettled to prevent one failure from crashing the whole load
+      const results = await Promise.allSettled([
+        tmdbService.getTrendingMovies(),
+        tmdbService.getPopularMovies(),
+        tmdbService.getNowPlayingMovies(),
+        tmdbService.getTrendingTVShows(),
+        tmdbService.getPopularTVShows(),
+      ]);
 
       set({
-        trendingMovies,
-        popularMovies,
-        nowPlayingMovies,
-        trendingTVShows,
-        popularTVShows,
+        trendingMovies: results[0].status === 'fulfilled' ? results[0].value : [],
+        popularMovies: results[1].status === 'fulfilled' ? results[1].value : [],
+        nowPlayingMovies: results[2].status === 'fulfilled' ? results[2].value : [],
+        trendingTVShows: results[3].status === 'fulfilled' ? results[3].value : [],
+        popularTVShows: results[4].status === 'fulfilled' ? results[4].value : [],
       });
     } catch (error) {
       console.error('Error loading home content:', error);
@@ -106,14 +110,19 @@ export const useContentStore = create<ContentState>((set, get) => ({
 
       set({ traktLoading: true });
 
-      const [watchlistMovies, watchlistShows, recentlyWatched, continueWatching] = await Promise.all([
+      const results = await Promise.allSettled([
         traktService.getWatchlistMovies(),
         traktService.getWatchlistShows(),
         traktService.getRecentlyWatched(15),
         traktService.getWatchedProgress(),
       ]);
 
-      // Fetch TMDB posters for watchlist items
+      const watchlistMovies = results[0].status === 'fulfilled' ? results[0].value : [];
+      const watchlistShows = results[1].status === 'fulfilled' ? results[1].value : [];
+      const recentlyWatched = results[2].status === 'fulfilled' ? results[2].value : [];
+      const continueWatching = results[3].status === 'fulfilled' ? results[3].value : [];
+
+      // Fetch TMDB posters for watchlist items - with error handling
       const moviesWithPosters = await Promise.all(
         watchlistMovies.slice(0, 20).map(async (movie: any) => {
           try {
@@ -162,6 +171,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
       set({ favorites });
     } catch (error) {
       console.error('Error loading favorites:', error);
+      set({ favorites: [] });
     }
   },
 

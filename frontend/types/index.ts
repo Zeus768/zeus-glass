@@ -15,6 +15,7 @@ export interface Movie {
   adult: boolean;
   video: boolean;
   original_language: string;
+  imdb_id?: string;  // IMDB ID for debrid cache search
 }
 
 export interface TVShow {
@@ -36,6 +37,7 @@ export interface TVShow {
   number_of_episodes?: number;
   seasons?: Season[];
   status?: string;
+  imdb_id?: string;  // IMDB ID for debrid cache search
 }
 
 export interface Season {

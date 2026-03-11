@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
 import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { 
   Platform, 
   StatusBar, 
@@ -388,51 +389,53 @@ export default function TabLayout() {
   const headerPaddingTop = isTV ? 30 : Platform.OS === 'ios' ? 50 : 35;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
-      
-      {/* Header with App Name and Donation Button */}
-      <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
-        <Text style={styles.appName}>ZEUS GLASS</Text>
-        <FocusableButton 
-          style={styles.donateBtn} 
-          onPress={() => setShowDonation(true)}
-          testID="open-donation-modal"
-        >
-          <Ionicons name="heart" size={isTV ? 28 : 18} color="#FFDD00" />
-          <Text style={styles.donateBtnText}>Donate</Text>
-        </FocusableButton>
-      </View>
-      
-      {/* Custom Tab Bar - ALWAYS VISIBLE */}
-      <CustomTabBar />
-      
-      {/* Screen Content via Tabs (hidden tab bar) */}
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: { display: 'none' }, // Hide default tab bar
-        }}
-      >
-        <Tabs.Screen name="index" />
-        <Tabs.Screen name="movies" />
-        <Tabs.Screen name="tv-shows" />
-        <Tabs.Screen name="providers" />
-        <Tabs.Screen name="tv-guide" />
-        <Tabs.Screen name="catch-up" />
-        <Tabs.Screen name="search" />
-        <Tabs.Screen name="vod" />
-        <Tabs.Screen name="settings" />
+    <ErrorBoundary>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
         
-        {/* Hidden screens */}
-        <Tabs.Screen name="movie/[id]" options={{ href: null }} />
-        <Tabs.Screen name="tv/[id]" options={{ href: null }} />
-        <Tabs.Screen name="player" options={{ href: null }} />
-      </Tabs>
-      
-      {/* Donation Modal */}
-      <DonationModal visible={showDonation} onClose={() => setShowDonation(false)} />
-    </View>
+        {/* Header with App Name and Donation Button */}
+        <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <Text style={styles.appName}>ZEUS GLASS</Text>
+          <FocusableButton 
+            style={styles.donateBtn} 
+            onPress={() => setShowDonation(true)}
+            testID="open-donation-modal"
+          >
+            <Ionicons name="heart" size={isTV ? 28 : 18} color="#FFDD00" />
+            <Text style={styles.donateBtnText}>Donate</Text>
+          </FocusableButton>
+        </View>
+        
+        {/* Custom Tab Bar - ALWAYS VISIBLE */}
+        <CustomTabBar />
+        
+        {/* Screen Content via Tabs (hidden tab bar) */}
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            tabBarStyle: { display: 'none' }, // Hide default tab bar
+          }}
+        >
+          <Tabs.Screen name="index" />
+          <Tabs.Screen name="movies" />
+          <Tabs.Screen name="tv-shows" />
+          <Tabs.Screen name="providers" />
+          <Tabs.Screen name="tv-guide" />
+          <Tabs.Screen name="catch-up" />
+          <Tabs.Screen name="search" />
+          <Tabs.Screen name="vod" />
+          <Tabs.Screen name="settings" />
+          
+          {/* Hidden screens */}
+          <Tabs.Screen name="movie/[id]" options={{ href: null }} />
+          <Tabs.Screen name="tv/[id]" options={{ href: null }} />
+          <Tabs.Screen name="player" options={{ href: null }} />
+        </Tabs>
+        
+        {/* Donation Modal */}
+        <DonationModal visible={showDonation} onClose={() => setShowDonation(false)} />
+      </View>
+    </ErrorBoundary>
   );
 }
 
