@@ -8,7 +8,16 @@ import { encode as base64Encode, decode as base64Decode } from 'base-64';
 
 const VAULT_VERSION = '1.0';
 const VAULT_FILENAME = 'zeus_vault.json';
-const VAULT_BACKUP_DIR = FileSystem.documentDirectory + 'vault/';
+
+// Get directory safely
+const getVaultBackupDir = () => {
+  const docDir = FileSystem.documentDirectory || '';
+  return docDir + 'vault/';
+};
+
+const getCacheDir = () => {
+  return FileSystem.cacheDirectory || '';
+};
 
 // Keys that should be backed up to the vault
 const VAULT_KEYS = {
