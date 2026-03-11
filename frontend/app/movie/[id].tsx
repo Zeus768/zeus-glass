@@ -110,13 +110,16 @@ export default function MovieDetailScreen() {
   const handlePlayDirectStream = async (stream: StreamSource) => {
     try {
       if (stream.type === 'embed') {
-        // Open embed URL in browser or webview
-        const supported = await Linking.canOpenURL(stream.url);
-        if (supported) {
-          await Linking.openURL(stream.url);
-        } else {
-          Alert.alert('Error', 'Cannot open this stream source');
-        }
+        // Open embed URL in our player's WebView
+        setShowLinksModal(false);
+        router.push({
+          pathname: '/player',
+          params: { 
+            url: stream.url, 
+            title: movie?.title || 'Movie',
+            type: 'embed'
+          }
+        });
       } else if (stream.type === 'torrent') {
         // For torrent links, try to resolve via Real-Debrid if available
         const token = await realDebridService.getToken();
@@ -127,7 +130,7 @@ export default function MovieDetailScreen() {
             setShowLinksModal(false);
             router.push({
               pathname: '/player',
-              params: { url: directUrl, title: movie?.title || 'Movie' }
+              params: { url: directUrl, title: movie?.title || 'Movie', type: 'video' }
             });
           } else {
             Alert.alert('Error', 'Failed to resolve torrent. Try another source.');
@@ -140,7 +143,7 @@ export default function MovieDetailScreen() {
         setShowLinksModal(false);
         router.push({
           pathname: '/player',
-          params: { url: stream.url, title: movie?.title || 'Movie' }
+          params: { url: stream.url, title: movie?.title || 'Movie', type: 'video' }
         });
       }
     } catch (error: any) {

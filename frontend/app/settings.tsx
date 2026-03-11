@@ -11,8 +11,11 @@ import {
   Switch,
   Alert,
   Clipboard,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import QRCode from 'react-native-qrcode-svg';
+import { BlurView } from 'expo-blur';
 import { theme, isTV } from '../constants/theme';
 import { QRAuthModal } from '../components/QRAuthModal';
 import { useAuthStore } from '../store/authStore';
@@ -20,6 +23,7 @@ import { iptvService } from '../services/iptv';
 import { errorLogService, LogEntry } from '../services/errorLogService';
 import { parentalControlService, ParentalSettings } from '../services/parentalControlService';
 import { formatDistanceToNow, format } from 'date-fns';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ServiceType = 'real-debrid' | 'alldebrid' | 'premiumize' | 'trakt';
 
@@ -64,13 +68,63 @@ export default function SettingsScreen() {
   const [confirmPinInput, setConfirmPinInput] = useState('');
   const [pinMode, setPinMode] = useState<'setup' | 'verify' | 'change'>('setup');
 
+  // Torrentio configuration state
+  const [torrentioModalVisible, setTorrentioModalVisible] = useState(false);
+  const [torrentioConfig, setTorrentioConfig] = useState<string | null>(null);
+  const [torrentioApiKey, setTorrentioApiKey] = useState('');
+  const [torrentioProvider, setTorrentioProvider] = useState<'realdebrid' | 'alldebrid' | 'premiumize'>('realdebrid');
+
+  // Torrentio configuration URL
+  const TORRENTIO_CONFIGURE_URL = 'https://torrentio.strem.fun/configure';
+
   useEffect(() => {
     // Initialize services
     errorLogService.init();
     parentalControlService.init().then(() => {
       setParentalSettings(parentalControlService.getSettings());
     });
+    
+    // Load Torrentio config
+    loadTorrentioConfig();
   }, []);
+
+  const loadTorrentioConfig = async () => {
+    try {
+      const config = await AsyncStorage.getItem('torrentio_config');
+      if (config) {
+        setTorrentioConfig(config);
+      }
+    } catch (e) {
+      console.log('Error loading Torrentio config:', e);
+    }
+  };
+
+  const saveTorrentioConfig = async () => {
+    if (!torrentioApiKey.trim()) {
+      Alert.alert('Error', 'Please enter your Debrid API key');
+      return;
+    }
+
+    const configUrl = `${torrentioProvider}=${torrentioApiKey.trim()}`;
+    try {
+      await AsyncStorage.setItem('torrentio_config', configUrl);
+      setTorrentioConfig(configUrl);
+      setTorrentioModalVisible(false);
+      Alert.alert('Success', 'Torrentio configuration saved!');
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save configuration');
+    }
+  };
+
+  const clearTorrentioConfig = async () => {
+    try {
+      await AsyncStorage.removeItem('torrentio_config');
+      setTorrentioConfig(null);
+      setTorrentioApiKey('');
+    } catch (e) {
+      console.log('Error clearing Torrentio config:', e);
+    }
+  };
 
   const handleQRAuth = (service: ServiceType) => {
     setSelectedService(service);
@@ -413,6 +467,45 @@ export default function SettingsScreen() {
             onLogin={() => setIptvModalVisible(true)}
             onLogout={logoutIPTV}
           />
+          
+          {/* Torrentio Configuration Card */}
+          <View style={styles.accountCard}>
+            <View style={styles.accountHeader}>
+              <Ionicons name="magnet" size={isTV ? 32 : 24} color={theme.colors.primary} />
+              <Text style={styles.accountTitle}>Torrentio</Text>
+            </View>
+            {torrentioConfig ? (
+              <View style={styles.accountInfo}>
+                <Text style={styles.accountLabel}>Provider</Text>
+                <Text style={styles.accountValue}>
+                  {torrentioConfig.includes('realdebrid') ? 'Real-Debrid' : 
+                   torrentioConfig.includes('alldebrid') ? 'AllDebrid' : 'Premiumize'}
+                </Text>
+                <Text style={[styles.accountLabel, { marginTop: 8 }]}>Status</Text>
+                <Text style={[styles.accountValue, { color: theme.colors.success }]}>Configured</Text>
+              </View>
+            ) : (
+              <Text style={styles.accountNotConnected}>Not configured</Text>
+            )}
+            <View style={styles.accountActions}>
+              <Pressable
+                style={[styles.accountButton, torrentioConfig && styles.logoutButton]}
+                onPress={() => torrentioConfig ? clearTorrentioConfig() : setTorrentioModalVisible(true)}
+              >
+                <Text style={[styles.accountButtonText, torrentioConfig && styles.logoutButtonText]}>
+                  {torrentioConfig ? 'Clear' : 'Configure'}
+                </Text>
+              </Pressable>
+              {torrentioConfig && (
+                <Pressable
+                  style={styles.accountButton}
+                  onPress={() => setTorrentioModalVisible(true)}
+                >
+                  <Text style={styles.accountButtonText}>Edit</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
         </AccountSection>
 
         {/* Parental Controls Section */}
@@ -568,6 +661,104 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Torrentio Configuration Modal */}
+      <Modal
+        visible={torrentioModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTorrentioModalVisible(false)}
+      >
+        <BlurView intensity={80} style={styles.modalOverlay}>
+          <View style={[styles.iptvModal, { maxWidth: 600 }]}>
+            <View style={styles.iptvHeader}>
+              <Text style={styles.iptvTitle}>Configure Torrentio</Text>
+              <Pressable onPress={() => setTorrentioModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </Pressable>
+            </View>
+            
+            <ScrollView style={{ maxHeight: 500 }}>
+              {/* QR Code for Configure Page */}
+              <View style={styles.torrentioQRSection}>
+                <Text style={styles.torrentioSectionTitle}>Option 1: Configure Online</Text>
+                <Text style={styles.torrentioDescription}>
+                  Scan this QR code or visit the URL to configure Torrentio with your Debrid provider:
+                </Text>
+                <View style={styles.torrentioQRWrapper}>
+                  <QRCode
+                    value={TORRENTIO_CONFIGURE_URL}
+                    size={isTV ? 200 : 150}
+                    backgroundColor="white"
+                    color="black"
+                  />
+                </View>
+                <Text style={styles.torrentioUrl}>{TORRENTIO_CONFIGURE_URL}</Text>
+                <Pressable 
+                  style={styles.torrentioLinkButton}
+                  onPress={() => Linking.openURL(TORRENTIO_CONFIGURE_URL)}
+                >
+                  <Ionicons name="open-outline" size={18} color={theme.colors.text} />
+                  <Text style={styles.torrentioLinkButtonText}>Open in Browser</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.torrentioDivider} />
+
+              {/* Manual Configuration */}
+              <View style={styles.torrentioManualSection}>
+                <Text style={styles.torrentioSectionTitle}>Option 2: Quick Setup</Text>
+                <Text style={styles.torrentioDescription}>
+                  Enter your Debrid API key directly:
+                </Text>
+                
+                {/* Provider Selection */}
+                <Text style={styles.torrentioLabel}>Debrid Provider:</Text>
+                <View style={styles.torrentioProviderButtons}>
+                  {(['realdebrid', 'alldebrid', 'premiumize'] as const).map((provider) => (
+                    <Pressable
+                      key={provider}
+                      style={[
+                        styles.torrentioProviderButton,
+                        torrentioProvider === provider && styles.torrentioProviderButtonActive
+                      ]}
+                      onPress={() => setTorrentioProvider(provider)}
+                    >
+                      <Text style={[
+                        styles.torrentioProviderButtonText,
+                        torrentioProvider === provider && styles.torrentioProviderButtonTextActive
+                      ]}>
+                        {provider === 'realdebrid' ? 'Real-Debrid' : 
+                         provider === 'alldebrid' ? 'AllDebrid' : 'Premiumize'}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* API Key Input */}
+                <Text style={styles.torrentioLabel}>API Key:</Text>
+                <TextInput
+                  style={styles.iptvInput}
+                  placeholder="Paste your API key here"
+                  placeholderTextColor={theme.colors.textMuted}
+                  value={torrentioApiKey}
+                  onChangeText={setTorrentioApiKey}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <Pressable style={styles.iptvButton} onPress={saveTorrentioConfig}>
+                  <Text style={styles.iptvButtonText}>Save Configuration</Text>
+                </Pressable>
+
+                <Text style={styles.torrentioHint}>
+                  💡 Get your API key from your Debrid provider's website under Account settings.
+                </Text>
+              </View>
+            </ScrollView>
+          </View>
+        </BlurView>
       </Modal>
 
       {/* Error Logs Modal */}
@@ -747,13 +938,15 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   accountCardFocused: {
-    borderColor: theme.colors.primary,
-    backgroundColor: 'rgba(0, 217, 255, 0.1)',
-    shadowColor: theme.colors.primary,
+    borderColor: '#FFFFFF',
+    borderWidth: isTV ? 5 : 3,
+    backgroundColor: 'rgba(0, 217, 255, 0.15)',
+    shadowColor: '#00D9FF',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 10,
+    shadowOpacity: 1,
+    shadowRadius: isTV ? 30 : 20,
+    elevation: 30,
+    transform: [{ scale: isTV ? 1.03 : 1.01 }],
   },
   accountHeader: {
     flexDirection: 'row',
@@ -799,12 +992,13 @@ const styles = StyleSheet.create({
   },
   buttonFocused: {
     borderColor: '#FFFFFF',
-    transform: [{ scale: isTV ? 1.15 : 1.1 }],
+    borderWidth: isTV ? 5 : 4,
+    transform: [{ scale: isTV ? 1.18 : 1.12 }],
     shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 20,
-    elevation: 20,
+    shadowRadius: isTV ? 30 : 25,
+    elevation: 40,
   },
   buttonTextFocused: {
     fontWeight: '900' as const,
@@ -1151,5 +1345,98 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
+  },
+  // Torrentio styles
+  torrentioQRSection: {
+    padding: theme.spacing.lg,
+    alignItems: 'center',
+  },
+  torrentioSectionTitle: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  torrentioDescription: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
+    alignSelf: 'flex-start',
+  },
+  torrentioQRWrapper: {
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginVertical: theme.spacing.md,
+  },
+  torrentioUrl: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.primary,
+    marginTop: theme.spacing.sm,
+  },
+  torrentioLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surfaceLight,
+    borderRadius: theme.borderRadius.md,
+  },
+  torrentioLinkButtonText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text,
+    fontWeight: theme.fontWeight.medium,
+  },
+  torrentioDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.spacing.md,
+  },
+  torrentioManualSection: {
+    padding: theme.spacing.lg,
+  },
+  torrentioLabel: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  torrentioProviderButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  torrentioProviderButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceLight,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  torrentioProviderButtonActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: `${theme.colors.primary}20`,
+  },
+  torrentioProviderButtonText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
+  },
+  torrentioProviderButtonTextActive: {
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.bold,
+  },
+  torrentioHint: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.md,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

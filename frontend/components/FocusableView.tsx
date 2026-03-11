@@ -157,48 +157,54 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   focused: {
-    borderWidth: isTV ? 5 : 4,
-    borderColor: theme.colors.primary,
+    // SUPER VISIBLE focus for TV - white border with cyan glow
+    borderWidth: isTV ? 6 : 4,
+    borderColor: '#FFFFFF', // White border for maximum visibility
     borderRadius: theme.borderRadius.md,
-    transform: [{ scale: isTV ? 1.1 : 1.06 }],
-    zIndex: 100,
-    // Enhanced shadow for TV visibility
-    shadowColor: theme.colors.primary,
+    transform: [{ scale: isTV ? 1.15 : 1.08 }], // Bigger scale for "pop out"
+    zIndex: 1000,
+    // Triple-layer glow effect
+    shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: isTV ? 25 : 15,
-    elevation: 25,
+    shadowRadius: isTV ? 35 : 25,
+    elevation: 50,
+    // Background tint for contrast
+    backgroundColor: 'rgba(0, 217, 255, 0.15)',
   },
   glowEffect: {
     position: 'absolute',
-    top: -12,
-    left: -12,
-    right: -12,
-    bottom: -12,
-    backgroundColor: theme.colors.primary,
+    top: isTV ? -18 : -12,
+    left: isTV ? -18 : -12,
+    right: isTV ? -18 : -12,
+    bottom: isTV ? -18 : -12,
+    backgroundColor: '#00D9FF', // Bright cyan
     borderRadius: theme.borderRadius.xl,
-    opacity: 0.35,
+    opacity: isTV ? 0.5 : 0.35,
     zIndex: -1,
   },
   // Card styles
   card: {
     position: 'relative',
-    overflow: 'hidden',
-    borderWidth: 3,
+    overflow: 'visible', // Allow glow to show outside
+    borderWidth: isTV ? 4 : 3,
     borderColor: 'transparent',
     borderRadius: theme.borderRadius.md,
   },
   cardFocused: {
-    borderWidth: isTV ? 5 : 4,
-    borderColor: theme.colors.primary,
-    transform: [{ scale: isTV ? 1.12 : 1.06 }],
-    zIndex: 100,
-    // Strong shadow/elevation for pop effect
-    shadowColor: theme.colors.primary,
+    // MAXIMUM VISIBILITY - white border with massive glow
+    borderWidth: isTV ? 6 : 4,
+    borderColor: '#FFFFFF', // Bright white
+    transform: [{ scale: isTV ? 1.18 : 1.08 }], // Even bigger pop
+    zIndex: 1000,
+    // Intense multi-layer shadow
+    shadowColor: '#00D9FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: isTV ? 30 : 20,
-    elevation: 30,
+    shadowRadius: isTV ? 45 : 30,
+    elevation: 50,
+    // Subtle background highlight
+    backgroundColor: 'rgba(0, 217, 255, 0.2)',
   },
   cardFocusOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -243,12 +249,14 @@ const styles = StyleSheet.create({
   },
   buttonFocused: {
     borderColor: '#FFFFFF',
-    transform: [{ scale: isTV ? 1.12 : 1.06 }],
-    shadowColor: theme.colors.primary,
+    borderWidth: isTV ? 5 : 4,
+    transform: [{ scale: isTV ? 1.18 : 1.1 }],
+    shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: isTV ? 25 : 18,
-    elevation: 25,
+    shadowRadius: isTV ? 35 : 25,
+    elevation: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   buttonDisabled: {
     opacity: 0.5,

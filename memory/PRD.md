@@ -76,17 +76,35 @@ IPTV credentials stored separately for testing purposes.
 - **Player Types**: Native video player for direct streams, WebView for embed sources
 - **Orientation**: Lock to landscape on player open, unlock/reset on close
 
+## Session 4 Updates (March 7, 2026)
+
+### P0 Fixes Implemented:
+1. **Enhanced TV Focus Highlighting** - White borders (#FFFFFF), 1.15-1.18x scale transform, cyan glow (#00D9FF) with 30-45px shadow radius for maximum visibility on TV devices
+2. **Player Fullscreen Fix** - Added expo-navigation-bar to hide Android nav bar, improved orientation lock to landscape, useFocusEffect for proper cleanup
+3. **TV Guide Performance** - Replaced ScrollView with FlashList for virtualized rendering of large channel lists
+4. **Direct Streams Fix** - Embed sources now open in player's WebView instead of external browser
+
+### Files Modified:
+- `FocusableView.tsx` - Enhanced focus styles
+- `FocusableCard.tsx` - Enhanced card focus with massive glow
+- `player.tsx` - Added expo-navigation-bar, useFocusEffect
+- `tv-guide.tsx` - FlashList implementation
+- `movie/[id].tsx` - Direct streams open in player
+- `settings.tsx` - Enhanced button focus styles
+
 ## Prioritized Backlog
 
-### P0 (Critical) - IN PROGRESS
-- [ ] Test Debrid auth flow end-to-end on real device
-- [ ] Test focus highlighting on Shield TV / Fire TV
-- [ ] Test orientation reset on mobile after player exit
+### P0 (Critical) - ADDRESSED
+- [x] TV focus highlighting enhanced with white borders and cyan glow
+- [x] Player fullscreen mode improved with navigation bar hiding
+- [x] TV Guide virtualized with FlashList
+- [ ] Test on real Shield TV / Fire TV device (requires device testing)
 
 ### P1 (High Priority)
 - [ ] TV show seasons/episodes selection flow
 - [ ] Add scrapers from fmhy.net/video
 - [ ] "Providers" tab for filtering by streaming service
+- [ ] IMDB/Trakt login clarification
 
 ### P2 (Medium Priority)
 - [ ] External player (VLC) integration

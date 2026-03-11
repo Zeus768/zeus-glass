@@ -2,11 +2,12 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, BackHandler, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { WebView } from 'react-native-webview';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as NavigationBar from 'expo-navigation-bar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -26,25 +27,32 @@ export default function PlayerScreen() {
 
   useEffect(() => {
     // Determine if this is an embed URL
-    const embedPatterns = ['vidsrc', 'embed', 'flixmomo', 'cineby', 'hydrahd', 'yflix'];
+    const embedPatterns = ['vidsrc', 'embed', 'flixmomo', 'cineby', 'hydrahd', 'yflix', 'autoembed', 'smashystream', '2embed', 'multiembed'];
     const isEmbedUrl = type === 'embed' || embedPatterns.some(p => url?.toLowerCase().includes(p));
     setIsEmbed(isEmbedUrl);
 
-    // Lock to landscape for fullscreen
-    const lockOrientation = async () => {
+    // Enter immersive fullscreen mode
+    const enterFullscreen = async () => {
       try {
+        // Lock to landscape for fullscreen video
         await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        
+        // Hide Android navigation bar for true fullscreen
+        if (Platform.OS === 'android') {
+          RNStatusBar.setHidden(true, 'fade');
+          try {
+            await NavigationBar.setVisibilityAsync('hidden');
+            await NavigationBar.setBehaviorAsync('overlay-swipe');
+          } catch (navError) {
+            console.log('NavigationBar API not available:', navError);
+          }
+        }
       } catch (e) {
-        console.log('Could not lock orientation:', e);
+        console.log('Could not enter fullscreen:', e);
       }
     };
     
-    // Hide status bar
-    if (Platform.OS === 'android') {
-      RNStatusBar.setHidden(true);
-    }
-    
-    lockOrientation();
+    enterFullscreen();
 
     // Handle back button on TV/Android
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -54,29 +62,48 @@ export default function PlayerScreen() {
 
     return () => {
       backHandler.remove();
-      // Reset orientation on unmount
-      resetOrientation();
     };
   }, [url, type]);
 
+  // Use useFocusEffect to handle cleanup when leaving the screen
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // Cleanup when screen loses focus
+        resetOrientation();
+      };
+    }, [])
+  );
+
   const resetOrientation = async () => {
     try {
+      // Restore navigation bar visibility first
+      if (Platform.OS === 'android') {
+        RNStatusBar.setHidden(false, 'fade');
+        try {
+          await NavigationBar.setVisibilityAsync('visible');
+        } catch (navError) {
+          console.log('NavigationBar API not available:', navError);
+        }
+      }
+      
+      // Unlock orientation
       await ScreenOrientation.unlockAsync();
-      // Force back to portrait on mobile
+      
+      // Force back to portrait on mobile (not TV)
       if (!isTV && Platform.OS !== 'web') {
         await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
         // Unlock after a short delay to allow normal rotation
         setTimeout(async () => {
-          await ScreenOrientation.unlockAsync();
-        }, 500);
+          try {
+            await ScreenOrientation.unlockAsync();
+          } catch (e) {
+            console.log('Could not unlock orientation:', e);
+          }
+        }, 300);
       }
     } catch (e) {
       console.log('Could not reset orientation:', e);
-    }
-    
-    // Show status bar again
-    if (Platform.OS === 'android') {
-      RNStatusBar.setHidden(false);
     }
   };
 

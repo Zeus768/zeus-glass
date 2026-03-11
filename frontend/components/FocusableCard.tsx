@@ -100,15 +100,26 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: isTV ? 16 : 12,
     overflow: 'visible',
+    borderWidth: isTV ? 4 : 3,
+    borderColor: 'transparent',
   },
   cardFocused: {
-    transform: [{ scale: isTV ? 1.08 : 1.02 }],
+    // MAXIMUM VISIBILITY for TV remote navigation
+    transform: [{ scale: isTV ? 1.18 : 1.08 }],
+    borderColor: '#FFFFFF',
+    borderWidth: isTV ? 6 : 4,
+    shadowColor: '#00D9FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: isTV ? 45 : 30,
+    elevation: 50,
+    zIndex: 1000,
   },
   imageContainer: {
-    borderRadius: isTV ? 16 : 12,
+    borderRadius: isTV ? 14 : 10,
     overflow: 'hidden',
     marginBottom: isTV ? 12 : 8,
-    borderWidth: 3,
+    borderWidth: 0,
     borderColor: 'transparent',
   },
   image: {
@@ -140,12 +151,11 @@ const styles = StyleSheet.create({
   },
   focusOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 217, 255, 0.3)',
+    backgroundColor: 'rgba(0, 217, 255, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: theme.colors.focus,
-    borderRadius: isTV ? 16 : 12,
+    borderWidth: 0, // Border is now on the card itself
+    borderRadius: isTV ? 14 : 10,
   },
   playIcon: {
     width: isTV ? 60 : 40,

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Stream source interface
 export interface StreamSource {
@@ -10,6 +11,15 @@ export interface StreamSource {
   size?: string;
   seeders?: number;
 }
+
+// Get Torrentio configuration (stored API key for debrid)
+const getTorrentioConfig = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem('torrentio_config');
+  } catch {
+    return null;
+  }
+};
 
 // Scraper configuration
 const SCRAPERS = {
@@ -142,7 +152,7 @@ export const streamScraperService = {
   },
 
   /**
-   * Scrape Torrentio (Stremio addon) - requires IMDB ID
+   * Scrape Torrentio (Stremio addon) - requires IMDB ID and optionally uses saved debrid config
    */
   scrapeTorrentio: async (type: 'movie' | 'series', imdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
     try {
@@ -151,7 +161,17 @@ export const streamScraperService = {
         return [];
       }
       
-      let url = `${SCRAPERS.torrentio.baseUrl}/stream/${type}/${imdbId}`;
+      // Get saved Torrentio config (debrid API key)
+      const torrentioConfig = await getTorrentioConfig();
+      
+      // Build URL with optional debrid config
+      let baseUrl = SCRAPERS.torrentio.baseUrl;
+      if (torrentioConfig) {
+        baseUrl = `${SCRAPERS.torrentio.baseUrl}/${torrentioConfig}`;
+        console.log('[Torrentio] Using debrid config:', torrentioConfig.split('=')[0]);
+      }
+      
+      let url = `${baseUrl}/stream/${type}/${imdbId}`;
       if (type === 'series' && season !== undefined && episode !== undefined) {
         url += `:${season}:${episode}`;
       }
@@ -161,7 +181,9 @@ export const streamScraperService = {
       const response = await axios.get(url, { timeout: 15000 });
       const streams = response.data?.streams || [];
       
-      return streams.slice(0, 15).map((s: any) => ({
+      console.log(`[Torrentio] Found ${streams.length} streams`);
+      
+      return streams.slice(0, 20).map((s: any) => ({
         name: s.title || s.name || 'Torrentio',
         url: s.url || (s.infoHash ? `magnet:?xt=urn:btih:${s.infoHash}&dn=${encodeURIComponent(s.title || 'Video')}` : ''),
         quality: extractQuality(s.title || s.name || ''),

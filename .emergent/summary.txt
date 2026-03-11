@@ -11,194 +11,217 @@ The user wants to build a cross-platform mobile application for Android, Android
 
 *   **Core Functionality (Movies & TV Shows)**:
     *   Integrate TMDB and Trakt for metadata.
-    *   Scrape torrent sites (Torrentio, Knightcrawler, etc.) and streaming sites (VidSrc, FlixMomo, etc.) for links, integrating with Real-Debrid.
-    *   Show both cached and uncached torrent links.
-    *   Use an external player like VLC for playback.
+    *   Scrape torrent sites (like Torrentio) and streaming sites for links, integrating with Real-Debrid, Premiumize, and AllDebrid.
+    *   Add a Providers tab to filter content by services like Netflix, Disney+, Hulu, etc.
+    *   Show seasons and episodes for TV shows before searching for Debrid links.
+    *   Add a configuration page for Torrentio scrapers.
 
 *   **IPTV Integration**:
     *   Settings tab for users to log in with their own Xtreme Codes credentials.
-    *   Live TV Guide with EPG data.
-    *   Parental controls with a PIN.
-    *   Recording function for live TV.
+    *   A Sky-Glass-style Live TV Guide with full EPG data (Now/Next), with caching to prevent crashes.
+    *   Display all categories and channels from the provider.
+    *   VOD section with infinite scrolling for both movies and TV shows.
+    *   Full-screen player for all IPTV content.
 
 *   **Account Management & Settings**:
-    *   Users must authenticate Debrid and Trakt accounts.
-    *   Display account status and expiry warnings.
+    *   Users must authenticate Debrid (Real-Debrid, AllDebrid, Premiumize) and Trakt accounts.
     *   A donation button linking to .
 
 *   **Deployment**:
-    *   The agent should push updates to the user's GitHub account () and manage versioning ().
-    *   Build APKs using Expo (EAS) only when requested.
+    *   The agent should push updates to the user's GitHub account () automatically.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A React Native (Expo) application with a FastAPI backend. A significant amount of work has been done to refactor the UI to support both TV and mobile platforms. This includes creating a custom tab bar, TV-specific layouts, and visible focus indicators for remote navigation. However, these fixes have repeatedly failed user testing on actual TV devices.
+A React Native (Expo) application with a FastAPI backend. In this session, the agent successfully overhauled several core features:
+*   **Debrid Authentication**: All Debrid services (Real-Debrid, AllDebrid, Premiumize) were fixed. The agent implemented backend proxy endpoints to bypass browser CORS restrictions, making the OAuth device flow fully functional.
+*   **IPTV Functionality**: IPTV login is now working and state is maintained. The VOD (Movies & TV Shows) and Live TV Guide pages are now populated with categories and content from the user's provider. EPG data is fetched and decoded.
+*   **Trakt Integration**: Continue Watching and Watchlist carousels were added to the home page.
+*   **Torrent Scrapers & Player**: The agent began a significant rewrite of the stream scraping logic and the video player component to address multiple user-reported bugs.
+*   **EPG Caching**: A caching layer was added to the EPG fetching logic to improve performance and reduce crashes.
 
-The backend supports Real-Debrid cache searching and IPTV integration. On the frontend, a cross-platform storage utility () has been created to resolve authentication issues, and a new service () has been added to scrape direct streaming sites, though it is not yet integrated. The Real-Debrid and Xtreme Codes authentication flows remain buggy despite several attempted fixes.
+Despite this progress, the user has reported several critical usability bugs remain, particularly around video playback, torrent link scraping, and TV navigation.
 
 **Last working item**:
--   **Last item agent was working**: The agent was addressing multiple user requests simultaneously. The immediate task was fixing the still-failing Real-Debrid authentication and integrating cached torrent search. This involved starting a major refactor of  to use the backend's cache search endpoints and ensure the new cross-platform storage utility was correctly implemented. The agent was interrupted mid-way through editing this file.
+-   **Last item agent was working**: The agent was implementing a user-requested feature to add a Torrentio configuration UI to the settings page. This involves adding a new card and modal to  and updating the stream scraping service () to use the user's saved Torrentio configuration for fetching torrent links.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: both. The frontend needs thorough testing of the Debrid/IPTV auth flows and the UI integration of scrapers. The backend is stable, but testing the connection from the frontend is crucial.
--   **User Testing Done**: Y (The user has repeatedly confirmed that the primary issues—TV layout and Debrid auth—are still not fixed in the latest builds.)
+-   **Which testing method agent to use?**: both. A frontend testing agent is needed to verify the new Torrentio UI in settings, the modal functionality, and the end-to-end flow of searching for a movie and seeing torrent links. Backend testing should confirm the proxy endpoints remain functional.
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: The application is unusable on Fire TV / Shield TV. (P0 - CRITICAL BLOCKER)
--   Issue 2: Real-Debrid authorization is not working correctly. (P0 - CRITICAL BLOCKER)
--   Issue 3: Integrate cached torrents and newly added stream scrapers. (P1)
--   Issue 4: Xtreme Codes IPTV login is failing. (P1)
+-   Issue 1: Torrent links are not showing; the Debrid tab shows 0 sources. (P0 - CRITICAL BLOCKER)
+-   Issue 2: TV navigation focus highlighting is still insufficient for Shield/FireTV. (P0 - CRITICAL BLOCKER)
+-   Issue 3: The video player does not enter a true full-screen mode and gets stuck in landscape on mobile. (P0 - CRITICAL BLOCKER)
+-   Issue 4: The TV Guide crashes and fails to open full screen. (P1)
+-   Issue 5: Direct stream links do not play. (P1)
 
 **Issues Detail**:
--   **Issue 1: TV Unusability (Full-screen layout)**
-    -   **Attempted fixes**: The agent created a custom Expo config plugin () to modify , remove the  orientation lock, and add TV-specific intents. This was intended to force a full-screen landscape layout.
-    -   **Why it didn't work**: The user's latest screenshot from their Fire TV shows the app is still running in a narrow, phone-sized column. The native configuration changes are not having the desired effect on the user's device.
+-   **Issue 1: Torrent links not showing**
+    -   **Attempted fixes**: The agent started implementing a Torrentio configuration UI in  and began rewriting  to use it.
     -   **Next debug checklist**:
-        1.  Verify the custom config plugin () is correctly modifying the  during the EAS prebuild phase. This may require inspecting build artifacts or running a local build.
-        2.  Check for any root-level styling in  or its parent components that might be applying a  or other constraint that's preventing the view from expanding.
-        3.  Ensure the Android theme specified in the manifest () is a  or other TV-compatible theme and isn't inheriting from a phone-only theme.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is the highest priority. The app is unusable on its primary target platform. Fixing this will unblock all other TV-related testing and development.
+        1.  Complete the Torrentio configuration modal UI in , including the QR code display and input fields.
+        2.  Implement the logic to save the Torrentio configuration to AsyncStorage.
+        3.  Finalize the logic in  to construct the Torrentio URL from the saved configuration.
+        4.  Test the full user flow: Configure Torrentio in settings -> Find a movie -> Go to the Debrid tab -> Verify torrent links appear.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a primary function of the application for streaming content via Debrid.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on other issue**: None
+
+-   **Issue 2: Insufficient TV Focus Highlighting**
+    -   **Attempted fixes**: The agent enhanced the  component with a glow effect.
+    -   **Why it didn't work**: The user reports the highlight is still not visible enough and needs to pop out.
+    -   **Next debug checklist**:
+        1.  In  (and other relevant components), increase the  value on focus (e.g., to  or higher).
+        2.  Apply a more prominent, high-contrast border or a shadow effect on focus.
+        3.  Systematically audit and apply this enhanced style to all interactive elements, especially carousel items ().
+    -   **Why fix this issue and what will be achieved with the fix?**: The app is unusable on its target TV platforms without clear remote navigation.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
--   **Issue 2: Real-Debrid Authentication Failure**
-    -   **Attempted fixes**: Refactored the OAuth device flow to correctly poll for credentials. Created a cross-platform storage utility () to use  as a fallback for , which fails on web and can be unreliable.
-    -   **Why it didn't work**: The user confirms authentication still fails. The token is likely not being saved, retrieved, or used correctly across the application state and persistent storage.
+-   **Issue 3: Player not fullscreen & stuck in landscape**
+    -   **Attempted fixes**: The agent modified  to manage screen orientation and hide navigation.
+    -   **Why it didn't work**: The user's screenshot shows the header/nav is still visible, and they report the orientation lock issue persists.
     -   **Next debug checklist**:
-        1.  **Complete the refactor of **. The agent was interrupted mid-edit.
-        2.  Systematically replace every instance of  usage in the project (, , etc.) with the new  utility to ensure consistency.
-        3.  Add extensive logging to the auth flow: log the device code, the polled credentials, the final token received, and the value being saved to storage to pinpoint the failure.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a core feature required for streaming. Fixing it is critical for the app's functionality.
+        1.  In , use  inside a  to forcefully hide all navigation UI.
+        2.  Ensure the cleanup function of the  correctly restores the navigation UI and calls .
+    -   **Why fix this issue and what will be achieved with the fix?**: Provides an immersive and non-buggy video playback experience.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
--   **Issue 3: Integrate cached torrents and newly added stream scrapers**
-    -   **Attempted fixes**: None. A new service file  was created, but not integrated.
+-   **Issue 4: TV Guide crashes**
+    -   **Attempted fixes**: Agent added an in-memory cache for EPG data in .
+    -   **Why it didn't work**: User reports it still crashes. The issue is likely performance-related due to rendering a large list of channels.
     -   **Next debug checklist**:
-        1.  Modify the movie/TV detail screens (, ).
-        2.  Fetch and display cached torrents from the backend endpoint ().
-        3.  Fetch and display direct streaming links by implementing the functions from .
-        4.  Present all link types clearly to the user.
-    -   **Why fix this issue and what will be achieved with the fix?**: Fulfills a direct user request for more content sources.
+        1.  Replace the  or  in  with a virtualized list component like 's  to handle rendering performance for hundreds of channels.
+        2.  Review the caching strategy in  to ensure it's effective.
+    -   **Why fix this issue and what will be achieved with the fix?**: Makes the Live TV feature stable and usable.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None
+
+-   **Issue 5: Direct stream links don't play**
+    -   **Attempted fixes**: A minor typo fix in .
+    -   **Next debug checklist**:
+        1.  Thoroughly review all scraping functions in  (, , etc.).
+        2.  Add logging to inspect the final URLs being passed to the player.
+        3.  Investigate if the  component is capable of handling the types of embed URLs being generated.
+    -   **Why fix this issue and what will be achieved with the fix?**: Provides users with non-Debrid streaming options.
     -   **Status**: NOT STARTED
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on other issue**: Debrid Authentication Failure
-
--   **Issue 4: Xtreme Codes IPTV Login Failure**
-    -   **Attempted fixes**: The agent modified the IPTV service () to try  URLs before falling back to .
-    -   **Why it didn't work**: This was a speculative fix and has not been verified by the user. The authentication error could have other causes.
-    -   **Next debug checklist**:
-        1.  In , add detailed logging to the  function to capture the exact URL being tried and the full error response from the provider's server.
-        2.  Display a more informative error message to the user in the UI instead of a generic authentication error.
-    -   **Why fix this issue and what will be achieved with the fix?**: Enables the IPTV functionality of the app.
-    -   **Status**: TESTING PENDING
-    -   **Is recurring issue?**: N
+    -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   Task 1: Complete Debrid Service Refactor (P0)
-    -   **Where to resume**: The agent was performing a large  operation on . This must be completed.
-    -   **What will be achieved with this?**: This is the first step to fixing the Debrid auth and integrating cached torrents.
+-   **Task 1: Complete Torrentio Configuration & Integration** (P0)
+    -   **Where to resume**: Finalize the Torrentio modal UI and saving logic in . Then, complete the integration in  to use the saved config.
+    -   **What will be achieved with this?**: This will fix the Torrent links not showing bug by allowing users to provide their own working Torrentio configuration.
     -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks**:
-    *   **(P2) Visible Remote Focus Highlight**: User requested a clearer indicator for what the remote is pointing to. The agent added some scaling and borders, but this needs to be verified and potentially enhanced.
-    *   **(P2) Check EPG/Guide Functionality**: The user asked to double-check if the EPG and TV guide are working.
-    *   **(P2) External Player (VLC) Integration**: An original requirement that has not been implemented.
-    *   **(P2) Trakt Lists Integration**: Implement Favorites and Continue Watching carousels.
+    *   **(P1) Add more scrapers from **: As requested by the user, this requires updating .
+    *   **(P1) Add Providers Tab**: A filterable section on movie/TV pages for content from specific services (Netflix, etc.).
+    *   **(P2) Add IMDB Login**: A new user request, which may require clarification (likely refers to Trakt).
 
 *   **Future Tasks**:
-    *   **(P3) GitLab CI/CD Setup**: The user expressed interest in this.
-    -   **(P3) Comprehensive Search**: Build out the search functionality in .
+    *   **(P2) External Player (VLC) Integration**.
+    *   **(P3) GitLab CI/CD Setup**.
+    *   **(P3) Comprehensive Search**: Build out the search page ().
 
 **Completed work in this session**
--   **UI & TV Refactor**:
-    -   Created a custom, scrollable tab bar component to fix missing tabs on mobile.
-    -   Added a custom Expo config plugin () to modify the  to try and force a full-screen TV layout.
-    -   Improved focus indicators for remote navigation with scaling and colored borders.
--   **Auth & Services**:
-    -   Fixed the Real-Debrid OAuth logical flow.
-    -   Created a cross-platform storage utility () to abstract away  issues.
-    -   Updated IPTV services to try both  and .
-    -   Added a Copy Code button to the auth modal for mobile users.
-    -   Created a new  service containing a list of user-requested streaming sites.
--   **Project Management**:
-    -   Created and updated .
-    -   Incremented the app version in  with each significant change.
-    -   Pushed all changes to the user's GitHub repository ().
-
-**Earlier issues found/mentioned but not fixed**
--   The main recurring issues are the TV full-screen layout and Debrid/IPTV authentication, which are all listed in the pending issues section.
+-   **Debrid Authentication Overhaul**: Successfully fixed Real-Debrid, AllDebrid, and Premiumize authentication by implementing backend proxy endpoints in  to resolve CORS issues.
+-   **IPTV Functionality Implemented**: Fixed IPTV login, VOD (Movies/TV), and Live TV channel lists. EPG data is now fetched and displayed correctly.
+-   **Trakt Lists Integration**: Added Watchlist and Continue Watching carousels to the home screen.
+-   **Credential Security**: Removed user's IPTV credentials from repository files (, test reports) upon request.
+-   **Git Push Fix**: Resolved a GitHub push failure caused by secret scanning.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Frontend**: React Native, Expo, Expo Router, TypeScript, Zustand
--   **Backend**: Python, FastAPI
--   **Key Challenge**: Correctly configuring the native Android build () via an Expo Config Plugin to achieve a true full-screen TV layout.
--   **Key Challenge**: Managing authentication tokens reliably across different platforms (native vs. web) and ensuring state is persisted correctly using a custom storage utility.
--   **APIs**: TMDB, Trakt, Real-Debrid, Xtreme Codes (IPTV)
+-   **Frontend**: React Native, Expo, Expo Router, TypeScript, Zustand for state management.
+-   **Backend**: Python, FastAPI. Now includes proxy endpoints for third-party APIs to bypass CORS.
+-   **State Persistence**: AsyncStorage, with a custom fallback for web compatibility.
+-   **Key Challenge**: Implementing highly visible and performant focus states for TV remote navigation across all interactive elements.
+-   **Key Challenge**: Performance optimization for data-heavy UI, specifically virtualizing the EPG list to prevent crashes on TV devices.
 
 **key DB schema**
--   No database is used. State is managed via Zustand on the client-side, with credentials persisted in device storage via .
+-   No database is used. State and configuration are persisted in the client using AsyncStorage.
 
 **All files of reference**
-*   : The custom plugin created to fix the TV full-screen issue. Its effectiveness is in question.
-*   : The root layout file containing the custom-built tab bar logic.
-*   : **Currently being edited**. Central to fixing auth and adding cached torrents.
-*   : The new, critical utility for all persistent data storage (tokens, PINs).
-*   : The new service with user-requested scrapers, waiting for integration.
-*   : The screen where new scrapers and cached torrents need to be displayed.
-*   : Defines the app version, orientation, and critically, includes the  plugin.
+*   : For implementing the Torrentio UI and testing focus styles.
+*   : Core file for fixing torrent and direct stream links.
+*   : For fixing fullscreen and orientation bugs.
+*   : For fixing the crash via list virtualization.
+*   : Contains the EPG fetching and caching logic.
+*   : Central component for improving focus highlighting.
+*   : Contains the working Debrid authentication proxy endpoints.
+
+**Areas that need refactoring**:
+-   ****: Must be refactored to use a virtualized list (e.g., ) instead of  or  to prevent performance-related crashes when displaying a large number of channels and EPG data.
 
 **Critical Info for New Agent**
--   **PRIORITY #1 IS TV USABILITY**. The user is completely blocked. The app renders in a narrow column on their Fire TV. The custom config plugin () was the last attempt and it failed. You must investigate why the native manifest changes are not working as expected. Do not move on until this is solved.
--   **PRIORITY #2 IS DEBRID AUTH**. The user confirms it's still broken. You must complete the refactor of  and ensure the  utility is used everywhere for storing tokens.
--   **DO NOT BUILD AN APK UNTIL ASKED**. The user is very frustrated with wasting build quotas on non-working builds. The user has requested that you only push code to GitHub. After fixing the critical issues, propose a build to the user instead of starting one automatically.
+-   The user's top priorities are fixing the remaining critical bugs: **torrent links not showing**, **insufficient TV focus**, **player not being fullscreen**, and **TV guide crashes**. Address these before adding new features.
+-   The major Debrid authentication issues (Real-Debrid, AllDebrid) have been **SOLVED** using a backend proxy. Do not attempt to change this implementation.
+-   The IPTV login, VOD, and Live TV channel lists are **WORKING**. The main remaining IPTV bug is the TV Guide crashing, which is likely a performance issue.
+-   The previous agent has stored the user's IPTV credentials for testing purposes. You have access to them and should use them to test all IPTV-related fixes.
+-   The user is frustrated by recurring usability issues. Focus on creating robust, highly visible, and performant solutions, especially for TV navigation and the TV Guide.
+
+**documents and test reports created in this job**
+*   
+*   
+*   
+*   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  : yes do that and add cached torrents aswell and fixing debrid services is must (Status: IN PROGRESS)
-2.  : User provides a long list of new scrapers to add and reports Real-Debrid auth is still not working. (Status: IN PROGRESS)
-3.  : User reports Debrid services look like they are authorizing but then fail. (Status: IN PROGRESS)
-4.  : User provides a list of new tasks: Fix Debrid auth copy-code, fix Xtreme codes login, check EPG, update version/author, and push to GitHub ONLY (don't build). (Status: PARTIALLY ADDRESSED)
-5.  : User requests a more visible focus indicator for remote navigation. (Status: PARTIALLY ADDRESSED)
-6.  : User specifies they are testing on Fire TV and want full configuration for Shield TV as well. (Status: IN PROGRESS)
-7.  : User reports Still the same! with a screenshot showing the app is not full-screen on TV. (Status: IN PROGRESS - CRITICAL)
-8.  : User asks for an update on the EAS build. (Status: DONE)
-9.  : User provides their GitLab username. (Status: NOT ACTIONED)
-10. : User agrees to setting up GitLab CI/CD but tells the agent not to interrupt the current EAS build. (Status: NOT ACTIONED)
+1.  **#297**: Clarified that Debrid was enabled on their end but wasn't pulling sources. Requested adding a Torrentio QR code configuration in settings and an IMDB login. (Status: IN PROGRESS)
+2.  **#274**: Provided detailed feedback with screenshots, reporting multiple critical issues: torrent links not showing (Debrid 0), direct links not playing, player not going full screen, orientation getting stuck, TV guide crashing, and TV focus highlighting still being insufficient. (Status: IN PROGRESS)
+3.  **#270**: Asked how to verify if the push to GitHub was successful. (Status: RESOLVED)
+4.  **#268**: Reported that the  command failed again due to secret scanning. (Status: RESOLVED)
+5.  **#262**: Reported not being able to push to GitHub due to a secret scanning error. (Status: RESOLVED)
+6.  **#254**: Asked the agent to remove IPTV credentials from files before pushing to GitHub, but to remember them for future updates. (Status: RESOLVED)
+7.  **#250**: Agent confirmed all tests passed from the testing agent. (Status: ACKNOWLEDGED BY AGENT)
+8.  **#183**: User approved the plan to work on Trakt lists, IPTV, and UI enhancements. (Status: RESOLVED)
+9.  **#178**: User messaged continue. (Status: ACKNOWLEDGED BY AGENT)
+10. **#174**: Agent reported that AllDebrid authentication was working. (Status: ACKNOWLEDGED BY AGENT)
 
 **Project Health Check:**
--   **Broken**: The application is unusable on its primary target platform (Android TV/Fire TV) due to a persistent layout issue. Core functionality like Debrid authentication is also broken. The user is blocked and frustrated.
+-   **Broken**: While significant progress was made on backend services and authentication, the application remains unusable for its core purpose due to critical frontend bugs in video playback, content scraping, and TV navigation.
 
 **3rd Party Integrations**
--   **TMDB API**: For movie/show metadata.
--   **Trakt API**: For user lists (auth implemented but needs verification).
--   **Real-Debrid API**: For resolving torrents and streaming (auth is currently broken).
--   **AllDebrid / Premiumize**: Planned, UI exists but not fully implemented/tested.
--   **Xtreme Codes (IPTV)**: For live TV and VOD (auth is currently broken).
--   **Expo Application Services (EAS)**: For building and distributing APKs.
+-   **TMDB API**: Working.
+-   **Trakt API**: Working (Auth, Watched Progress, Watchlist).
+-   **Real-Debrid API**: **WORKING** (via backend proxy).
+-   **AllDebrid API**: **WORKING** (via backend proxy).
+-   **Premiumize API**: **WORKING** (via backend proxy).
+-   **Xtreme Codes (IPTV)**: **WORKING** (Login, VOD, Live Channels, EPG data). Prone to crashes on the frontend.
+-   **Expo Application Services (EAS)**: Used for building APKs.
 -   **GitHub**: For source code management.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES, but the agent's tests passed while the user's real-world tests on a physical device failed, indicating a gap in testing strategy.
+-   **Testing agent used after significant changes**: YES
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: []
--   **Known regressions**: The TV layout fix has regressed or never worked on a real device. Debrid authentication has regressed and failed after multiple fix attempts.
+-   **Known regressions**: The TV focus highlighting and player fullscreen issues are persistent regressions that have not been fully resolved despite multiple attempts. The TV guide crash is a new high-priority issue.
+
+**Credentials to test flow:**
+-   **IPTV Credentials**: The user's credentials have been noted and are available for the agent to use for testing.
+    -   **Domain**: 
+    -   **Username**: 
+    -   **Password**: 
 
 **What agent forgot to execute**
--   The agent repeatedly failed to solve the root cause of the TV layout issue, cycling through different fixes without verifying them on a real device or understanding why they were failing.
--   The agent did not follow the user's instruction to stop building on EAS automatically and only push to GitHub, and had to be reminded.
--   The agent did not set up the requested GitLab CI/CD.
--   The agent created the  service but forgot to integrate it into the app.</analysis>
+-   The agent did not fully resolve the TV focus highlighting to the user's satisfaction (pop out effect).
+-   The agent's fixes for the player fullscreen and orientation lock issues were not effective.
+-   The agent's caching solution for the TV Guide crash was insufficient; the underlying performance problem was not addressed.
+-   The agent did not begin debugging why direct stream links are not playing.</analysis>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,12 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { format, addMinutes } from 'date-fns';
-import { theme } from '../constants/theme';
+import { theme, isTV } from '../constants/theme';
 import { iptvService } from '../services/iptv';
 import { recordingService, RecordingCategory } from '../services/recordingService';
 import { IPTVChannel, EPGProgram } from '../types';
@@ -276,158 +277,174 @@ export default function TVGuideScreen() {
         })}
       </ScrollView>
 
-      {/* Channels List */}
-      <ScrollView style={styles.channelsList} showsVerticalScrollIndicator={false}>
-        {filteredChannels.map((channel) => {
-          const isRecording = recordingChannels.has(channel.name);
-          const epg = channelEPGs[channel.id] || [];
-          const { current, next } = getCurrentAndNextProgram(epg);
-          const isChannelFocused = focusedChannel === channel.id;
-          
-          return (
-            <View key={channel.id} style={[
-              styles.channelCard, 
-              isRecording && styles.channelCardRecording,
-              isChannelFocused && styles.channelCardFocused,
-            ]}>
-              <Pressable 
-                onPress={() => handlePlayChannel(channel)} 
-                onFocus={() => setFocusedChannel(channel.id)}
-                onBlur={() => setFocusedChannel(null)}
-                style={styles.channelPressable}
-              >
-                <View style={styles.channelHeader}>
-                  {channel.logo ? (
-                    <Image
-                      source={{ uri: channel.logo }}
-                      style={styles.channelLogo}
-                      contentFit="contain"
-                    />
-                  ) : (
-                    <View style={styles.channelLogoPlaceholder}>
-                      <Ionicons name="tv" size={24} color={theme.colors.primary} />
+      {/* Channels List - Using FlashList for performance with large lists */}
+      <View style={styles.channelsListContainer}>
+        <FlashList
+          data={filteredChannels}
+          estimatedItemSize={isTV ? 200 : 140}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item: channel }) => {
+            const isRecording = recordingChannels.has(channel.name);
+            const epg = channelEPGs[channel.id] || [];
+            const { current, next } = getCurrentAndNextProgram(epg);
+            const isChannelFocused = focusedChannel === channel.id;
+            
+            return (
+              <View style={[
+                styles.channelCard, 
+                isRecording && styles.channelCardRecording,
+                isChannelFocused && styles.channelCardFocused,
+              ]}>
+                <Pressable 
+                  onPress={() => handlePlayChannel(channel)} 
+                  onFocus={() => setFocusedChannel(channel.id)}
+                  onBlur={() => setFocusedChannel(null)}
+                  style={styles.channelPressable}
+                >
+                  <View style={styles.channelHeader}>
+                    {channel.logo ? (
+                      <Image
+                        source={{ uri: channel.logo }}
+                        style={styles.channelLogo}
+                        contentFit="contain"
+                      />
+                    ) : (
+                      <View style={styles.channelLogoPlaceholder}>
+                        <Ionicons name="tv" size={isTV ? 28 : 24} color={theme.colors.primary} />
+                      </View>
+                    )}
+                    <View style={styles.channelInfo}>
+                      <View style={styles.channelNameRow}>
+                        <Text style={styles.channelName}>{channel.name}</Text>
+                        {isRecording && (
+                          <View style={styles.recordingBadge}>
+                            <View style={styles.recordingDot} />
+                            <Text style={styles.recordingText}>REC</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.channelCategory}>{channel.category}</Text>
                     </View>
-                  )}
-                  <View style={styles.channelInfo}>
-                    <View style={styles.channelNameRow}>
-                      <Text style={styles.channelName}>{channel.name}</Text>
-                      {isRecording && (
-                        <View style={styles.recordingBadge}>
-                          <View style={styles.recordingDot} />
-                          <Text style={styles.recordingText}>REC</Text>
+                    
+                    {/* Action Buttons */}
+                    <View style={styles.channelActions}>
+                      {isRecording ? (
+                        <Pressable
+                          style={styles.stopRecordButton}
+                          onPress={() => handleStopRecording(channel)}
+                        >
+                          <Ionicons name="stop-circle" size={isTV ? 32 : 28} color="#F44336" />
+                        </Pressable>
+                      ) : (
+                        <Pressable
+                          style={styles.recordButton}
+                          onPress={() => handleRecordPress(channel)}
+                        >
+                          <Ionicons name="radio-button-on" size={isTV ? 28 : 24} color="#F44336" />
+                        </Pressable>
+                      )}
+                      <Pressable
+                        style={styles.playButton}
+                        onPress={() => handlePlayChannel(channel)}
+                      >
+                        <Ionicons name="play-circle" size={isTV ? 40 : 32} color={theme.colors.primary} />
+                      </Pressable>
+                    </View>
+                  </View>
+                  
+                  {/* NOW & NEXT EPG Display - Sky Glass Style */}
+                  {(current || next) && (
+                    <View style={styles.nowNextContainer}>
+                      {current && (
+                        <View style={styles.nowSection}>
+                          <View style={styles.nowBadge}>
+                            <View style={styles.liveDot} />
+                            <Text style={styles.nowBadgeText}>NOW</Text>
+                          </View>
+                          <View style={styles.programDetails}>
+                            <Text style={styles.programTitleNow} numberOfLines={1}>{current.title}</Text>
+                            <Text style={styles.programTimeNow}>
+                              {format(new Date(current.start), 'HH:mm')} - {format(new Date(current.end), 'HH:mm')}
+                            </Text>
+                            {current.description && (
+                              <Text style={styles.programDescNow} numberOfLines={2}>{current.description}</Text>
+                            )}
+                          </View>
+                        </View>
+                      )}
+                      {next && (
+                        <View style={styles.nextSection}>
+                          <Text style={styles.nextLabel}>NEXT</Text>
+                          <Text style={styles.programTitleNext} numberOfLines={1}>{next.title}</Text>
+                          <Text style={styles.programTimeNext}>
+                            {format(new Date(next.start), 'HH:mm')}
+                          </Text>
                         </View>
                       )}
                     </View>
-                    <Text style={styles.channelCategory}>{channel.category}</Text>
-                  </View>
+                  )}
                   
-                  {/* Action Buttons */}
-                  <View style={styles.channelActions}>
-                    {isRecording ? (
-                      <Pressable
-                        style={styles.stopRecordButton}
-                        onPress={() => handleStopRecording(channel)}
-                      >
-                        <Ionicons name="stop-circle" size={28} color="#F44336" />
-                      </Pressable>
-                    ) : (
-                      <Pressable
-                        style={styles.recordButton}
-                        onPress={() => handleRecordPress(channel)}
-                      >
-                        <Ionicons name="radio-button-on" size={24} color="#F44336" />
-                      </Pressable>
-                    )}
-                    <Pressable
-                      style={styles.playButton}
-                      onPress={() => handlePlayChannel(channel)}
-                    >
-                      <Ionicons name="play-circle" size={32} color={theme.colors.primary} />
-                    </Pressable>
-                  </View>
-                </View>
-                
-                {/* NOW & NEXT EPG Display - Sky Glass Style */}
-                {(current || next) && (
-                  <View style={styles.nowNextContainer}>
-                    {current && (
-                      <View style={styles.nowSection}>
-                        <View style={styles.nowBadge}>
-                          <View style={styles.liveDot} />
-                          <Text style={styles.nowBadgeText}>NOW</Text>
-                        </View>
-                        <View style={styles.programDetails}>
-                          <Text style={styles.programTitleNow} numberOfLines={1}>{current.title}</Text>
-                          <Text style={styles.programTimeNow}>
-                            {format(new Date(current.start), 'HH:mm')} - {format(new Date(current.end), 'HH:mm')}
-                          </Text>
-                          {current.description && (
-                            <Text style={styles.programDescNow} numberOfLines={2}>{current.description}</Text>
-                          )}
-                        </View>
-                      </View>
-                    )}
-                    {next && (
-                      <View style={styles.nextSection}>
-                        <Text style={styles.nextLabel}>NEXT</Text>
-                        <Text style={styles.programTitleNext} numberOfLines={1}>{next.title}</Text>
-                        <Text style={styles.programTimeNext}>
-                          {format(new Date(next.start), 'HH:mm')}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-                
-                {loadingEPG.has(channel.id) && (
-                  <View style={styles.loadingEPG}>
-                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                    <Text style={styles.loadingEPGText}>Loading guide...</Text>
-                  </View>
-                )}
-              </Pressable>
+                  {loadingEPG.has(channel.id) && (
+                    <View style={styles.loadingEPG}>
+                      <ActivityIndicator size="small" color={theme.colors.primary} />
+                      <Text style={styles.loadingEPGText}>Loading guide...</Text>
+                    </View>
+                  )}
+                </Pressable>
 
-              {/* EPG */}
-              {channel.epg && channel.epg.length > 0 && (
-                <View style={styles.epgContainer}>
-                  {channel.epg.map((program) => (
-                    <Pressable
-                      key={program.id}
-                      style={styles.programCard}
-                      onPress={() => {
-                        setSelectedChannel(channel);
-                        setIsScheduling(true);
-                        setScheduleDate(new Date(program.start));
-                        const durationMs = new Date(program.end).getTime() - new Date(program.start).getTime();
-                        setRecordDuration(String(Math.ceil(durationMs / 60000)));
-                        setShowRecordModal(true);
-                      }}
-                    >
-                      <View style={styles.programTime}>
-                        <Text style={styles.programTimeText}>
-                          {format(new Date(program.start), 'HH:mm')}
-                        </Text>
-                        <Text style={styles.programTimeSeparator}>-</Text>
-                        <Text style={styles.programTimeText}>
-                          {format(new Date(program.end), 'HH:mm')}
-                        </Text>
-                      </View>
-                      <View style={styles.programInfo}>
-                        <Text style={styles.programTitle}>{program.title}</Text>
-                        <Text style={styles.programDescription} numberOfLines={2}>
-                          {program.description}
-                        </Text>
-                      </View>
-                      <Ionicons name="timer-outline" size={20} color={theme.colors.textSecondary} />
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-          );
-        })}
-        <View style={{ height: 100 }} />
-      </ScrollView>
+                {/* EPG */}
+                {channel.epg && channel.epg.length > 0 && (
+                  <View style={styles.epgContainer}>
+                    {channel.epg.map((program) => (
+                      <Pressable
+                        key={program.id}
+                        style={styles.programCard}
+                        onPress={() => {
+                          setSelectedChannel(channel);
+                          setIsScheduling(true);
+                          setScheduleDate(new Date(program.start));
+                          const durationMs = new Date(program.end).getTime() - new Date(program.start).getTime();
+                          setRecordDuration(String(Math.ceil(durationMs / 60000)));
+                          setShowRecordModal(true);
+                        }}
+                      >
+                        <View style={styles.programTime}>
+                          <Text style={styles.programTimeText}>
+                            {format(new Date(program.start), 'HH:mm')}
+                          </Text>
+                          <Text style={styles.programTimeSeparator}>-</Text>
+                          <Text style={styles.programTimeText}>
+                            {format(new Date(program.end), 'HH:mm')}
+                          </Text>
+                        </View>
+                        <View style={styles.programInfo}>
+                          <Text style={styles.programTitle}>{program.title}</Text>
+                          <Text style={styles.programDescription} numberOfLines={2}>
+                            {program.description}
+                          </Text>
+                        </View>
+                        <Ionicons name="timer-outline" size={20} color={theme.colors.textSecondary} />
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          }}
+          ListFooterComponent={<View style={{ height: 100 }} />}
+          onViewableItemsChanged={useCallback(({ viewableItems }) => {
+            // Load EPG for visible channels as they come into view
+            const visibleChannels = viewableItems.map(item => item.item as IPTVChannel);
+            if (visibleChannels.length > 0) {
+              loadEPGForChannels(visibleChannels);
+            }
+          }, [channelEPGs, loadingEPG])}
+          viewabilityConfig={{
+            itemVisiblePercentThreshold: 50,
+          }}
+        />
+      </View>
 
       {/* Record Modal */}
       <Modal visible={showRecordModal} transparent animationType="slide">
@@ -638,6 +655,9 @@ const styles = StyleSheet.create({
   categoryTextActive: {
     color: '#000',
     fontWeight: theme.fontWeight.bold,
+  },
+  channelsListContainer: {
+    flex: 1,
   },
   channelsList: {
     flex: 1,
@@ -958,24 +978,25 @@ const styles = StyleSheet.create({
   // Category Focus Style
   categoryButtonFocused: {
     borderColor: '#FFFFFF',
-    borderWidth: 3,
-    transform: [{ scale: 1.1 }],
-    shadowColor: theme.colors.primary,
+    borderWidth: isTV ? 4 : 3,
+    transform: [{ scale: isTV ? 1.15 : 1.1 }],
+    shadowColor: '#00D9FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 15,
-    elevation: 15,
+    shadowRadius: isTV ? 25 : 15,
+    elevation: 30,
   },
   // Channel Card Focus Style
   channelCardFocused: {
-    borderColor: theme.colors.primary,
-    borderWidth: 3,
-    backgroundColor: 'rgba(0, 217, 255, 0.1)',
-    shadowColor: theme.colors.primary,
+    borderColor: '#FFFFFF',
+    borderWidth: isTV ? 5 : 3,
+    backgroundColor: 'rgba(0, 217, 255, 0.15)',
+    shadowColor: '#00D9FF',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 15,
+    shadowOpacity: 1,
+    shadowRadius: isTV ? 35 : 20,
+    elevation: 40,
+    transform: [{ scale: isTV ? 1.02 : 1.01 }],
   },
   // NOW & NEXT EPG Styles - Sky Glass Style
   nowNextContainer: {
