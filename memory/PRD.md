@@ -36,6 +36,29 @@ Build a cross-platform mobile application for Android, Android TV, and Fire TV c
 - **Backend**: 100% pass rate (18/18 tests)
 - **Code Review**: All fixes verified
 
+### New Features Added This Session
+
+#### 5. Live TV Channels Screen - NEW ✅
+- **File**: `/app/frontend/app/live-channels.tsx`
+- **Features**:
+  - Grid view of all IPTV channels with logos
+  - Category filtering (All Channels, folders)
+  - Channel count per category
+  - Focus states for TV navigation
+  - Empty state with link to settings
+  - Direct playback on channel press
+
+#### 6. Navigation Updated ✅
+- **File**: `/app/frontend/app/_layout.tsx`
+- **Changes**:
+  - Added "LIVE TV" tab pointing to `/live-channels`
+  - Renamed old "LIVE TV" to "TV GUIDE"
+  - Tab order: HOME → MOVIES → TV SHOWS → PROVIDERS → LIVE TV → TV GUIDE → CATCH UP → SEARCH → VOD → SETTINGS
+
+### Air Dates - Already Implemented ✅
+- **TV Episodes**: `frontend/app/tv/[id].tsx` line 379-381 (shows air date)
+- **Movies**: `frontend/app/movie/[id].tsx` line 380-384 (shows full release date)
+
 ## Session 5 Updates (March 11, 2026)
 
 ### Features Implemented & Tested ✅
