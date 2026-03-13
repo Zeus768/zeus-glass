@@ -11,6 +11,10 @@ export interface ParentalControlSettings {
   setupComplete: boolean;
   lastUnlockedAt: number | null;
   unlockDuration: number; // minutes to stay unlocked
+  // Additional settings referenced in settings.tsx
+  hideAdultContent: boolean;
+  hideXXXCategories: boolean;
+  requirePinForSettings: boolean;
 }
 
 const DEFAULT_SETTINGS: ParentalControlSettings = {
@@ -22,6 +26,9 @@ const DEFAULT_SETTINGS: ParentalControlSettings = {
   setupComplete: false,
   lastUnlockedAt: null,
   unlockDuration: 30, // Stay unlocked for 30 minutes
+  hideAdultContent: true,
+  hideXXXCategories: true,
+  requirePinForSettings: false,
 };
 
 // Adult content category keywords

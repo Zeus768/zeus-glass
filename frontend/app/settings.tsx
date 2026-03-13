@@ -392,7 +392,7 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleToggleParentalSetting = async (key: keyof ParentalSettings, value: boolean) => {
+  const handleToggleParentalSetting = async (key: keyof ParentalControlSettings, value: boolean) => {
     await parentalControlService.saveSettings({ [key]: value });
     setParentalSettings(parentalControlService.getSettings());
   };
@@ -1845,5 +1845,30 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  // Missing styles for Torrentio card
+  accountNotConnected: {
+    fontSize: isTV ? 18 : 14,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
+  },
+  accountActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  accountButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: isTV ? 24 : 16,
+    paddingVertical: isTV ? 12 : 8,
+    borderRadius: theme.borderRadius.md,
+  },
+  accountButtonText: {
+    fontSize: isTV ? 16 : 14,
+    fontWeight: theme.fontWeight.semibold,
+    color: '#000',
+  },
+  logoutButtonText: {
+    color: theme.colors.text,
   },
 });

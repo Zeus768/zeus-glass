@@ -1018,18 +1018,138 @@ export const debridCacheService = {
         return null;
       }
 
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-      const params = new URLSearchParams({ hash, token });
+      errorLogService.info(`Getting stream URL for hash: ${hash.substring(0, 10)}...`, 'DebridCache');
 
-      if (fileId) params.append('file_id', fileId);
+      // Try direct Real-Debrid API first (mobile-friendly)
+      try {
+        // Step 1: Add magnet/hash to Real-Debrid
+        const magnetUrl = `magnet:?xt=urn:btih:${hash}`;
+        const formData = new URLSearchParams();
+        formData.append('magnet', magnetUrl);
+        
+        const addResponse = await axios.post(
+          'https://api.real-debrid.com/rest/1.0/torrents/addMagnet',
+          formData.toString(),
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            timeout: 15000,
+          }
+        );
 
-      const response = await axios.get(`${backendUrl}/api/debrid/cache/stream?${params.toString()}`);
+        if (!addResponse.data?.id) {
+          errorLogService.warn('No torrent ID returned', 'DebridCache');
+          return null;
+        }
 
-      if (response.data.success && response.data.stream_url) {
-        return response.data.stream_url;
+        const torrentId = addResponse.data.id;
+        errorLogService.info(`Torrent added: ${torrentId}`, 'DebridCache');
+
+        // Step 2: Select files
+        const selectFormData = new URLSearchParams();
+        selectFormData.append('files', 'all');
+        
+        await axios.post(
+          `https://api.real-debrid.com/rest/1.0/torrents/selectFiles/${torrentId}`,
+          selectFormData.toString(),
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            timeout: 10000,
+          }
+        );
+
+        // Step 3: Poll for completion (max 60 seconds for cached)
+        let attempts = 0;
+        let torrentInfo;
+
+        while (attempts < 60) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          const infoResponse = await axios.get(
+            `https://api.real-debrid.com/rest/1.0/torrents/info/${torrentId}`,
+            {
+              headers: { 'Authorization': `Bearer ${token}` },
+              timeout: 10000,
+            }
+          );
+
+          torrentInfo = infoResponse.data;
+          
+          if (torrentInfo.status === 'downloaded') {
+            break;
+          }
+          if (['error', 'virus', 'dead', 'magnet_error'].includes(torrentInfo.status)) {
+            errorLogService.error(`Torrent error: ${torrentInfo.status}`, 'DebridCache');
+            return null;
+          }
+          attempts++;
+        }
+
+        if (!torrentInfo || torrentInfo.status !== 'downloaded') {
+          errorLogService.warn('Torrent not ready', 'DebridCache');
+          return null;
+        }
+
+        // Step 4: Get download links
+        const links = torrentInfo.links || [];
+        if (links.length === 0) {
+          errorLogService.error('No links available', 'DebridCache');
+          return null;
+        }
+
+        // Pick the right file if fileId provided
+        const linkToUse = fileId && parseInt(fileId) < links.length 
+          ? links[parseInt(fileId)] 
+          : links[0];
+
+        // Step 5: Unrestrict the link
+        const unrestrictFormData = new URLSearchParams();
+        unrestrictFormData.append('link', linkToUse);
+        
+        const unrestrictResponse = await axios.post(
+          'https://api.real-debrid.com/rest/1.0/unrestrict/link',
+          unrestrictFormData.toString(),
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            timeout: 15000,
+          }
+        );
+
+        const streamUrl = unrestrictResponse.data?.download;
+        if (streamUrl) {
+          errorLogService.info(`Got stream URL: ${streamUrl.substring(0, 50)}...`, 'DebridCache');
+          return streamUrl;
+        }
+
+        return null;
+      } catch (directError: any) {
+        errorLogService.warn(`Direct API error: ${directError.message}`, 'DebridCache');
+        
+        // Fallback to backend (won't work on mobile but try anyway)
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        if (!backendUrl) return null;
+
+        const params = new URLSearchParams({ hash, token });
+        if (fileId) params.append('file_id', fileId);
+
+        const response = await axios.get(`${backendUrl}/api/debrid/cache/stream?${params.toString()}`, {
+          timeout: 30000,
+        });
+
+        if (response.data.success && response.data.stream_url) {
+          return response.data.stream_url;
+        }
+
+        return null;
       }
-
-      return null;
     } catch (error: any) {
       errorLogService.error(`Failed to get stream URL: ${error.message}`, 'DebridCache', error);
       return null;
