@@ -18,7 +18,7 @@ import * as Clipboard from 'expo-clipboard';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function PlayerScreen() {
-  const { url, title, type, imdbId, tmdbId, season, episode, episodeTitle, posterPath, backdropPath, mediaType, duration: paramDuration } = useLocalSearchParams<{ 
+  const { url, title, type, imdbId, tmdbId, season, episode, episodeTitle, posterPath, backdropPath, mediaType, duration: paramDuration, resumePosition } = useLocalSearchParams<{ 
     url: string; 
     title: string; 
     type?: 'video' | 'embed';
@@ -31,6 +31,7 @@ export default function PlayerScreen() {
     backdropPath?: string;
     mediaType?: 'movie' | 'tv';
     duration?: string;
+    resumePosition?: string;
   }>();
   const router = useRouter();
   const videoRef = useRef<Video>(null);
@@ -42,6 +43,7 @@ export default function PlayerScreen() {
   const [showControls, setShowControls] = useState(true);
   const [focusedButton, setFocusedButton] = useState<string | null>(null);
   const [isEmbed, setIsEmbed] = useState(false);
+  const [hasSeekToResume, setHasSeekToResume] = useState(false);
   
   // Subtitle state
   const [showSubtitleModal, setShowSubtitleModal] = useState(false);
@@ -602,6 +604,16 @@ export default function PlayerScreen() {
             setStatus(playbackStatus);
             if (playbackStatus.isLoaded && loading) {
               setLoading(false);
+              
+              // Seek to resume position if provided
+              if (resumePosition && !hasSeekToResume && videoRef.current) {
+                const seekTo = parseFloat(resumePosition) * 1000; // Convert to milliseconds
+                if (seekTo > 0) {
+                  videoRef.current.setPositionAsync(seekTo);
+                  setHasSeekToResume(true);
+                  console.log(`[Player] Seeking to resume position: ${resumePosition}s`);
+                }
+              }
             }
             
             // Handle scrobbling and watch history

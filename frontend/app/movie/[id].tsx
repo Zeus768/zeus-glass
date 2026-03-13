@@ -11,6 +11,7 @@ import { streamScraperService, StreamSource } from '../../services/streamScraper
 import { streamFilterService, FilterableStream, StreamFilterSettings } from '../../services/streamFilterService';
 import { resolveUrlService } from '../../services/resolveUrl';
 import { iptvService } from '../../services/iptv';
+import { watchHistoryService, WatchHistoryItem } from '../../services/watchHistoryService';
 import { useContentStore } from '../../store/contentStore';
 import { Movie, CachedTorrent } from '../../types';
 import { QUALITY_OPTIONS } from '../../config/constants';
@@ -52,6 +53,24 @@ export default function MovieDetailScreen() {
     count: number;
   }
   const [searchProgress, setSearchProgress] = useState<SearchProgress[]>([]);
+
+  // Resume playback state
+  const [resumeData, setResumeData] = useState<WatchHistoryItem | null>(null);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [pendingStreamUrl, setPendingStreamUrl] = useState<string | null>(null);
+
+  // Check for resume position on load
+  useEffect(() => {
+    const checkResumePosition = async () => {
+      if (id) {
+        const lastWatched = await watchHistoryService.getLastWatched(parseInt(id), 'movie');
+        if (lastWatched && lastWatched.progress > 5 && lastWatched.progress < 95) {
+          setResumeData(lastWatched);
+        }
+      }
+    };
+    checkResumePosition();
+  }, [id]);
 
   useEffect(() => {
     if (id) {
@@ -207,19 +226,69 @@ export default function MovieDetailScreen() {
     }
   };
 
+  // Format time for resume display
+  const formatResumeTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const hrs = Math.floor(mins / 60);
+    if (hrs > 0) {
+      return `${hrs}h ${mins % 60}m`;
+    }
+    return `${mins}m`;
+  };
+
+  // Navigate to player with all metadata for tracking
+  const navigateToPlayer = (streamUrl: string, streamType: 'video' | 'embed' = 'video', resumePosition?: number) => {
+    const params: any = {
+      url: streamUrl,
+      title: movie?.title || 'Movie',
+      type: streamType,
+      tmdbId: movie?.id?.toString(),
+      imdbId: movie?.imdb_id,
+      mediaType: 'movie',
+      posterPath: movie?.poster_path,
+      backdropPath: movie?.backdrop_path,
+    };
+    
+    // Add resume position if provided
+    if (resumePosition && resumePosition > 0) {
+      params.resumePosition = resumePosition.toString();
+    }
+    
+    router.push({
+      pathname: '/player',
+      params
+    });
+  };
+
+  // Check if should show resume prompt before playing
+  const checkResumeAndPlay = (streamUrl: string, streamType: 'video' | 'embed' = 'video') => {
+    if (resumeData && resumeData.currentTime > 60) { // Only show if more than 1 minute watched
+      setPendingStreamUrl(streamUrl);
+      setShowResumeModal(true);
+    } else {
+      navigateToPlayer(streamUrl, streamType);
+    }
+  };
+
+  // Handle resume choice
+  const handleResumeChoice = (shouldResume: boolean) => {
+    setShowResumeModal(false);
+    if (pendingStreamUrl) {
+      navigateToPlayer(
+        pendingStreamUrl, 
+        'video', 
+        shouldResume ? resumeData?.currentTime : undefined
+      );
+      setPendingStreamUrl(null);
+    }
+  };
+
   const handlePlayDirectStream = async (stream: StreamSource) => {
     try {
       if (stream.type === 'embed') {
         // Open embed URL in our player's WebView
         setShowLinksModal(false);
-        router.push({
-          pathname: '/player',
-          params: { 
-            url: stream.url, 
-            title: movie?.title || 'Movie',
-            type: 'embed'
-          }
-        });
+        navigateToPlayer(stream.url, 'embed');
       } else if (stream.type === 'torrent') {
         // For torrent links, try to resolve via Real-Debrid if available
         const token = await realDebridService.getToken();
@@ -228,10 +297,7 @@ export default function MovieDetailScreen() {
           const directUrl = await realDebridService.addMagnetAndGetLink(stream.url, movie?.title || 'Movie');
           if (directUrl) {
             setShowLinksModal(false);
-            router.push({
-              pathname: '/player',
-              params: { url: directUrl, title: movie?.title || 'Movie', type: 'video' }
-            });
+            checkResumeAndPlay(directUrl, 'video');
           } else {
             Alert.alert('Error', 'Failed to resolve torrent. Try another source.');
           }
@@ -239,12 +305,9 @@ export default function MovieDetailScreen() {
           Alert.alert('Login Required', 'Please login to Real-Debrid to play torrent sources.');
         }
       } else {
-        // Direct stream - open in player
+        // Direct stream - check for resume
         setShowLinksModal(false);
-        router.push({
-          pathname: '/player',
-          params: { url: stream.url, title: movie?.title || 'Movie', type: 'video' }
-        });
+        checkResumeAndPlay(stream.url, 'video');
       }
     } catch (error: any) {
       errorLogService.error(`Error playing stream: ${error.message}`, 'MovieDetail', error);
@@ -273,13 +336,8 @@ export default function MovieDetailScreen() {
         errorLogService.info('Got stream URL, navigating to player', 'MovieDetail');
         setShowLinksModal(false);
         
-        router.push({
-          pathname: '/player',
-          params: {
-            url: streamUrl,
-            title: movie?.title || 'Movie'
-          }
-        });
+        // Check for resume
+        checkResumeAndPlay(streamUrl, 'video');
       } else {
         errorLogService.error('Failed to get stream URL', 'MovieDetail');
         Alert.alert('Error', 'Failed to get streaming link. Please try again.');
@@ -755,6 +813,57 @@ export default function MovieDetailScreen() {
                 </ScrollView>
               )
             )}
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Resume Playback Modal */}
+      <Modal
+        visible={showResumeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => handleResumeChoice(false)}
+      >
+        <View style={styles.resumeModalOverlay}>
+          <View style={styles.resumeModalContent}>
+            <View style={styles.resumeModalIcon}>
+              <Ionicons name="play-circle" size={48} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.resumeModalTitle}>Resume Playback</Text>
+            <Text style={styles.resumeModalSubtitle}>
+              You were watching this at {resumeData ? formatResumeTime(resumeData.currentTime) : ''}
+            </Text>
+            <View style={styles.resumeProgressContainer}>
+              <View style={styles.resumeProgressBar}>
+                <View 
+                  style={[
+                    styles.resumeProgressFill, 
+                    { width: `${resumeData?.progress || 0}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.resumeProgressText}>
+                {resumeData ? `${Math.round(resumeData.progress)}% watched` : ''}
+              </Text>
+            </View>
+            <View style={styles.resumeModalButtons}>
+              <Pressable
+                style={styles.resumeModalButton}
+                onPress={() => handleResumeChoice(true)}
+              >
+                <Ionicons name="play" size={20} color="#000" />
+                <Text style={styles.resumeModalButtonText}>Resume</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.resumeModalButton, styles.resumeModalButtonSecondary]}
+                onPress={() => handleResumeChoice(false)}
+              >
+                <Ionicons name="refresh" size={20} color={theme.colors.text} />
+                <Text style={[styles.resumeModalButtonText, styles.resumeModalButtonTextSecondary]}>
+                  Start Over
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1352,5 +1461,83 @@ const styles = StyleSheet.create({
   },
   sortButtonTextActive: {
     color: '#000',
+  },
+  // Resume Modal Styles
+  resumeModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  resumeModalContent: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 24,
+    padding: isTV ? 40 : 28,
+    width: isTV ? 450 : '90%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  resumeModalIcon: {
+    marginBottom: 16,
+  },
+  resumeModalTitle: {
+    fontSize: isTV ? 26 : 22,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: 8,
+  },
+  resumeModalSubtitle: {
+    fontSize: isTV ? 16 : 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  resumeProgressContainer: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  resumeProgressBar: {
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  resumeProgressFill: {
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 4,
+  },
+  resumeProgressText: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+  },
+  resumeModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  resumeModalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: isTV ? 16 : 14,
+    borderRadius: 12,
+  },
+  resumeModalButtonSecondary: {
+    backgroundColor: theme.colors.surface,
+  },
+  resumeModalButtonText: {
+    fontSize: isTV ? 16 : 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  resumeModalButtonTextSecondary: {
+    color: theme.colors.text,
   },
 });
