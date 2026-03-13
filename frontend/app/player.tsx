@@ -10,21 +10,31 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as DocumentPicker from 'expo-document-picker';
 import { subtitleService, SubtitleTrack, SubtitleSettings } from '../services/subtitleService';
+import { traktService } from '../services/trakt';
+import { watchHistoryService } from '../services/watchHistoryService';
+import { useContentStore } from '../store/contentStore';
 import * as Clipboard from 'expo-clipboard';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function PlayerScreen() {
-  const { url, title, type, imdbId, season, episode } = useLocalSearchParams<{ 
+  const { url, title, type, imdbId, tmdbId, season, episode, episodeTitle, posterPath, backdropPath, mediaType, duration: paramDuration } = useLocalSearchParams<{ 
     url: string; 
     title: string; 
     type?: 'video' | 'embed';
     imdbId?: string;
+    tmdbId?: string;
     season?: string;
     episode?: string;
+    episodeTitle?: string;
+    posterPath?: string;
+    backdropPath?: string;
+    mediaType?: 'movie' | 'tv';
+    duration?: string;
   }>();
   const router = useRouter();
   const videoRef = useRef<Video>(null);
+  const { updateWatchProgress, loadLocalWatchHistory } = useContentStore();
   
   const [status, setStatus] = useState<AVPlaybackStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +59,11 @@ export default function PlayerScreen() {
   
   // Subtitle language picker
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  
+  // Scrobbling/Watch tracking state
+  const [isScrobbling, setIsScrobbling] = useState(false);
+  const [lastScrobbleTime, setLastScrobbleTime] = useState(0);
+  const scrobbleInterval = useRef<NodeJS.Timeout | null>(null);
   
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -88,6 +103,114 @@ export default function PlayerScreen() {
     
     await subtitleService.saveSettings({ preferredLanguages: newLangs });
     setSubtitleSettings(subtitleService.getSettings());
+  };
+
+  // Scrobbling and watch history functions
+  const startScrobbling = async () => {
+    if (!imdbId || isScrobbling) return;
+    
+    try {
+      const isAuthenticated = await traktService.isAuthenticated();
+      if (!isAuthenticated) return;
+      
+      setIsScrobbling(true);
+      
+      if (mediaType === 'movie') {
+        await traktService.startWatching({ imdb: imdbId }, 0);
+      } else if (season && episode) {
+        await traktService.startWatching(
+          { imdb: imdbId },
+          0,
+          parseInt(season),
+          parseInt(episode)
+        );
+      }
+      
+      console.log('[Scrobble] Started watching');
+    } catch (error) {
+      console.error('[Scrobble] Error starting:', error);
+    }
+  };
+
+  const updateScrobbleProgress = async (progress: number) => {
+    if (!imdbId || !isScrobbling) return;
+    
+    // Only update every 30 seconds minimum
+    const now = Date.now();
+    if (now - lastScrobbleTime < 30000) return;
+    
+    try {
+      setLastScrobbleTime(now);
+      
+      if (mediaType === 'movie') {
+        await traktService.startWatching({ imdb: imdbId }, progress);
+      } else if (season && episode) {
+        await traktService.startWatching(
+          { imdb: imdbId },
+          progress,
+          parseInt(season),
+          parseInt(episode)
+        );
+      }
+      
+      console.log(`[Scrobble] Progress: ${progress.toFixed(1)}%`);
+    } catch (error) {
+      console.error('[Scrobble] Error updating progress:', error);
+    }
+  };
+
+  const stopScrobbling = async (progress: number) => {
+    if (!imdbId) return;
+    
+    try {
+      const isAuthenticated = await traktService.isAuthenticated();
+      
+      if (isAuthenticated && isScrobbling) {
+        if (mediaType === 'movie') {
+          await traktService.stopWatching({ imdb: imdbId }, progress);
+        } else if (season && episode) {
+          await traktService.stopWatching(
+            { imdb: imdbId },
+            progress,
+            parseInt(season),
+            parseInt(episode)
+          );
+        }
+        console.log(`[Scrobble] Stopped at ${progress.toFixed(1)}%`);
+      }
+      
+      setIsScrobbling(false);
+    } catch (error) {
+      console.error('[Scrobble] Error stopping:', error);
+    }
+  };
+
+  // Update local watch history
+  const updateLocalWatchHistory = async (currentPos: number, totalDuration: number) => {
+    if (!tmdbId || !title) return;
+    
+    const progress = totalDuration > 0 ? (currentPos / totalDuration) * 100 : 0;
+    
+    try {
+      await updateWatchProgress({
+        id: Date.now(),
+        tmdbId: parseInt(tmdbId),
+        imdbId: imdbId,
+        title: title,
+        poster_path: posterPath,
+        backdrop_path: backdropPath,
+        type: mediaType || 'movie',
+        season: season ? parseInt(season) : undefined,
+        episode: episode ? parseInt(episode) : undefined,
+        episodeTitle: episodeTitle,
+        progress: progress,
+        duration: totalDuration,
+        currentTime: currentPos,
+        streamUrl: url,
+      });
+    } catch (error) {
+      console.error('[WatchHistory] Error updating:', error);
+    }
   };
 
   // External player options
@@ -251,12 +374,30 @@ export default function PlayerScreen() {
   }, [showControls, status]);
 
   const handleClose = useCallback(async () => {
+    // Save final watch position and stop scrobbling
+    if (status && 'positionMillis' in status && 'durationMillis' in status) {
+      const currentPos = status.positionMillis / 1000;
+      const totalDuration = status.durationMillis / 1000;
+      const progress = totalDuration > 0 ? (currentPos / totalDuration) * 100 : 0;
+      
+      // Update local watch history
+      if (tmdbId && title) {
+        await updateLocalWatchHistory(currentPos, totalDuration);
+      }
+      
+      // Stop Trakt scrobbling
+      await stopScrobbling(progress);
+      
+      // Reload watch history on home
+      loadLocalWatchHistory();
+    }
+    
     if (videoRef.current) {
       await videoRef.current.stopAsync();
     }
     await resetOrientation();
     router.back();
-  }, [router]);
+  }, [router, status, tmdbId, title]);
 
   const handlePlayPause = () => {
     if (status && 'isPlaying' in status) {
@@ -457,10 +598,35 @@ export default function PlayerScreen() {
           useNativeControls={false}
           resizeMode={ResizeMode.CONTAIN}
           isLooping={false}
-          onPlaybackStatusUpdate={(status) => {
-            setStatus(status);
-            if (status.isLoaded && loading) {
+          onPlaybackStatusUpdate={(playbackStatus) => {
+            setStatus(playbackStatus);
+            if (playbackStatus.isLoaded && loading) {
               setLoading(false);
+            }
+            
+            // Handle scrobbling and watch history
+            if (playbackStatus.isLoaded && 'positionMillis' in playbackStatus && 'durationMillis' in playbackStatus) {
+              const currentPos = playbackStatus.positionMillis / 1000;
+              const totalDuration = playbackStatus.durationMillis / 1000;
+              const progress = totalDuration > 0 ? (currentPos / totalDuration) * 100 : 0;
+              
+              // Start scrobbling when playback begins
+              if (playbackStatus.isPlaying && !isScrobbling && progress > 1) {
+                startScrobbling();
+              }
+              
+              // Update progress periodically
+              if (playbackStatus.isPlaying && progress > 0) {
+                updateScrobbleProgress(progress);
+              }
+              
+              // Update local watch history every 15 seconds
+              if (playbackStatus.isPlaying && totalDuration > 0) {
+                const now = Date.now();
+                if (now - lastScrobbleTime >= 15000) {
+                  updateLocalWatchHistory(currentPos, totalDuration);
+                }
+              }
             }
           }}
           onLoad={() => setLoading(false)}
