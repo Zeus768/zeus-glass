@@ -92,6 +92,37 @@ Build a cross-platform mobile application for Android, Android TV, and Fire TV c
   - Full-screen modal for easy selection
 - **How to use**: Settings icon → Languages → Select preferred languages
 
+#### 11. Continue Watching Feature - NEW ✅
+- **Files**: 
+  - `/app/frontend/services/watchHistoryService.ts` - Local watch history storage
+  - `/app/frontend/components/ContinueWatchingCarousel.tsx` - Progress bar carousel
+  - `/app/frontend/store/contentStore.ts` - State management
+  - `/app/frontend/app/index.tsx` - Home screen integration
+- **Features**:
+  - Tracks watch progress locally (no Trakt required)
+  - Shows progress bars on cards (5%-95% = in progress)
+  - Saves position, duration, and metadata
+  - Supports both movies and TV episodes
+- **How it works**: Automatically appears on home screen when you have content in progress
+
+#### 12. Movie Franchises - NEW ✅
+- **File**: `/app/frontend/app/franchises.tsx`
+- **Features**:
+  - 20 popular franchises (Spider-Man, Avengers, Star Wars, Harry Potter, etc.)
+  - Browse movies within each franchise
+  - Shows movie count per franchise
+  - Sorted by release date
+- **Access**: Movies → Franchises button in genre bar
+
+#### 13. IPTV Premium Link Styling - NEW ✅
+- **File**: `/app/frontend/app/movie/[id].tsx`
+- **Features**:
+  - IPTV/VOD links show gold fire icon
+  - "PREMIUM" badge in gold color
+  - Golden border and glow effect
+  - Star icon next to source name
+- **Detection**: Automatically detects sources with "iptv" or "vod" in name
+
 ## Session 5 Updates (March 11, 2026)
 
 ### Features Implemented & Tested ✅
