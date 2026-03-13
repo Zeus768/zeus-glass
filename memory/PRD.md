@@ -59,6 +59,20 @@ Build a cross-platform mobile application for Android, Android TV, and Fire TV c
 - **TV Episodes**: `frontend/app/tv/[id].tsx` line 379-381 (shows air date)
 - **Movies**: `frontend/app/movie/[id].tsx` line 380-384 (shows full release date)
 
+#### 7. Providers Auto-Select - FIXED ✅
+- **File**: `/app/frontend/app/providers.tsx`
+- **Fix**: Auto-selects first provider (Netflix) on page load
+- **Benefit**: Users no longer see empty page, content loads immediately
+
+#### 8. External Player Integration - NEW ✅
+- **File**: `/app/frontend/app/player.tsx`
+- **Features**:
+  - Support for VLC, MX Player, nPlayer, Just Player
+  - "Open in External Player" button in top bar
+  - Copy URL to clipboard option
+  - Graceful handling when player not installed
+- **How to use**: Tap the open icon in top-right corner during playback
+
 ## Session 5 Updates (March 11, 2026)
 
 ### Features Implemented & Tested ✅
