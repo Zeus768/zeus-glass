@@ -17,63 +17,95 @@ export default function ProvidersScreen() {
   const { type } = useLocalSearchParams<{ type?: 'movie' | 'tv' }>();
   
   const [mediaType, setMediaType] = useState<'movie' | 'tv'>(type === 'tv' ? 'tv' : 'movie');
-  const [selectedProvider, setSelectedProvider] = useState<ProviderKey | null>(null);
   const [content, setContent] = useState<ProviderContent[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [focusedItem, setFocusedItem] = useState<string | null>(null);
-  const [focusedProvider, setFocusedProvider] = useState<string | null>(null);
+  const [selectedSort, setSelectedSort] = useState<'popularity' | 'rating' | 'newest'>('popularity');
 
   const providers = Object.keys(STREAMING_PROVIDERS) as ProviderKey[];
 
-  // Auto-select first provider on mount
-  useEffect(() => {
-    if (providers.length > 0 && !selectedProvider) {
-      setSelectedProvider(providers[0]);
-    }
-  }, []);
-
-  const loadContent = useCallback(async (provider: ProviderKey, pageNum: number = 1, append: boolean = false) => {
-    if (loading) return;
+  // Load content from ALL providers combined
+  const loadAllProviderContent = useCallback(async (pageNum: number = 1, append: boolean = false) => {
+    if (loading && append) return;
     
     setLoading(true);
     try {
-      const data = mediaType === 'movie'
-        ? await providersService.discoverMoviesByProvider(provider, pageNum)
-        : await providersService.discoverTVByProvider(provider, pageNum);
+      // Get popular providers to aggregate content from
+      const popularProviders: ProviderKey[] = ['netflix', 'disney', 'prime', 'hbo', 'apple', 'paramount', 'hulu', 'peacock'];
+      
+      // Determine sort parameter
+      let sortBy = 'popularity.desc';
+      if (selectedSort === 'rating') sortBy = 'vote_average.desc';
+      if (selectedSort === 'newest') sortBy = mediaType === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc';
+      
+      // Fetch from multiple providers in parallel
+      const results = await Promise.allSettled(
+        popularProviders.map(provider => 
+          mediaType === 'movie'
+            ? providersService.discoverMoviesByProvider(provider, pageNum, sortBy)
+            : providersService.discoverTVByProvider(provider, pageNum, sortBy)
+        )
+      );
+      
+      // Combine and deduplicate results
+      const allContent: ProviderContent[] = [];
+      const seenIds = new Set<number>();
+      
+      results.forEach(result => {
+        if (result.status === 'fulfilled') {
+          result.value.results.forEach(item => {
+            if (!seenIds.has(item.id)) {
+              seenIds.add(item.id);
+              allContent.push(item);
+            }
+          });
+        }
+      });
+      
+      // Sort combined results
+      if (selectedSort === 'popularity') {
+        allContent.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+      } else if (selectedSort === 'rating') {
+        allContent.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+      } else if (selectedSort === 'newest') {
+        allContent.sort((a, b) => {
+          const dateA = a.release_date || a.first_air_date || '';
+          const dateB = b.release_date || b.first_air_date || '';
+          return dateB.localeCompare(dateA);
+        });
+      }
       
       if (append) {
-        setContent(prev => [...prev, ...data.results]);
+        setContent(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newItems = allContent.filter(item => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
       } else {
-        setContent(data.results);
+        setContent(allContent);
       }
-      setHasMore(pageNum < data.total_pages);
+      
+      setHasMore(allContent.length >= 20);
     } catch (error) {
       console.error('Error loading provider content:', error);
     } finally {
       setLoading(false);
     }
-  }, [mediaType, loading]);
+  }, [mediaType, selectedSort]);
 
   useEffect(() => {
-    if (selectedProvider) {
-      setPage(1);
-      loadContent(selectedProvider, 1, false);
-    }
-  }, [selectedProvider, mediaType]);
-
-  const handleProviderSelect = (provider: ProviderKey) => {
-    setSelectedProvider(provider);
-    setContent([]);
     setPage(1);
-  };
+    setContent([]);
+    loadAllProviderContent(1, false);
+  }, [mediaType, selectedSort]);
 
   const handleLoadMore = () => {
-    if (!loading && hasMore && selectedProvider) {
+    if (!loading && hasMore) {
       const nextPage = page + 1;
       setPage(nextPage);
-      loadContent(selectedProvider, nextPage, true);
+      loadAllProviderContent(nextPage, true);
     }
   };
 
@@ -83,38 +115,6 @@ export default function ProvidersScreen() {
     } else {
       router.push(`/tv/${item.id}`);
     }
-  };
-
-  const renderProviderChip = (provider: ProviderKey) => {
-    const providerData = STREAMING_PROVIDERS[provider];
-    const isSelected = selectedProvider === provider;
-    const isFocused = focusedProvider === provider;
-
-    return (
-      <Pressable
-        key={provider}
-        style={[
-          styles.providerChip,
-          isSelected && styles.providerChipSelected,
-          isFocused && styles.providerChipFocused,
-        ]}
-        onPress={() => handleProviderSelect(provider)}
-        onFocus={() => setFocusedProvider(provider)}
-        onBlur={() => setFocusedProvider(null)}
-      >
-        <Image
-          source={{ uri: providersService.getProviderLogo(provider) }}
-          style={styles.providerLogo}
-          contentFit="contain"
-        />
-        <Text style={[
-          styles.providerName,
-          isSelected && styles.providerNameSelected,
-        ]} numberOfLines={1}>
-          {providerData.name}
-        </Text>
-      </Pressable>
-    );
   };
 
   const renderContentItem = ({ item }: { item: ProviderContent }) => {
@@ -147,6 +147,11 @@ export default function ProvidersScreen() {
               <Text style={styles.ratingText}>{item.vote_average.toFixed(1)}</Text>
             </View>
           )}
+          {/* Streaming badge */}
+          <View style={styles.streamingBadge}>
+            <Ionicons name="play-circle" size={12} color="#fff" />
+            <Text style={styles.streamingBadgeText}>STREAMING</Text>
+          </View>
         </View>
         <Text style={styles.contentTitle} numberOfLines={2}>{displayTitle}</Text>
         {year && <Text style={styles.contentYear}>{year}</Text>}
@@ -159,10 +164,7 @@ export default function ProvidersScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-          </Pressable>
-          <Text style={styles.title}>Providers</Text>
+          <Text style={styles.title}>Streaming Providers</Text>
         </View>
         
         {/* Media Type Toggle */}
@@ -184,61 +186,81 @@ export default function ProvidersScreen() {
         </View>
       </View>
 
-      {/* Provider Selection */}
-      <View style={styles.providersSection}>
-        <Text style={styles.sectionTitle}>Select Streaming Service</Text>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.providersScroll}
-        >
-          {providers.map(renderProviderChip)}
+      {/* Sort Options */}
+      <View style={styles.sortSection}>
+        <Text style={styles.sortLabel}>Sort by:</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortOptions}>
+          {[
+            { key: 'popularity', label: 'Popular', icon: 'flame' },
+            { key: 'rating', label: 'Top Rated', icon: 'star' },
+            { key: 'newest', label: 'Newest', icon: 'time' },
+          ].map((sort) => (
+            <Pressable
+              key={sort.key}
+              style={[styles.sortChip, selectedSort === sort.key && styles.sortChipActive]}
+              onPress={() => setSelectedSort(sort.key as any)}
+            >
+              <Ionicons 
+                name={sort.icon as any} 
+                size={14} 
+                color={selectedSort === sort.key ? '#000' : theme.colors.textSecondary} 
+              />
+              <Text style={[styles.sortChipText, selectedSort === sort.key && styles.sortChipTextActive]}>
+                {sort.label}
+              </Text>
+            </Pressable>
+          ))}
         </ScrollView>
       </View>
 
+      {/* Info Banner */}
+      <View style={styles.infoBanner}>
+        <Ionicons name="information-circle" size={18} color={theme.colors.primary} />
+        <Text style={styles.infoBannerText}>
+          Browse content from Netflix, Disney+, Prime Video, HBO Max & more. Select any title to find links via your Debrid service or IPTV.
+        </Text>
+      </View>
+
       {/* Content Grid */}
-      {selectedProvider ? (
-        <View style={styles.contentContainer}>
-          <View style={styles.contentHeader}>
-            <Text style={styles.contentHeaderTitle}>
-              {STREAMING_PROVIDERS[selectedProvider].name} {mediaType === 'movie' ? 'Movies' : 'TV Shows'}
-            </Text>
-            <Text style={styles.contentCount}>{content.length} titles</Text>
+      <View style={styles.contentContainer}>
+        <View style={styles.contentHeader}>
+          <Text style={styles.contentHeaderTitle}>
+            All {mediaType === 'movie' ? 'Movies' : 'TV Shows'}
+          </Text>
+          <Text style={styles.contentCount}>{content.length} titles</Text>
+        </View>
+        
+        {loading && content.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Loading content from all providers...</Text>
           </View>
-          
-          {content.length > 0 ? (
-            <FlashList
-              data={content}
-              renderItem={renderContentItem}
-              estimatedItemSize={CARD_HEIGHT + 60}
-              numColumns={isTV ? 6 : 3}
-              keyExtractor={(item) => `${item.media_type}-${item.id}`}
-              onEndReached={handleLoadMore}
-              onEndReachedThreshold={0.5}
-              contentContainerStyle={styles.gridContent}
-              ListFooterComponent={
-                loading && hasMore ? (
-                  <View style={styles.loadingMore}>
-                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                    <Text style={styles.loadingText}>Loading more...</Text>
-                  </View>
-                ) : null
-              }
-            />
-          ) : loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={styles.loadingText}>Loading {STREAMING_PROVIDERS[selectedProvider].name} content...</Text>
-            </View>
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="apps-outline" size={64} color={theme.colors.textMuted} />
-          <Text style={styles.emptyText}>Select a streaming service above</Text>
-          <Text style={styles.emptySubtext}>Browse content available on Netflix, Disney+, and more</Text>
-        </View>
-      )}
+        ) : content.length > 0 ? (
+          <FlashList
+            data={content}
+            renderItem={renderContentItem}
+            estimatedItemSize={CARD_HEIGHT + 60}
+            numColumns={isTV ? 6 : 3}
+            keyExtractor={(item) => `${item.media_type}-${item.id}`}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            contentContainerStyle={styles.gridContent}
+            ListFooterComponent={
+              loading && hasMore ? (
+                <View style={styles.loadingMore}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                  <Text style={styles.loadingText}>Loading more...</Text>
+                </View>
+              ) : null
+            }
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="film-outline" size={64} color={theme.colors.textMuted} />
+            <Text style={styles.emptyText}>No content found</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -295,55 +317,58 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '600',
   },
-  providersSection: {
+  sortSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: isTV ? 40 : 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: isTV ? 18 : 14,
-    color: theme.colors.textSecondary,
     marginBottom: 12,
   },
-  providersScroll: {
-    gap: 12,
-    paddingRight: 40,
+  sortLabel: {
+    fontSize: isTV ? 16 : 14,
+    color: theme.colors.textSecondary,
+    marginRight: 12,
   },
-  providerChip: {
+  sortOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sortChip: {
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.card,
-    borderRadius: 12,
-    padding: isTV ? 16 : 12,
-    width: isTV ? 120 : 90,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    paddingHorizontal: isTV ? 16 : 12,
+    paddingVertical: isTV ? 10 : 8,
+    borderRadius: 20,
+    gap: 6,
   },
-  providerChipSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+  sortChipActive: {
+    backgroundColor: theme.colors.primary,
   },
-  providerChipFocused: {
-    borderColor: '#FFFFFF',
-    transform: [{ scale: 1.05 }],
-    shadowColor: '#00D9FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 15,
-    elevation: 20,
-  },
-  providerLogo: {
-    width: isTV ? 50 : 40,
-    height: isTV ? 50 : 40,
-    borderRadius: 10,
-    marginBottom: 8,
-  },
-  providerName: {
-    fontSize: isTV ? 13 : 11,
+  sortChipText: {
+    fontSize: isTV ? 14 : 12,
     color: theme.colors.textSecondary,
-    textAlign: 'center',
+    fontWeight: '500',
   },
-  providerNameSelected: {
-    color: theme.colors.primary,
+  sortChipTextActive: {
+    color: '#000',
     fontWeight: '600',
+  },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    paddingHorizontal: isTV ? 40 : 16,
+    paddingVertical: 12,
+    marginHorizontal: isTV ? 40 : 16,
+    marginBottom: 16,
+    borderRadius: 10,
+    gap: 10,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: isTV ? 14 : 12,
+    color: theme.colors.textSecondary,
+    lineHeight: isTV ? 20 : 18,
   },
   contentContainer: {
     flex: 1,
@@ -414,6 +439,23 @@ const styles = StyleSheet.create({
     color: '#FFD700',
     fontSize: 11,
     fontWeight: '600',
+  },
+  streamingBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    gap: 4,
+  },
+  streamingBadgeText: {
+    color: '#000',
+    fontSize: 9,
+    fontWeight: '700',
   },
   contentTitle: {
     fontSize: isTV ? 14 : 12,
