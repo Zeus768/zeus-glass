@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme, isTV } from '../constants/theme';
 import { Carousel } from '../components/Carousel';
+import { ContinueWatchingCarousel } from '../components/ContinueWatchingCarousel';
 import { useContentStore } from '../store/contentStore';
 import { tmdbService } from '../services/tmdb';
 
@@ -25,9 +26,12 @@ export default function HomeScreen() {
     watchlistMovies,
     watchlistShows,
     favorites,
+    localContinueWatching,
+    localRecentlyWatched,
     loading,
     loadHomeContent,
     loadContinueWatching,
+    loadLocalWatchHistory,
     loadFavorites,
     loadTraktLists,
   } = useContentStore();
@@ -45,6 +49,7 @@ export default function HomeScreen() {
   // Load Trakt lists on mount
   useEffect(() => {
     loadTraktLists();
+    loadLocalWatchHistory();
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -53,9 +58,10 @@ export default function HomeScreen() {
       loadHomeContent(),
       loadTraktLists(),
       loadFavorites(),
+      loadLocalWatchHistory(),
     ]);
     setRefreshing(false);
-  }, [loadHomeContent, loadTraktLists, loadFavorites]);
+  }, [loadHomeContent, loadTraktLists, loadFavorites, loadLocalWatchHistory]);
 
   const handleWatchNow = useCallback(() => {
     if (heroMovie) {
@@ -137,10 +143,18 @@ export default function HomeScreen() {
 
         {/* Carousels */}
         <View style={styles.carouselsContainer}>
-          {/* Continue Watching - Trakt */}
-          {continueWatching.length > 0 && (
-            <Carousel 
+          {/* Local Continue Watching (with progress bars) */}
+          {localContinueWatching.length > 0 && (
+            <ContinueWatchingCarousel 
               title="Continue Watching" 
+              data={localContinueWatching}
+            />
+          )}
+          
+          {/* Continue Watching - Trakt (fallback if no local history) */}
+          {localContinueWatching.length === 0 && continueWatching.length > 0 && (
+            <Carousel 
+              title="Continue Watching (Trakt)" 
               data={continueWatching.map((item) => item.media)} 
               icon="play-circle"
             />

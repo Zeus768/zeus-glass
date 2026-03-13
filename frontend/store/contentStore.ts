@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Movie, TVShow, ContinueWatching } from '../types';
 import { tmdbService } from '../services/tmdb';
 import { traktService } from '../services/trakt';
+import { watchHistoryService, WatchHistoryItem } from '../services/watchHistoryService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../config/constants';
 
@@ -25,6 +26,10 @@ interface ContentState {
   watchlistShows: any[];
   recentlyWatched: any[];
   
+  // Local Watch History
+  localContinueWatching: WatchHistoryItem[];
+  localRecentlyWatched: WatchHistoryItem[];
+  
   // Favorites (local)
   favorites: (Movie | TVShow)[];
   
@@ -35,11 +40,13 @@ interface ContentState {
   // Actions
   loadHomeContent: () => Promise<void>;
   loadContinueWatching: () => Promise<void>;
+  loadLocalWatchHistory: () => Promise<void>;
   loadFavorites: () => Promise<void>;
   loadTraktLists: () => Promise<void>;
   addToFavorites: (item: Movie | TVShow) => Promise<void>;
   removeFromFavorites: (id: number) => Promise<void>;
   isFavorite: (id: number) => boolean;
+  updateWatchProgress: (item: Omit<WatchHistoryItem, 'watchedAt'>) => Promise<void>;
 }
 
 export const useContentStore = create<ContentState>((set, get) => ({
@@ -56,6 +63,8 @@ export const useContentStore = create<ContentState>((set, get) => ({
   watchlistMovies: [],
   watchlistShows: [],
   recentlyWatched: [],
+  localContinueWatching: [],
+  localRecentlyWatched: [],
   favorites: [],
   loading: false,
   traktLoading: false,
@@ -197,5 +206,30 @@ export const useContentStore = create<ContentState>((set, get) => ({
 
   isFavorite: (id: number) => {
     return get().favorites.some((item) => item.id === id);
+  },
+
+  loadLocalWatchHistory: async () => {
+    try {
+      const [continueWatching, recentlyWatched] = await Promise.all([
+        watchHistoryService.getContinueWatching(),
+        watchHistoryService.getRecentlyWatched(20),
+      ]);
+      set({ 
+        localContinueWatching: continueWatching,
+        localRecentlyWatched: recentlyWatched,
+      });
+    } catch (error) {
+      console.error('[ContentStore] Error loading local watch history:', error);
+    }
+  },
+
+  updateWatchProgress: async (item: Omit<WatchHistoryItem, 'watchedAt'>) => {
+    try {
+      await watchHistoryService.addOrUpdate(item);
+      // Reload local watch history
+      get().loadLocalWatchHistory();
+    } catch (error) {
+      console.error('[ContentStore] Error updating watch progress:', error);
+    }
   },
 }));
