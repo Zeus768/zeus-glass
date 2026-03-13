@@ -123,6 +123,27 @@ Build a cross-platform mobile application for Android, Android TV, and Fire TV c
   - Star icon next to source name
 - **Detection**: Automatically detects sources with "iptv" or "vod" in name
 
+#### 14. Trakt Scrobbling Integration - NEW ✅
+- **File**: `/app/frontend/app/player.tsx`
+- **Features**:
+  - Auto-starts scrobbling when playback begins (>1%)
+  - Updates progress to Trakt every 30 seconds
+  - Stops scrobbling when player closes
+  - Supports both movies and TV episodes
+  - Falls back gracefully if Trakt not authenticated
+- **How it works**: Automatically syncs your watch progress to Trakt
+
+#### 15. Enhanced Watch History Tracking - NEW ✅
+- **Files**: 
+  - `/app/frontend/app/player.tsx` - Tracking integration
+  - `/app/frontend/services/watchHistoryService.ts` - Storage service
+- **Features**:
+  - Saves position, duration, and metadata
+  - Updates every 15 seconds during playback
+  - Saves final position on player close
+  - Syncs with home screen Continue Watching carousel
+- **Data tracked**: TMDB ID, IMDB ID, title, poster, backdrop, progress %, position, duration, season/episode for TV
+
 ## Session 5 Updates (March 11, 2026)
 
 ### Features Implemented & Tested ✅
