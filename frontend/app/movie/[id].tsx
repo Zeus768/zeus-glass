@@ -699,32 +699,59 @@ export default function MovieDetailScreen() {
                   <Text style={styles.directStreamNote}>
                     Direct streams open in browser or external player
                   </Text>
-                  {directStreams.map((stream, index) => (
-                    <Pressable 
-                      key={index} 
-                      style={styles.directLinkCard}
-                      onPress={() => handlePlayDirectStream(stream)}
-                    >
-                      <View style={styles.directLinkInfo}>
-                        <View style={[
-                          styles.streamTypeBadge,
-                          stream.type === 'embed' && styles.streamTypeBadgeEmbed,
-                          stream.type === 'torrent' && styles.streamTypeBadgeTorrent,
-                          stream.type === 'direct' && styles.streamTypeBadgeDirect,
-                        ]}>
-                          <Ionicons 
-                            name={stream.type === 'embed' ? 'globe' : stream.type === 'torrent' ? 'magnet' : 'play'} 
-                            size={12} 
-                            color="#fff" 
-                          />
-                          <Text style={styles.streamTypeBadgeText}>{stream.type.toUpperCase()}</Text>
+                  {directStreams.map((stream, index) => {
+                    const isIPTV = stream.source?.toLowerCase().includes('iptv') || 
+                                   stream.type === 'iptv' ||
+                                   stream.source?.toLowerCase().includes('vod');
+                    
+                    return (
+                      <Pressable 
+                        key={index} 
+                        style={[
+                          styles.directLinkCard,
+                          isIPTV && styles.directLinkCardIPTV,
+                        ]}
+                        onPress={() => handlePlayDirectStream(stream)}
+                      >
+                        <View style={styles.directLinkInfo}>
+                          <View style={[
+                            styles.streamTypeBadge,
+                            stream.type === 'embed' && styles.streamTypeBadgeEmbed,
+                            stream.type === 'torrent' && styles.streamTypeBadgeTorrent,
+                            stream.type === 'direct' && styles.streamTypeBadgeDirect,
+                            isIPTV && styles.streamTypeBadgeIPTV,
+                          ]}>
+                            <Ionicons 
+                              name={isIPTV ? 'flame' : stream.type === 'embed' ? 'globe' : stream.type === 'torrent' ? 'magnet' : 'play'} 
+                              size={12} 
+                              color={isIPTV ? '#000' : '#fff'} 
+                            />
+                            <Text style={[
+                              styles.streamTypeBadgeText,
+                              isIPTV && styles.streamTypeBadgeTextIPTV,
+                            ]}>
+                              {isIPTV ? 'PREMIUM' : stream.type.toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text style={[
+                            styles.directLinkSource,
+                            isIPTV && styles.directLinkSourceIPTV,
+                          ]}>{stream.source}</Text>
+                          <Text style={styles.directLinkQuality}>{stream.quality}</Text>
+                          {isIPTV && (
+                            <View style={styles.iptvPremiumIcon}>
+                              <Ionicons name="star" size={14} color="#FFD700" />
+                            </View>
+                          )}
                         </View>
-                        <Text style={styles.directLinkSource}>{stream.source}</Text>
-                        <Text style={styles.directLinkQuality}>{stream.quality}</Text>
-                      </View>
-                      <Ionicons name="open-outline" size={24} color={theme.colors.primary} />
-                    </Pressable>
-                  ))}
+                        <Ionicons 
+                          name={isIPTV ? 'flame' : 'open-outline'} 
+                          size={24} 
+                          color={isIPTV ? '#FFD700' : theme.colors.primary} 
+                        />
+                      </Pressable>
+                    );
+                  })}
                 </ScrollView>
               )
             )}
@@ -1170,10 +1197,29 @@ const styles = StyleSheet.create({
   streamTypeBadgeDirect: {
     backgroundColor: theme.colors.success,
   },
+  streamTypeBadgeIPTV: {
+    backgroundColor: '#FFD700',
+  },
   streamTypeBadgeText: {
     fontSize: 10,
     fontWeight: theme.fontWeight.bold,
     color: '#fff',
+  },
+  streamTypeBadgeTextIPTV: {
+    color: '#000',
+  },
+  directLinkCardIPTV: {
+    borderColor: '#FFD700',
+    borderWidth: 2,
+    backgroundColor: 'rgba(255, 215, 0, 0.08)',
+  },
+  directLinkSourceIPTV: {
+    color: '#FFD700',
+    fontWeight: theme.fontWeight.bold,
+  },
+  iptvPremiumIcon: {
+    marginLeft: 'auto',
+    marginRight: theme.spacing.sm,
   },
   // IPTV Tab Button
   tabButtonIPTV: {

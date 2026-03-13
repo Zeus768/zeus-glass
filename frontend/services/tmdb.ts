@@ -139,4 +139,59 @@ export const tmdbService = {
     const response = await tmdbApi.get('/genre/tv/list');
     return response.data.genres;
   },
+
+  // Movie Collections/Franchises
+  getCollection: async (collectionId: number): Promise<any> => {
+    const response = await tmdbApi.get(`/collection/${collectionId}`);
+    return response.data;
+  },
+
+  // Popular franchises - hardcoded IDs for popular collections
+  getPopularFranchises: async (): Promise<any[]> => {
+    const franchiseIds = [
+      { id: 131296, name: 'Spider-Man (MCU)' },
+      { id: 86311, name: 'The Avengers' },
+      { id: 10, name: 'Star Wars' },
+      { id: 119, name: 'The Lord of the Rings' },
+      { id: 1241, name: 'Harry Potter' },
+      { id: 9485, name: 'Fast & Furious' },
+      { id: 528, name: 'The Terminator' },
+      { id: 2150, name: 'Shrek' },
+      { id: 121938, name: 'Batman (DCEU)' },
+      { id: 495, name: 'Jurassic Park' },
+      { id: 328, name: 'Jurassic World' },
+      { id: 8091, name: 'Alien' },
+      { id: 2980, name: 'Pirates of the Caribbean' },
+      { id: 87359, name: 'Mission: Impossible' },
+      { id: 726871, name: 'Dune' },
+      { id: 131635, name: 'Hunger Games' },
+      { id: 448150, name: 'Deadpool' },
+      { id: 529892, name: 'Black Panther' },
+      { id: 623911, name: 'John Wick' },
+      { id: 263, name: 'The Dark Knight' },
+    ];
+
+    const results = await Promise.allSettled(
+      franchiseIds.map(async (franchise) => {
+        try {
+          const collection = await tmdbService.getCollection(franchise.id);
+          return {
+            id: collection.id,
+            name: collection.name,
+            poster_path: collection.poster_path,
+            backdrop_path: collection.backdrop_path,
+            overview: collection.overview,
+            parts: collection.parts,
+            movieCount: collection.parts?.length || 0,
+          };
+        } catch (error) {
+          return null;
+        }
+      })
+    );
+
+    return results
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value !== null)
+      .map(r => r.value);
+  },
 };

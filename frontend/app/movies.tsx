@@ -312,6 +312,17 @@ export default function MoviesScreen() {
         {renderGenreButton(null, 0)}
         {renderCategoryButton({ key: 'trending', label: 'Trending', icon: 'flame' }, 1)}
         {renderCategoryButton({ key: 'top_rated', label: 'Top Rated', icon: 'star' }, 2)}
+        
+        {/* Franchises Button */}
+        <Pressable
+          onPress={() => router.push('/franchises')}
+          style={[styles.genreButton, styles.franchiseButton]}
+          data-testid="franchises-btn"
+        >
+          <Ionicons name="layers" size={isTV ? 20 : 14} color={theme.colors.primary} />
+          <Text style={[styles.genreText, styles.franchiseText]}>Franchises</Text>
+        </Pressable>
+        
         {genres.map((genre, index) => renderGenreButton(genre, index + 3))}
       </ScrollView>
 
@@ -507,5 +518,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: isTV ? 20 : 14,
     color: theme.colors.textSecondary,
+  },
+  franchiseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+  },
+  franchiseText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
 });
