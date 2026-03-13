@@ -4,87 +4,175 @@ The user wants to build a cross-platform mobile application for Android, Android
 **PRODUCT REQUIREMENTS:**
 
 *   **UI/UX**: Sky Glass aesthetic, TV remote compatibility, hero/category carousels.
-*   **Core Functionality (Movies & TV Shows)**: Integrate TMDB/Trakt for metadata, scrape torrents/streaming sites, integrate with Real-Debrid/Premiumize/AllDebrid, and provide filtering by provider (Netflix, etc.).
-*   **IPTV Integration**: Xtreme Codes login, a Sky-Glass-style Live TV Guide with EPG, and a VOD section.
+*   **Core Functionality (Movies & TV Shows)**: Integrate TMDB/Trakt for metadata, scrape torrents/streaming sites (like Cinema HD), integrate with Real-Debrid/Premiumize/AllDebrid, and provide filtering by provider (Netflix, etc.).
+*   **IPTV Integration**: Xtreme Codes login, a Sky-Glass-style Live TV Guide with EPG, and a VOD section. A new Live TV page listing all channels/categories.
 *   **Account & Settings**: Debrid/Trakt authentication, a donation button, a Torrentio configuration page.
 *   **Comprehensive Search**: A unified search that includes IPTV VOD results.
-*   **Player Enhancements**: An internal player (Zeus Player) that handles any link, supports subtitles, and allows filtering of sources by quality/size/hoster.
-*   **Parental Controls**: A mandatory PIN setup for adult content in IPTV.
-*   **Settings Persistence**: A Zeus Vault feature to back up and restore all user account settings (IPTV, Debrid, Trakt) to survive app reinstalls.
+*   **Player Enhancements**: An internal player (Zeus Player) that handles any link, supports subtitles, goes fullscreen correctly, and allows filtering of sources by quality/size/hoster.
+*   **Parental Controls**: A mandatory PIN setup for adult content in IPTV, which should be functional and default to OFF.
+*   **Settings Persistence**: A Zeus Vault feature to back up and restore all user account settings to the device, surviving app reinstalls.
+*   **UX Enhancements**: Progress indicators when searching for links and loading the TV Guide. Infinite scroll on the Providers page.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A React Native (Expo) application with a FastAPI backend. The application is in a **highly unstable and broken state**. Throughout the session, the agent attempted to fix numerous critical bugs and implement new features. However, most fixes were unsuccessful, introduced regressions, or were incomplete, leading to user frustration. Core functionalities like Debrid link fetching, IPTV, and settings backup (Zeus Vault) are currently not working. The user has repeatedly reported app crashes and UI/UX issues.
+A React Native (Expo) application with a FastAPI backend. The application is in a highly unstable state. While many features have been stubbed out or partially implemented, core functionalities are broken, and the app suffers from frequent crashes and critical bugs, particularly on mobile and TV devices. The previous agent attempted a large number of fixes in response to user bug reports, but most were either ineffective or introduced new problems.
 
 **Last working item**:
--   **Last item agent was working**: The agent was starting to investigate a large list of critical issues reported by the user in their last message. The primary issues include Debrid Network Errors, a non-functional Zeus Vault, a broken parental controls page, an empty Providers page, a malfunctioning TV Guide, and the video player not entering fullscreen. The agent correctly identified that a  function was making an incorrect API call to the backend instead of directly to the Debrid service, causing network errors on mobile. The investigation had just begun.
+-   **Last item agent was working**: The agent was attempting to fix a multitude of critical issues reported by the user simultaneously. The focus was on improving the TV/Firestick remote navigation by making focus states more visible, investigating a search-related app crash, and trying to fix the Providers page which doesn't load any content.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: both
-    -   **Reasoning**: The problems span both frontend (UI, player, crashes) and backend-proxied vs. direct-client API calls (Debrid errors). The frontend agent is needed to validate the UI and user flows on a simulated device, while backend testing is required to ensure API endpoints and direct-to-service calls (like for Debrid) are constructed and function correctly. Given the number of recurring critical failures, a comprehensive test of all reported issues is mandatory.
--   **User Testing Done**: Y (The user is actively testing and reporting the numerous bugs).
+-   **Which testing method agent to use?**: Frontend testing agent. The app is critically broken on the frontend. The agent must test the full user flow for every bug fix, especially:
+    1.  **Debrid Links**: Search for a movie/show, verify links are found, and a link can be played.
+    2.  **App Stability**: Navigate through all screens, especially , and use  to check for crashes.
+    3.  **TV Navigation**: Use the remote to navigate every interactive element on all pages.
+    4.  **Zeus Vault**: Save settings, clear app data (simulate), and restore to verify it works.
+    5.  **Providers Page**: Verify it loads content and that infinite scroll works.
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: (P0) Debrid and Torrent links are completely broken.**
--   **Issue 2: (P0) The app is unstable and crashes frequently, especially related to IPTV.**
--   **Issue 3: (P1) The Zeus Vault feature for backing up and restoring settings does not work.**
--   **Issue 4: (P1) The Parental Controls page is broken; the enable button is non-functional.**
--   **Issue 5: (P1) The IPTV Guide does not load channels or EPG data, and crashes the app.**
--   **Issue 6: (P1) The Providers page remains empty and does not load any content.**
--   **Issue 7: (P2) The internal video player does not go into fullscreen mode.**
--   **Issue 8: (P2) UI/UX issues persist on TV and mobile (chopped buttons, oversized logo, compressed carousels).**
+-   **Issue 1**: (P0) Debrid/Torrent links are not working. No links are found, and when they are, they don't play. This is the most critical and recurring issue. The user also reported TV shows are not getting torrents from Stremio.
+-   **Issue 2**: (P0) The app is unstable and crashes frequently, especially when using the search feature or when IPTV is enabled.
+-   **Issue 3**: (P0) TV/Firestick remote navigation is broken. Users cannot see what is selected, making the app unusable on TV devices.
+-   **Issue 4**: (P1) The Zeus Vault feature is not working. It fails to save or restore settings to the device.
+-   **Issue 5**: (P1) The internal video player does not go into fullscreen mode correctly.
+-   **Issue 6**: (P1) The Providers page is empty and does not populate with any content. The user also requested infinite scroll for this page.
+-   **Issue 7**: (P2) The parental controls enable .
+enable :
+enable [
+enable alias
+enable bg
+enable bind
+enable break
+enable builtin
+enable caller
+enable cd
+enable command
+enable compgen
+enable complete
+enable compopt
+enable continue
+enable declare
+enable dirs
+enable disown
+enable echo
+enable enable
+enable eval
+enable exec
+enable exit
+enable export
+enable false
+enable fc
+enable fg
+enable getopts
+enable hash
+enable help
+enable history
+enable jobs
+enable kill
+enable let
+enable local
+enable logout
+enable mapfile
+enable popd
+enable printf
+enable pushd
+enable pwd
+enable read
+enable readarray
+enable readonly
+enable return
+enable set
+enable shift
+enable shopt
+enable source
+enable suspend
+enable test
+enable times
+enable trap
+enable true
+enable type
+enable typeset
+enable ulimit
+enable umask
+enable unalias
+enable unset
+enable wait button is not working. The feature should also default to .
+-   **Issue 8**: (P2) UI elements are chopped or compressed on TV and mobile screens, particularly the tab bar buttons and the main logo.
+-   **Issue 9**: (P2) The TV Guide is not populating, and the requested progress bar is not showing.
 
-**Issues Detail:**
--   **Issue 1: (P0) Debrid and Torrent links are completely broken.**
-    -   **Attempted fixes**: The agent made multiple changes to  to fetch IMDB IDs and refactored  to call the Torrentio API directly. These fixes failed. The user consistently reports 0 links and Network Error. Torrentio streams are also incorrectly appearing in the Direct tab.
+**Issues Detail**:
+-   **Issue 1: Debrid/Torrent links not working**
+    -   **Attempted fixes**: The agent tried to fix this by adding direct API calls to Torrentio and Real-Debrid from the frontend, ensuring  is passed, and adding error handling. These fixes were unsuccessful. The backend proxy was removed from the flow, but Network Error persists.
     -   **Next debug checklist**:
-        1.  Verify and fix the  function in . It should make a direct API call to the Debrid service (e.g., Real-Debrid), not the backend proxy, to resolve the Network Error on mobile.
-        2.  Debug the entire stream-fetching flow in  and  to understand why Torrentio returns no links or why they are categorized incorrectly.
-        3.  Implement the user's suggestion to mimic Cinema HD's scraping and playback logic, which involves checking the Debrid cache status for a torrent hash and then resolving the link.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is the app's core functionality. Fixing it will allow users to play media content.
+        -   File : Systematically debug  and . Log the exact URL being called to Torrentio. Verify the  is correctly passed for both movies and TV shows.
+        -   File : Review  and . Ensure  is correctly gathering results from all scrapers.
+        -   Verify Real-Debrid token is valid and being used correctly in  and .
+        -   Implement the user's request to scrape like Cinema HD (direct Real-Debrid API for cache checking and un-restricting links).
+    -   **Why fix this issue and what will be achieved with the fix?**: This is the app's core functionality. Without it, the app is useless.
     -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: both
-
--   **Issue 2: (P0) The app is unstable and crashes frequently, especially related to IPTV.**
-    -   **Attempted fixes**: The agent introduced an  component, but it was implemented incorrectly, caused its own startup crash, and was subsequently removed. The underlying causes of the crashes were never fixed.
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?**: Both.
+-   **Issue 2: App crashes (Search/IPTV)**
+    -   **Attempted fixes**: The agent introduced an  component, which caused a new crash and had to be removed. The agent suspected  in  but did not fully debug it. The agent also added  blocks in the IPTV service.
     -   **Next debug checklist**:
-        1.  Review  and the  service for unhandled errors, inefficient data loading, or large list rendering issues that could cause crashes.
-        2.  Add robust  blocks around all IPTV data-fetching and processing logic.
-        3.  Investigate memory usage with the  component in the TV guide.
-    -   **Why fix this issue and what will be achieved with the fix?**: To make the app usable and prevent user frustration.
+        -   File : Comment out  to see if it resolves the crash. Investigate what this service does and why it might be failing.
+        -   File  and : Add extensive logging to pinpoint the exact line causing the crash when IPTV is enabled. Check for null/undefined errors when processing channel or EPG data.
+    -   **Why fix this issue and what will be achieved with the fix?**: An app that crashes is not usable. Fixing this will improve stability.
     -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: frontend
-
--   **Issue 3: (P1) The Zeus Vault feature for backing up and restoring settings does not work.**
-    -   **Attempted fixes**: The agent rewrote the service multiple times, first replacing / with a  library and then attempting to use  with  and . The implementation remains flawed.
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?**: Frontend.
+-   **Issue 3: Poor TV/Firestick navigation**
+    -   **Attempted fixes**: Agent added  and  styles with brighter colors to  and  for the tab bar.
     -   **Next debug checklist**:
-        1.  Rewrite  to correctly implement the file-based backup/restore flow on Android.
-        2.  Ensure  is not being used for file export; use a proper method that triggers a file save dialog.
-        3.  Verify the logic in  correctly calls the new service methods.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a key user-requested feature for settings persistence.
-    -   **Status**: NOT STARTED (in this new attempt)
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: frontend
+        -   File : This is the core of TV navigation. Enhance the focus effect significantly (e.g., thick, bright border, scale transform) and ensure it's applied consistently.
+        -   Review all interactive elements (Cards, Buttons, Tabs) on every screen (, , , , ) and ensure they are wrapped in  and that the focus is clearly visible.
+    -   **Why fix this issue and what will be achieved with the fix?**: The app is intended for TV devices. Without proper remote navigation, it fails to meet a primary requirement.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?**: Frontend.
 
 **In progress Task List**:
-There are no distinct in-progress tasks separate from the critical bug fixes listed above. The immediate priority is to address the pending issues to stabilize the application.
+-   **Task 1: Add new Live TV tab**
+    -   **Where to resume**: The agent created  and added it to the tab layout. The file is a placeholder and needs to be implemented to list IPTV channel categories and channels, similar to the VOD section.
+    -   **What will be achieved with this?**: Fulfills a direct user request for a dedicated IPTV channel browser.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Frontend.
+-   **Task 2: Add more torrent scrapers**
+    -   **Where to resume**: The user requested support for Torrserver and . The agent added  to the config and created a placeholder function in . This needs to be implemented, and Torrserver support needs to be investigated and added.
+    -   **What will be achieved with this?**: Increase the number of available streaming links.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Frontend.
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks**:
-    *   **(P0) New Feature: Live TV Menu**: Implement a new menu item next to VOD that lists all IPTV channels and folders (, new screen file).
-    -   **(P1) New Feature: Enhance Metadata Display**: Add air dates for TV episodes and full release dates for movies on detail pages (, ).
-    -   **(P1) New Feature: Implement Loading Progress Indicators**: Add UI feedback showing which sources are being searched for links and the progress of the TV guide setup (, ). This was attempted but is not working correctly.
+    *   (P0) Add progress indicators for stream scraping and EPG loading. The agent attempted this, but the user reports it's not working. The implementation in  and  needs to be debugged.
+    *   (P1) Add more metadata (release date for movies, air date for TV episodes). The agent added this, but it needs to be verified that it appears correctly.
 *   **Future Tasks**:
-    -   **(P2) Add IMDB Login** (Requires clarification).
-    -   **(P2) External Player (VLC) Integration**.
-    -   **(P3) GitLab CI/CD Setup**.
+    *   (P2) Add IMDB Login (may need clarification if this refers to Trakt).
+    *   (P2) External Player (VLC) Integration.
+    *   (P3) GitLab CI/CD Setup.
 
 **Completed work in this session**
-The agent made numerous attempts to fix issues and add features, but nearly all were either unsuccessful or resulted in new bugs, as confirmed by consistent negative user feedback. No significant work can be considered completed and verified.
--   Successfully pushed multiple batches of broken code to the user's GitHub repository.
+The agent attempted a wide range of fixes and features, but nearly all have been reported as still broken or incomplete by the user. The primary completed work was pushing multiple commits to the user's GitHub repository.
+-   **Attempted Fixes**:
+    -   Modified Debrid/Torrent services to use direct API calls and pass .
+    -   Added Trending and Top Rated categories to movie/TV show pages.
+    -   Adjusted UI element sizes and focus styles for TV/mobile.
+    -   Rewrote  to use a  library and file-based sharing.
+    -   Added a new Live TV tab and placeholder page.
+    -   Added placeholder for new torrent scrapers.
+    -   Added progress indicators for link searching and guide loading.
+-   **Code Management**:
+    -   Successfully pushed all changes to the user's GitHub repository ().
+
+**Earlier issues found/mentioned but not fixed**
+All issues listed in the Pending/In progress Issue list are recurring issues that have been mentioned multiple times and remain unfixed.
+
+**Known issue recurrence from previous fork**
+-   **Issue recurrence in previous fork**: Debrid/Torrent links not working, app crashes, player fullscreen issues, and poor TV navigation.
+-   **Recurrence count**: High (3+ times).
+-   **Status**: NOT STARTED (as previous attempts failed).
 
 **Code Architecture**
 
@@ -92,56 +180,89 @@ The agent made numerous attempts to fix issues and add features, but nearly all 
 **Key Technical Concepts**
 -   **Frontend**: React Native, Expo, Expo Router, TypeScript, Zustand.
 -   **Backend**: Python, FastAPI.
--   **Key Libraries**: , , , , .
--   **Core Challenge**: The agent has struggled with fundamental concepts of mobile development within React Native, particularly regarding network requests (backend proxy vs. direct client-side API calls), asynchronous operations, and correct use of device APIs for file system access.
+-   **Performance**:  for virtualized lists.
+-   **Device Storage**: , ,  for Zeus Vault.
+-   **Encoding**:  for Zeus Vault data.
 
 **key DB schema**
--   No database is used. All state is managed on the client via AsyncStorage and the non-functional Zeus Vault file backup system.
+-   No database is used. All state is managed on the client via AsyncStorage and backed up using the Zeus Vault feature.
 
 **All files of reference**
-*   : Central to the broken Debrid functionality. Requires immediate fixing of network calls.
-*   : Contains the broken backup/restore logic. Needs a complete rewrite.
-*    & : Likely sources of app crashes; require optimization and error handling.
-*   : Contains faulty logic for the parental controls toggle.
-*   : The movie detail screen where link fetching fails.
-*   : The UI for the broken Zeus Vault and parental controls features.
-*   : Contains the logic for the video player that fails to enter fullscreen.
-*   : Root layout file where an  was incorrectly added and removed, potentially leaving residue.
+*   **Core Services (All Broken/In-Progress)**:
+    *   
+    *   
+    *   
+    *   
+    *   
+*   **UI Components (Related to Bugs)**:
+    *    (Navigation, Focus)
+    *    (Crash, Focus)
+    *    (Fullscreen)
+    *    (Zeus Vault, Parental Controls)
+    *    (Crash, Progress)
+    *    (Progress)
+    *    (Broken Page)
+*   **New Files**:
+    *   
+
+**Areas that need refactoring**:
+-   **Error Handling**: The attempt to add a global  failed and was reverted. A stable, app-wide error handling strategy is desperately needed to prevent crashes.
+-   **State Management for TV Focus**: Ad-hoc styling for focus states is becoming unmanageable. A centralized hook or HOC () could apply consistent, highly visible focus styles across the app.
+-   **Service Layer ()**: All major services (, , ) are failing. They need to be systematically debugged and rewritten with clear, testable logic and extensive logging. The approach of making many small, untested changes has not worked.
 
 **Critical Info for New Agent**
--   **The application is critically broken and unstable.** The user is highly frustrated. Your top priority is to stabilize the app by fixing the P0 issues (Debrid links, IPTV crashes). Do not start new features until core functionality is restored and verified.
--   **Network Errors on Mobile are the Biggest Clue.** The previous agent correctly identified that some services (like ) were incorrectly calling the backend proxy. This pattern is the likely cause of the Debrid Network Error on mobile devices. You must ensure all external API calls (Debrid, Torrentio) are made directly from the client, not through the backend.
--   **Assume Previous Fixes Failed.** Do not trust that a feature is working just because the previous agent marked it as fixed. User reports confirm that Debrid, Zeus Vault, Parental Controls, and the UI are all still broken. You must re-evaluate and re-implement solutions for these.
--   **Address the Root Cause of Crashes.** The previous agent removed a faulty . This only hid the problem. The underlying runtime errors, likely in the IPTV service or during data processing, are still present and must be found and fixed.
+-   **The user is highly frustrated.** The app is in a critical, unstable state. Do not add any new features. Your sole priority is to fix the long list of bugs reported by the user.
+-   **Tackle one issue at a time.** Start with the most critical one: **Debrid links not working**. Fix it, test it thoroughly, and confirm it works before moving on. The previous agent's attempt to fix everything at once resulted in failure.
+-   **Assume nothing works.** Even though the previous agent fixed many things, user reports confirm they are still broken. You must re-debug every issue from scratch.
+-   **Log everything.** When debugging services like , log every step: the input parameters, the constructed API URL, the raw response from the server, and the parsed result. This is the only way to find the point of failure.
+-   The project has become a series of recurring, unfixed bugs. Break this cycle by focusing on robust, verifiable fixes.
 
 **documents and test reports created in this job**
-*    (Updated, but may not reflect the current broken state)
+*    (Updated)
 *   
 
 **Last 10 User Messages and any pending HUMAN messages**
-The user's messages show a clear pattern of reporting critical bugs, the agent attempting a fix, and the user reporting that the fix failed or introduced new bugs.
-1.  **#399**: Reports Debrid , broken player, broken Zeus Vault, broken parental controls, empty providers page, and a failing TV guide. Requests a new Live TV menu. (Status: PENDING)
-2.  **#350**: Requested progress indicators for link searching and TV guide loading. (Status: INCOMPLETE/BROKEN)
-3.  **#313**: Reported IPTV is crashing the app and that torrent scraping has failed completely. (Status: PENDING)
-4.  **#234**: Reported chopped UI on TV, non-working torrent links, and a broken Zeus Vault. (Status: PENDING)
-5.  **#198**: Reported that the agent's changes broke the app, causing it to crash on start. (Status: PENDING)
-6.  **#141**: A large bug report covering a broken Zeus Vault, parental PIN, non-working streams (Debrid Network Error), broken IPTV, and compressed mobile UI. (Status: PENDING)
-7.  **#135 & #131**: User had trouble with and requested help pushing code to GitHub. (Status: Resolved)
-8.  **#4**: The initial bug report for this session: app crashing, no Debrid links, compressed UI. (Status: PENDING)
+1.  **#479**: Reports poor Firestick remote controls, invisible focus, search crashing the app, and providers tab needing infinite scroll. (Status: PENDING)
+2.  **#404**: Reports TV show torrents aren't working and requests more scrapers (Torrserver, watchsomuch-tv.lol). (Status: PENDING)
+3.  **#399**: Reports multiple errors: Debrid network errors, player not fullscreen, Zeus vault still broken, parental controls broken, providers page not populating, TV guide not populating. Requests a new Live TV menu item. (Status: PENDING)
+4.  **#350**: Requests progress indicators for link searching and EPG loading. (Status: PENDING - implemented but not working).
+5.  **#313**: Reports IPTV crashing the app, no torrent links are working, and asks for scraping similar to Cinema HD. (Status: PENDING)
+6.  **#234**: Reports UI elements are chopped on TV, logo is too big, navigation is poor, torrent links still not working, and Zeus Vault is broken. Requests more metadata. (Status: PENDING)
+7.  **#198**: Reports the agent's last fix broke the app completely (crash on start). (Status: PARTIALLY RESOLVED - crash fixed, but underlying issues remain).
+8.  **#141**: A huge bug report: Zeus Vault not saving, parental PIN button broken, Torrentio links are in the wrong tab, no Debrid links (Network Error), IPTV not working. (Status: PENDING)
+9.  **#135**: Reports the Save to GitHub button is not working. (Status: RESOLVED by agent).
+10. **#131**: User asked to push to GitHub. (Status: RESOLVED).
 
 **Project Health Check:**
--   **Broken**: The application is not functional in its current state. Core features are failing, and the app is unstable. It requires immediate and focused debugging to become usable.
+-   **Broken**: The application is not in a usable state. Core features are non-functional, the app is unstable, and it fails to meet its primary purpose on its target platform (TV devices).
 
 **3rd Party Integrations**
--   **TMDB API**: Assumed working.
--   **Trakt API**: Assumed working.
--   **Real-Debrid / AllDebrid / Premiumize APIs**: **BROKEN**. Client-side calls are failing with Network Error due to incorrect implementation (calling backend proxy instead of direct APIs).
--   **Xtreme Codes (IPTV)**: **BROKEN**. Causing app crashes and fails to populate the guide.
--   **Torrentio**: **BROKEN**. Not returning links correctly.
+-   **TMDB API**: Integrated.
+-   **Trakt API**: Integrated.
+-   **Real-Debrid / AllDebrid / Premiumize APIs**: Integrated, but failing with Network Error.
+-   **Xtreme Codes (IPTV)**: Integrated, but causing app crashes.
+-   **OpenSubtitles**: Integrated.
+-   **@shopify/flash-list**: Installed.
+-   **expo-file-system, expo-crypto, expo-document-picker, expo-sharing**: Installed for Zeus Vault.
+-   **react-native-base64**: Installed for Zeus Vault.
 -   **GitHub**: Integrated for source code management.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES, but its feedback was either insufficient or not correctly acted upon, as the app remains broken.
+-   **Testing agent used after significant changes**: YES, but only on the backend. No comprehensive frontend testing was performed after the recent wave of changes.
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: []
--   **Known regressions**: Almost every core feature has regressed. Debrid links, IPTV stability, and Zeus Vault have all been broken by recent changes.</analysis>
+-   **Known regressions**: Numerous. Features that may have worked previously (IPTV, Debrid links) are now broken. The  introduction caused a major regression that required a rollback.
+
+**Credentials to test flow:**
+-   **IPTV Credentials**:
+    -   **Domain**: 
+    -   **Username**: 
+    -   **Password**: 
+
+**What agent forgot to execute**
+The agent failed to execute successful fixes for nearly all user-reported issues. Key failures include:
+-   Failing to resolve the root cause of the Network Error for Debrid services.
+-   Failing to create a stable app, with crashes persisting in Search and IPTV.
+-   Failing to implement a functional Zeus Vault.
+-   Failing to fix the empty Providers page.
+-   Failing to create a usable navigation experience for TV remotes.</analysis>

@@ -34,14 +34,24 @@ export default function SearchScreen() {
   const [hasDebrid, setHasDebrid] = useState(false);
   const [hasIPTV, setHasIPTV] = useState(false);
   const [focusedItem, setFocusedItem] = useState<string | null>(null);
+  const [focusedTab, setFocusedTab] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check debrid status
-    resolveUrlService.init().then(() => {
-      setHasDebrid(resolveUrlService.hasDebridEnabled());
-    });
-    // Check IPTV status
-    setHasIPTV(iptvService.isLoggedIn());
+    // Check debrid status safely
+    try {
+      resolveUrlService.init().then(() => {
+        setHasDebrid(resolveUrlService.hasDebridEnabled());
+      }).catch(() => setHasDebrid(false));
+    } catch {
+      setHasDebrid(false);
+    }
+    
+    // Check IPTV status safely
+    try {
+      setHasIPTV(iptvService.isLoggedIn());
+    } catch {
+      setHasIPTV(false);
+    }
   }, []);
 
   const handleSearch = useCallback(async (searchQuery: string) => {
@@ -281,39 +291,77 @@ export default function SearchScreen() {
         <View style={styles.tabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <Pressable 
-              style={[styles.tab, activeTab === 'all' && styles.tabActive]}
+              style={[
+                styles.tab, 
+                activeTab === 'all' && styles.tabActive,
+                focusedTab === 'all' && styles.tabFocused
+              ]}
               onPress={() => setActiveTab('all')}
+              onFocus={() => setFocusedTab('all')}
+              onBlur={() => setFocusedTab(null)}
             >
-              <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'all' && styles.tabTextActive,
+                focusedTab === 'all' && styles.tabTextFocused
+              ]}>
                 All ({totalResults})
               </Text>
             </Pressable>
             <Pressable 
-              style={[styles.tab, activeTab === 'movies' && styles.tabActive]}
+              style={[
+                styles.tab, 
+                activeTab === 'movies' && styles.tabActive,
+                focusedTab === 'movies' && styles.tabFocused
+              ]}
               onPress={() => setActiveTab('movies')}
+              onFocus={() => setFocusedTab('movies')}
+              onBlur={() => setFocusedTab(null)}
             >
-              <Text style={[styles.tabText, activeTab === 'movies' && styles.tabTextActive]}>
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'movies' && styles.tabTextActive,
+                focusedTab === 'movies' && styles.tabTextFocused
+              ]}>
                 Movies ({tmdbResults.filter(r => isMovie(r)).length + iptvMovieResults.length})
               </Text>
             </Pressable>
             <Pressable 
-              style={[styles.tab, activeTab === 'tvshows' && styles.tabActive]}
+              style={[
+                styles.tab, 
+                activeTab === 'tvshows' && styles.tabActive,
+                focusedTab === 'tvshows' && styles.tabFocused
+              ]}
               onPress={() => setActiveTab('tvshows')}
+              onFocus={() => setFocusedTab('tvshows')}
+              onBlur={() => setFocusedTab(null)}
             >
-              <Text style={[styles.tabText, activeTab === 'tvshows' && styles.tabTextActive]}>
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'tvshows' && styles.tabTextActive,
+                focusedTab === 'tvshows' && styles.tabTextFocused
+              ]}>
                 TV Shows ({tmdbResults.filter(r => !isMovie(r)).length + iptvSeriesResults.length})
               </Text>
             </Pressable>
             {hasIPTV && iptvTotal > 0 && (
               <Pressable 
-                style={[styles.tab, styles.iptvTab, activeTab === 'iptv' && styles.tabActive]}
+                style={[
+                  styles.tab, 
+                  styles.iptvTab, 
+                  activeTab === 'iptv' && styles.tabActive,
+                  focusedTab === 'iptv' && styles.tabFocused
+                ]}
                 onPress={() => setActiveTab('iptv')}
+                onFocus={() => setFocusedTab('iptv')}
+                onBlur={() => setFocusedTab(null)}
               >
                 <Ionicons name="diamond" size={12} color={activeTab === 'iptv' ? '#000' : '#FFD700'} />
                 <Text style={[
                   styles.tabText, 
                   styles.iptvTabText,
-                  activeTab === 'iptv' && styles.tabTextActive
+                  activeTab === 'iptv' && styles.tabTextActive,
+                  focusedTab === 'iptv' && styles.tabTextFocused
                 ]}>
                   IPTV Premium ({iptvTotal})
                 </Text>
@@ -415,6 +463,12 @@ const styles = StyleSheet.create({
   tabActive: {
     backgroundColor: theme.colors.primary,
   },
+  tabFocused: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: theme.colors.primary,
+    transform: [{ scale: 1.1 }],
+  },
   tabText: {
     color: theme.colors.textSecondary,
     fontSize: isTV ? 16 : 14,
@@ -423,6 +477,10 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#000',
     fontWeight: '600',
+  },
+  tabTextFocused: {
+    color: '#000',
+    fontWeight: '700',
   },
   iptvTab: {
     borderWidth: 1,
