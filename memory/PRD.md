@@ -73,6 +73,25 @@ Build a cross-platform mobile application for Android, Android TV, and Fire TV c
   - Graceful handling when player not installed
 - **How to use**: Tap the open icon in top-right corner during playback
 
+#### 9. Providers Page Redesigned - FIXED ✅
+- **File**: `/app/frontend/app/providers.tsx`
+- **Features**:
+  - Shows ALL content aggregated across all streaming providers (Netflix, Disney+, Prime, HBO, etc.)
+  - Sort options: Popular, Top Rated, Newest
+  - Info banner explaining the feature
+  - "STREAMING" badge on content cards
+  - No longer requires selecting a provider first - loads content immediately
+- **Why**: Users can browse all content and then use Debrid/IPTV to play
+
+#### 10. Subtitle Language Picker - NEW ✅
+- **File**: `/app/frontend/app/player.tsx`
+- **Features**:
+  - 15 languages: English, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean, Chinese, Arabic, Hindi, Dutch, Polish, Turkish
+  - Multi-select language preferences
+  - Quick Settings shows selected languages as chips
+  - Full-screen modal for easy selection
+- **How to use**: Settings icon → Languages → Select preferred languages
+
 ## Session 5 Updates (March 11, 2026)
 
 ### Features Implemented & Tested ✅
