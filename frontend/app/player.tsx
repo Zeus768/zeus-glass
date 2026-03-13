@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, BackHandler, Platform, StatusBar as RNStatusBar, Modal, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, BackHandler, Platform, StatusBar as RNStatusBar, Modal, ScrollView, TextInput, Linking, Alert } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { WebView } from 'react-native-webview';
 import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
@@ -10,6 +10,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as DocumentPicker from 'expo-document-picker';
 import { subtitleService, SubtitleTrack, SubtitleSettings } from '../services/subtitleService';
+import * as Clipboard from 'expo-clipboard';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -43,7 +44,63 @@ export default function PlayerScreen() {
   // Quick Settings overlay
   const [showQuickSettings, setShowQuickSettings] = useState(false);
   
+  // External player modal
+  const [showExternalPlayerModal, setShowExternalPlayerModal] = useState(false);
+  
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // External player options
+  const externalPlayers = [
+    { name: 'VLC', scheme: 'vlc://', icon: 'play-circle' },
+    { name: 'MX Player', scheme: 'intent://play?url=', intentExtra: '#Intent;package=com.mxtech.videoplayer.ad;end', icon: 'film' },
+    { name: 'nPlayer', scheme: 'nplayer-', icon: 'videocam' },
+    { name: 'Just Player', scheme: 'intent://play?url=', intentExtra: '#Intent;package=com.brouken.player;end', icon: 'play' },
+    { name: 'Copy URL', scheme: 'copy', icon: 'copy' },
+  ];
+
+  const openInExternalPlayer = async (player: typeof externalPlayers[0]) => {
+    if (!url) return;
+    
+    try {
+      if (player.scheme === 'copy') {
+        await Clipboard.setStringAsync(url);
+        Alert.alert('Copied!', 'URL copied to clipboard');
+        setShowExternalPlayerModal(false);
+        return;
+      }
+      
+      let playerUrl = '';
+      
+      if (player.name === 'VLC') {
+        playerUrl = `vlc://${url}`;
+      } else if (player.name === 'MX Player' || player.name === 'Just Player') {
+        playerUrl = `intent:${url}${player.intentExtra}`;
+      } else if (player.name === 'nPlayer') {
+        playerUrl = `nplayer-${url}`;
+      }
+      
+      const canOpen = await Linking.canOpenURL(playerUrl);
+      if (canOpen) {
+        await Linking.openURL(playerUrl);
+        setShowExternalPlayerModal(false);
+      } else {
+        Alert.alert(
+          'Player Not Found',
+          `${player.name} is not installed on your device. Would you like to copy the URL instead?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Copy URL', onPress: async () => {
+              await Clipboard.setStringAsync(url);
+              Alert.alert('Copied!', 'URL copied to clipboard');
+            }},
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error opening external player:', error);
+      Alert.alert('Error', 'Could not open external player');
+    }
+  };
 
   // Load subtitle settings on mount
   useEffect(() => {
@@ -398,7 +455,14 @@ export default function PlayerScreen() {
                 <Ionicons name="arrow-back" size={isTV ? 36 : 28} color="#fff" />
               </Pressable>
               <Text style={styles.titleText} numberOfLines={1}>{title || 'Playing'}</Text>
-              <View style={styles.placeholder} />
+              <Pressable 
+                onPress={() => setShowExternalPlayerModal(true)} 
+                style={[styles.externalPlayerButton, focusedButton === 'external' && styles.buttonFocused]}
+                onFocus={() => setFocusedButton('external')}
+                onBlur={() => setFocusedButton(null)}
+              >
+                <Ionicons name="open-outline" size={isTV ? 28 : 22} color="#fff" />
+              </Pressable>
             </View>
 
             {/* Center Controls */}
@@ -452,6 +516,42 @@ export default function PlayerScreen() {
           </View>
         )}
       </Pressable>
+      
+      {/* External Player Modal */}
+      <Modal
+        visible={showExternalPlayerModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExternalPlayerModal(false)}
+      >
+        <View style={styles.externalPlayerOverlay}>
+          <View style={styles.externalPlayerModal}>
+            <View style={styles.externalPlayerHeader}>
+              <Text style={styles.externalPlayerTitle}>Open in External Player</Text>
+              <Pressable onPress={() => setShowExternalPlayerModal(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </Pressable>
+            </View>
+            <Text style={styles.externalPlayerSubtitle}>Choose a player to open this video</Text>
+            
+            <View style={styles.externalPlayerList}>
+              {externalPlayers.map((player, index) => (
+                <Pressable
+                  key={player.name}
+                  style={styles.externalPlayerItem}
+                  onPress={() => openInExternalPlayer(player)}
+                >
+                  <View style={styles.externalPlayerIcon}>
+                    <Ionicons name={player.icon as any} size={24} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.externalPlayerName}>{player.name}</Text>
+                  <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -751,5 +851,67 @@ const styles = StyleSheet.create({
     fontSize: isTV ? 16 : 14,
     color: theme.colors.text,
     fontWeight: '500',
+  },
+  // External Player Styles
+  externalPlayerButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    padding: isTV ? 12 : 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  externalPlayerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  externalPlayerModal: {
+    width: isTV ? 500 : '85%',
+    maxWidth: 400,
+    backgroundColor: theme.colors.card,
+    borderRadius: 20,
+    padding: isTV ? 30 : 24,
+  },
+  externalPlayerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  externalPlayerTitle: {
+    fontSize: isTV ? 24 : 20,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  externalPlayerSubtitle: {
+    fontSize: isTV ? 16 : 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 20,
+  },
+  externalPlayerList: {
+    gap: 12,
+  },
+  externalPlayerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    padding: isTV ? 18 : 14,
+    borderRadius: 12,
+  },
+  externalPlayerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  externalPlayerName: {
+    flex: 1,
+    fontSize: isTV ? 18 : 16,
+    fontWeight: '500',
+    color: theme.colors.text,
   },
 });

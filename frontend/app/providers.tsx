@@ -27,6 +27,13 @@ export default function ProvidersScreen() {
 
   const providers = Object.keys(STREAMING_PROVIDERS) as ProviderKey[];
 
+  // Auto-select first provider on mount
+  useEffect(() => {
+    if (providers.length > 0 && !selectedProvider) {
+      setSelectedProvider(providers[0]);
+    }
+  }, []);
+
   const loadContent = useCallback(async (provider: ProviderKey, pageNum: number = 1, append: boolean = false) => {
     if (loading) return;
     
