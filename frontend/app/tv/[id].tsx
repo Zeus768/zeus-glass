@@ -116,17 +116,12 @@ export default function TVShowDetailScreen() {
       const [debridResults, directResults] = await Promise.allSettled([
         // Debrid cache search - needs IMDB ID
         (async () => {
-          const token = await realDebridService.getToken();
-          if (!token) {
-            errorLogService.warn('No Real-Debrid token', 'TVDetail');
-            return [];
-          }
           errorLogService.info(`Searching Torrentio for "${tvShow.name}" S${episode.season_number}E${episode.episode_number} (IMDB: ${imdbId})`, 'TVDetail');
           return await debridCacheService.searchCachedTV(
             tvShow.name,
             episode.season_number,
             episode.episode_number,
-            imdbId  // Pass IMDB ID, not year!
+            imdbId
           );
         })(),
         // Direct streaming sources

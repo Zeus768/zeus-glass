@@ -126,11 +126,6 @@ export default function MovieDetailScreen() {
       // Fetch debrid streams with progress
       const debridPromise = (async () => {
         try {
-          const token = await realDebridService.getToken();
-          if (!token) {
-            updateProgress('Torrentio', 'done', 0);
-            return [];
-          }
           const results = await debridCacheService.searchCachedMovie(movie.title, year, imdbId);
           updateProgress('Torrentio', 'done', results.length);
           return results;

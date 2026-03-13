@@ -47,7 +47,7 @@ class ResolveUrlService {
       }
 
       // Load AllDebrid
-      const adKey = await AsyncStorage.getItem(STORAGE_KEYS.ALLDEBRID_API_KEY);
+      const adKey = await AsyncStorage.getItem(STORAGE_KEYS.ALLDEBRID_TOKEN);
       if (adKey) {
         this.accounts.push({
           service: 'alldebrid',
@@ -58,7 +58,7 @@ class ResolveUrlService {
       }
 
       // Load Premiumize
-      const pmKey = await AsyncStorage.getItem(STORAGE_KEYS.PREMIUMIZE_API_KEY);
+      const pmKey = await AsyncStorage.getItem(STORAGE_KEYS.PREMIUMIZE_TOKEN);
       if (pmKey) {
         this.accounts.push({
           service: 'premiumize',

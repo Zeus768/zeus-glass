@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { TMDB_API_KEY, TMDB_BASE_URL } from '../config/constants';
 
 // TMDB Provider IDs (Watch Providers)
 // Reference: https://developer.themoviedb.org/reference/watch-providers-movie-list
@@ -41,9 +42,6 @@ export interface ProviderContent {
   overview: string;
   media_type: 'movie' | 'tv';
 }
-
-const TMDB_API_KEY = 'ed5c00b9f96c8e1c69da1c9eb2e1edb0';
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 class ProvidersService {
   private region: string = 'US'; // Default region
@@ -88,6 +86,7 @@ class ProvidersService {
           api_key: TMDB_API_KEY,
           with_watch_providers: provider.id,
           watch_region: this.region,
+          with_watch_monetization_types: 'flatrate',
           sort_by: sortBy,
           page,
         },
@@ -126,6 +125,7 @@ class ProvidersService {
           api_key: TMDB_API_KEY,
           with_watch_providers: provider.id,
           watch_region: this.region,
+          with_watch_monetization_types: 'flatrate',
           sort_by: sortBy,
           page,
         },

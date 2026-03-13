@@ -284,18 +284,38 @@ export default function PlayerScreen() {
     // Enter immersive fullscreen mode
     const enterFullscreen = async () => {
       try {
-        // Lock to landscape for fullscreen video
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-        
-        // Hide Android navigation bar for true fullscreen
-        if (Platform.OS === 'android') {
-          RNStatusBar.setHidden(true, 'fade');
-          try {
-            await NavigationBar.setVisibilityAsync('hidden');
-            await NavigationBar.setBehaviorAsync('overlay-swipe');
-          } catch (navError) {
-            console.log('NavigationBar API not available:', navError);
+        // TV devices are already in landscape, just hide system UI
+        if (Platform.isTV) {
+          if (Platform.OS === 'android') {
+            RNStatusBar.setHidden(true, 'fade');
+            try {
+              await NavigationBar.setVisibilityAsync('hidden');
+              await NavigationBar.setBehaviorAsync('overlay-swipe');
+            } catch (navError) {
+              console.log('NavigationBar API not available:', navError);
+            }
           }
+        } else {
+          // Mobile: Lock to landscape for fullscreen video
+          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+          
+          // Hide Android navigation bar for true fullscreen
+          if (Platform.OS === 'android') {
+            RNStatusBar.setHidden(true, 'fade');
+            try {
+              await NavigationBar.setVisibilityAsync('hidden');
+              await NavigationBar.setBehaviorAsync('overlay-swipe');
+            } catch (navError) {
+              console.log('NavigationBar API not available:', navError);
+            }
+          }
+        }
+        
+        // Web fullscreen
+        if (Platform.OS === 'web' && typeof document !== 'undefined') {
+          try {
+            await document.documentElement.requestFullscreen?.();
+          } catch (e) {}
         }
       } catch (e) {
         console.log('Could not enter fullscreen:', e);
@@ -335,6 +355,13 @@ export default function PlayerScreen() {
         } catch (navError) {
           console.log('NavigationBar API not available:', navError);
         }
+      }
+      
+      // Exit web fullscreen
+      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.fullscreenElement) {
+        try {
+          await document.exitFullscreen?.();
+        } catch (e) {}
       }
       
       // Unlock orientation

@@ -1,7 +1,16 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { storage } from '../utils/storage';
 import { TRAKT_BASE_URL, TRAKT_CLIENT_ID, TRAKT_CLIENT_SECRET, STORAGE_KEYS, APP_SCHEME } from '../config/constants';
 import { TraktToken, TraktUser, ContinueWatching } from '../types';
+
+const getBackendUrl = () => process.env.EXPO_PUBLIC_BACKEND_URL || '';
+
+// Check if we need to use the proxy (web environment)
+const shouldUseProxy = () => {
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') return true;
+  return Platform.OS === 'web';
+};
 
 const traktApi = axios.create({
   baseURL: TRAKT_BASE_URL,
@@ -23,27 +32,58 @@ traktApi.interceptors.request.use(async (config) => {
 });
 
 export const traktService = {
-  // Device Code Flow
+  // Device Code Flow - with proxy fallback
   getDeviceCode: async (): Promise<{ device_code: string; user_code: string; verification_url: string; expires_in: number; interval: number }> => {
-    const response = await traktApi.post('/oauth/device/code', {
-      client_id: TRAKT_CLIENT_ID,
-    });
-    return response.data;
+    try {
+      // Try direct first
+      const response = await traktApi.post('/oauth/device/code', {
+        client_id: TRAKT_CLIENT_ID,
+      });
+      console.log('[Trakt] Device code obtained directly');
+      return response.data;
+    } catch (directError: any) {
+      console.warn('[Trakt] Direct API failed, trying proxy:', directError.message);
+      // Fallback to backend proxy
+      const backendUrl = getBackendUrl();
+      const response = await axios.post(`${backendUrl}/api/trakt/device/code`);
+      console.log('[Trakt] Device code obtained via proxy');
+      return response.data;
+    }
   },
 
   pollForToken: async (deviceCode: string): Promise<TraktToken | null> => {
     try {
+      // Try direct first
       const response = await traktApi.post('/oauth/device/token', {
         code: deviceCode,
         client_id: TRAKT_CLIENT_ID,
         client_secret: TRAKT_CLIENT_SECRET,
       });
+      console.log('[Trakt] Token obtained directly');
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 400) {
         return null; // Still pending
       }
-      throw error;
+      // Try proxy on other errors
+      try {
+        console.warn('[Trakt] Direct poll failed, trying proxy:', error.message);
+        const backendUrl = getBackendUrl();
+        const response = await axios.post(`${backendUrl}/api/trakt/device/token`, null, {
+          params: {
+            code: deviceCode,
+            client_id: TRAKT_CLIENT_ID,
+            client_secret: TRAKT_CLIENT_SECRET,
+          },
+        });
+        if (response.data.status_code === 200 && response.data.data) {
+          console.log('[Trakt] Token obtained via proxy');
+          return response.data.data;
+        }
+        return null; // Still pending
+      } catch (proxyError) {
+        return null;
+      }
     }
   },
 

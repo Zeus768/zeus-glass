@@ -776,54 +776,62 @@ export const debridCacheService = {
   ): Promise<CachedTorrent[]> => {
     try {
       const token = await realDebridService.getToken();
-      if (!token) {
-        errorLogService.warn('No Real-Debrid token for cache search', 'DebridCache');
-        return [];
-      }
 
-      // For mobile apps, we use the Torrentio API directly instead of going through backend
-      // This avoids network errors when the backend is not accessible
+      // Search Torrentio regardless of token (token only needed for cache check + playback)
       if (imdbId) {
         try {
-          // Try Torrentio for instant results
-          errorLogService.info(`Calling Torrentio directly for ${imdbId}`, 'DebridCache');
+          errorLogService.info(`Calling Torrentio for ${imdbId}`, 'DebridCache');
           const torrentioResults = await debridCacheService.searchTorrentio(imdbId, 'movie');
           errorLogService.info(`Torrentio returned ${torrentioResults.length} results`, 'DebridCache');
           
           if (torrentioResults.length > 0) {
-            // Check cache status with Real-Debrid
-            const hashes = torrentioResults.map(t => t.hash.toLowerCase());
-            errorLogService.info(`Checking cache for ${hashes.length} hashes`, 'DebridCache');
-            const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
-            errorLogService.info(`Found ${cachedHashes.length} cached hashes`, 'DebridCache');
+            // Check cache status if we have a token
+            if (token) {
+              try {
+                const hashes = torrentioResults.map(t => t.hash.toLowerCase());
+                errorLogService.info(`Checking cache for ${hashes.length} hashes`, 'DebridCache');
+                const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
+                errorLogService.info(`Found ${cachedHashes.length} cached hashes`, 'DebridCache');
+                
+                return torrentioResults.map(t => ({
+                  ...t,
+                  cached: cachedHashes.includes(t.hash.toLowerCase()),
+                }));
+              } catch (cacheError: any) {
+                errorLogService.warn(`Cache check failed: ${cacheError.message}, returning unchecked`, 'DebridCache');
+              }
+            } else {
+              errorLogService.info('No Real-Debrid token - showing torrents without cache status', 'DebridCache');
+            }
             
-            return torrentioResults.map(t => ({
-              ...t,
-              cached: cachedHashes.includes(t.hash.toLowerCase()),
-            }));
+            // Return results without cache info
+            return torrentioResults.map(t => ({ ...t, cached: false }));
           }
         } catch (torrentioError: any) {
-          errorLogService.warn(`Torrentio direct call failed: ${torrentioError.message}`, 'DebridCache');
+          errorLogService.warn(`Torrentio failed: ${torrentioError.message}`, 'DebridCache');
         }
       }
 
-      // Fallback to backend if available
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-      if (!backendUrl) {
-        errorLogService.warn('No backend URL configured', 'DebridCache');
-        return [];
-      }
-
-      const params = new URLSearchParams({ title, token });
-      if (year) params.append('year', year.toString());
-      if (imdbId) params.append('imdb_id', imdbId);
-
-      const response = await axios.get(`${backendUrl}/api/debrid/cache/search/movie?${params.toString()}`, {
-        timeout: 15000,
-      });
-
-      if (response.data.success) {
-        return response.data.results || [];
+      // Fallback to backend search if we have token and backend URL
+      if (token) {
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        if (backendUrl) {
+          try {
+            const params = new URLSearchParams({ title, token });
+            if (year) params.append('year', year.toString());
+            if (imdbId) params.append('imdb_id', imdbId);
+            
+            const response = await axios.get(`${backendUrl}/api/debrid/cache/search/movie?${params.toString()}`, {
+              timeout: 15000,
+            });
+            
+            if (response.data.success) {
+              return response.data.results || [];
+            }
+          } catch (backendError: any) {
+            errorLogService.warn(`Backend fallback failed: ${backendError.message}`, 'DebridCache');
+          }
+        }
       }
 
       return [];
@@ -833,27 +841,47 @@ export const debridCacheService = {
     }
   },
 
-  // Direct Torrentio API call (bypasses backend) - Cinema HD style
+  // Torrentio API call - tries direct first (native), falls back to backend proxy (web)
   searchTorrentio: async (imdbId: string, type: 'movie' | 'series', season?: number, episode?: number): Promise<CachedTorrent[]> => {
     try {
-      // Torrentio with all providers enabled (like Cinema HD)
-      // Using the default config which includes all torrent sites
-      let url = `https://torrentio.strem.fun/stream/${type}/${imdbId}`;
+      // Build the URL path
+      let contentPath = `${type}/${imdbId}`;
       if (type === 'series' && season !== undefined && episode !== undefined) {
-        url += `:${season}:${episode}`;
+        contentPath += `:${season}:${episode}`;
       }
-      url += '.json';
 
-      errorLogService.info(`Fetching from Torrentio: ${url}`, 'Torrentio');
-      
-      const response = await axios.get(url, { 
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
+      let streams: any[] = [];
+
+      // Try direct Torrentio first (works on native/mobile, may fail on web due to CORS)
+      try {
+        const directUrl = `https://torrentio.strem.fun/stream/${contentPath}.json`;
+        errorLogService.info(`Trying Torrentio directly: ${directUrl}`, 'Torrentio');
+        
+        const response = await axios.get(directUrl, { 
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
+          }
+        });
+        streams = response.data?.streams || [];
+        errorLogService.info(`Torrentio direct: ${streams.length} streams`, 'Torrentio');
+      } catch (directError: any) {
+        errorLogService.warn(`Torrentio direct failed: ${directError.message}, trying proxy`, 'Torrentio');
+        
+        // Fallback to backend proxy (for web environments)
+        try {
+          const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+          if (backendUrl) {
+            const proxyUrl = `${backendUrl}/api/torrentio/stream/${contentPath}.json`;
+            const proxyResponse = await axios.get(proxyUrl, { timeout: 20000 });
+            streams = proxyResponse.data?.streams || [];
+            errorLogService.info(`Torrentio proxy: ${streams.length} streams`, 'Torrentio');
+          }
+        } catch (proxyError: any) {
+          errorLogService.warn(`Torrentio proxy also failed: ${proxyError.message}`, 'Torrentio');
         }
-      });
+      }
       
-      const streams = response.data?.streams || [];
       errorLogService.info(`Torrentio raw streams: ${streams.length}`, 'Torrentio');
 
       if (streams.length === 0) {
@@ -951,56 +979,61 @@ export const debridCacheService = {
   ): Promise<CachedTorrent[]> => {
     try {
       const token = await realDebridService.getToken();
-      if (!token) {
-        errorLogService.warn('No Real-Debrid token for TV cache search', 'DebridCache');
-        return [];
-      }
 
-      // For mobile apps, use Torrentio directly for TV shows
+      // Search Torrentio regardless of token
       if (imdbId) {
         try {
-          errorLogService.info(`Calling Torrentio directly for ${imdbId} S${season}E${episode}`, 'DebridCache');
+          errorLogService.info(`Calling Torrentio for ${imdbId} S${season}E${episode}`, 'DebridCache');
           const torrentioResults = await debridCacheService.searchTorrentio(imdbId, 'series', season, episode);
           errorLogService.info(`Torrentio returned ${torrentioResults.length} results`, 'DebridCache');
           
           if (torrentioResults.length > 0) {
-            const hashes = torrentioResults.map(t => t.hash.toLowerCase());
-            errorLogService.info(`Checking cache for ${hashes.length} hashes`, 'DebridCache');
-            const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
-            errorLogService.info(`Found ${cachedHashes.length} cached hashes`, 'DebridCache');
+            if (token) {
+              try {
+                const hashes = torrentioResults.map(t => t.hash.toLowerCase());
+                const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
+                errorLogService.info(`Found ${cachedHashes.length} cached hashes`, 'DebridCache');
+                
+                return torrentioResults.map(t => ({
+                  ...t,
+                  cached: cachedHashes.includes(t.hash.toLowerCase()),
+                }));
+              } catch (cacheError: any) {
+                errorLogService.warn(`Cache check failed: ${cacheError.message}`, 'DebridCache');
+              }
+            }
             
-            return torrentioResults.map(t => ({
-              ...t,
-              cached: cachedHashes.includes(t.hash.toLowerCase()),
-            }));
+            return torrentioResults.map(t => ({ ...t, cached: false }));
           }
         } catch (torrentioError: any) {
-          errorLogService.warn(`Torrentio TV direct call failed: ${torrentioError.message}`, 'DebridCache');
+          errorLogService.warn(`Torrentio TV failed: ${torrentioError.message}`, 'DebridCache');
         }
       }
 
-      // Fallback to backend
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-      if (!backendUrl) {
-        errorLogService.warn('No backend URL configured', 'DebridCache');
-        return [];
-      }
-
-      const params = new URLSearchParams({
-        title,
-        token,
-        season: season.toString(),
-        episode: episode.toString(),
-      });
-
-      if (imdbId) params.append('imdb_id', imdbId);
-
-      const response = await axios.get(`${backendUrl}/api/debrid/cache/search/tv?${params.toString()}`, {
-        timeout: 15000,
-      });
-
-      if (response.data.success) {
-        return response.data.results || [];
+      // Fallback to backend if token available
+      if (token) {
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        if (backendUrl) {
+          try {
+            const params = new URLSearchParams({
+              title,
+              token,
+              season: season.toString(),
+              episode: episode.toString(),
+            });
+            if (imdbId) params.append('imdb_id', imdbId);
+            
+            const response = await axios.get(`${backendUrl}/api/debrid/cache/search/tv?${params.toString()}`, {
+              timeout: 15000,
+            });
+            
+            if (response.data.success) {
+              return response.data.results || [];
+            }
+          } catch (backendError: any) {
+            errorLogService.warn(`Backend TV fallback failed: ${backendError.message}`, 'DebridCache');
+          }
+        }
       }
 
       return [];

@@ -15,7 +15,6 @@ import {
   Linking, 
   Dimensions,
   ScrollView,
-  TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
 
@@ -61,7 +60,7 @@ function CustomTabBar() {
           const isFocused = focusedTab === tab.name;
           
           return (
-            <TouchableOpacity
+            <Pressable
               key={tab.name}
               onPress={() => router.push(tab.route as any)}
               onFocus={() => setFocusedTab(tab.name)}
@@ -71,11 +70,9 @@ function CustomTabBar() {
                 isActive && tabBarStyles.tabActive,
                 isFocused && tabBarStyles.tabFocused,
               ]}
-              activeOpacity={0.7}
+              data-testid={`tab-${tab.name}`}
               {...(Platform.isTV && index === 0 && { hasTVPreferredFocus: true })}
             >
-              {/* Focus glow effect */}
-              {isFocused && <View style={tabBarStyles.focusGlow} />}
               <Text style={[
                 tabBarStyles.tabText,
                 isActive && tabBarStyles.tabTextActive,
@@ -84,7 +81,7 @@ function CustomTabBar() {
                 {tab.title}
               </Text>
               {isActive && <View style={tabBarStyles.activeIndicator} />}
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </ScrollView>
@@ -100,47 +97,33 @@ const tabBarStyles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: isTV ? 40 : 12,
-    paddingVertical: isTV ? 8 : 10,  // Reduced padding for TV
-    gap: isTV ? 6 : 4,
+    paddingVertical: isTV ? 10 : 10,
+    gap: isTV ? 8 : 4,
   },
   tab: {
-    paddingHorizontal: isTV ? 20 : 16,  // Smaller padding
-    paddingVertical: isTV ? 8 : 8,  // Smaller padding
+    paddingHorizontal: isTV ? 24 : 16,
+    paddingVertical: isTV ? 12 : 8,
     borderRadius: isTV ? 10 : 8,
     position: 'relative',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: 'transparent',
   },
   tabActive: {
-    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    backgroundColor: 'rgba(0, 217, 255, 0.15)',
+    borderColor: 'rgba(0, 217, 255, 0.3)',
   },
   tabFocused: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#00D9FF',
     borderColor: '#FFFFFF',
-    borderWidth: isTV ? 3 : 3,
-    transform: [{ scale: isTV ? 1.1 : 1.1 }],  // Less scale
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: isTV ? 20 : 20,
-    elevation: 20,
-  },
-  focusGlow: {
-    position: 'absolute',
-    top: isTV ? -5 : -5,
-    left: isTV ? -5 : -5,
-    right: isTV ? -5 : -5,
-    bottom: isTV ? -5 : -5,
-    backgroundColor: theme.colors.primary,
-    borderRadius: isTV ? 15 : 12,
-    opacity: 0.4,
+    borderWidth: 3,
+    transform: [{ scale: 1.15 }],
   },
   tabText: {
-    fontSize: isTV ? 16 : 14,  // Smaller text
+    fontSize: isTV ? 18 : 14,
     fontWeight: '700',
     color: theme.colors.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: isTV ? 1 : 0.8,
+    letterSpacing: isTV ? 1.5 : 0.8,
   },
   tabTextActive: {
     color: theme.colors.primary,

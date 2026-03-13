@@ -423,6 +423,114 @@ async def get_premiumize_account_info(apikey: str):
         logger.error(f"Premiumize account info error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ============================================
+# TORRENTIO PROXY - Bypass CORS for web clients
+# ============================================
+
+@api_router.get("/torrentio/stream/{content_type}/{content_id:path}")
+async def proxy_torrentio_stream(content_type: str, content_id: str):
+    """Proxy Torrentio stream requests to bypass CORS"""
+    try:
+        url = f"https://torrentio.strem.fun/stream/{content_type}/{content_id}"
+        if not url.endswith('.json'):
+            url += '.json'
+        
+        logger.info(f"Proxying Torrentio request: {url}")
+        
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.get(
+                url,
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
+                },
+                timeout=20.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            streams = data.get('streams', [])
+            logger.info(f"Torrentio returned {len(streams)} streams")
+            return {"streams": streams}
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Torrentio proxy HTTP error: {e.response.status_code}")
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Torrentio proxy error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/torrentio/catalog/{catalog_type}/{catalog_id}")
+async def proxy_torrentio_catalog(catalog_type: str, catalog_id: str):
+    """Proxy Torrentio catalog requests"""
+    try:
+        url = f"https://torrentio.strem.fun/catalog/{catalog_type}/{catalog_id}.json"
+        logger.info(f"Proxying Torrentio catalog: {url}")
+        
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.get(url, timeout=15.0)
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Torrentio catalog proxy error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# TRAKT AUTH PROXY - For environments with CORS issues
+# ============================================
+
+@api_router.post("/trakt/device/code")
+async def trakt_device_code():
+    """Get Trakt device code for OAuth flow"""
+    try:
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.post(
+                "https://api.trakt.tv/oauth/device/code",
+                json={"client_id": "4cb0f37f73fc75a20dee4176591d04845a4f942cb386a7e9e33a2e9fb480593e"},
+                headers={
+                    "Content-Type": "application/json",
+                    "trakt-api-version": "2",
+                    "trakt-api-key": "4cb0f37f73fc75a20dee4176591d04845a4f942cb386a7e9e33a2e9fb480593e",
+                },
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Trakt device code error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/trakt/device/token")
+async def trakt_device_token(code: str, client_id: str, client_secret: str):
+    """Poll for Trakt token after user authorization"""
+    try:
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.post(
+                "https://api.trakt.tv/oauth/device/token",
+                json={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                },
+                headers={
+                    "Content-Type": "application/json",
+                    "trakt-api-version": "2",
+                    "trakt-api-key": client_id,
+                },
+                timeout=15.0
+            )
+            if response.status_code == 400:
+                return {"status_code": 400, "data": None}
+            response.raise_for_status()
+            return {"status_code": 200, "data": response.json()}
+    except httpx.HTTPStatusError as e:
+        return {"status_code": e.response.status_code, "data": None}
+    except Exception as e:
+        logger.error(f"Trakt device token error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
