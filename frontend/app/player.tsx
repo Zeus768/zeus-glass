@@ -47,7 +47,48 @@ export default function PlayerScreen() {
   // External player modal
   const [showExternalPlayerModal, setShowExternalPlayerModal] = useState(false);
   
+  // Subtitle language picker
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Available subtitle languages
+  const availableLanguages = [
+    { code: 'en', name: 'English' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'fr', name: 'French' },
+    { code: 'de', name: 'German' },
+    { code: 'it', name: 'Italian' },
+    { code: 'pt', name: 'Portuguese' },
+    { code: 'ru', name: 'Russian' },
+    { code: 'ja', name: 'Japanese' },
+    { code: 'ko', name: 'Korean' },
+    { code: 'zh', name: 'Chinese' },
+    { code: 'ar', name: 'Arabic' },
+    { code: 'hi', name: 'Hindi' },
+    { code: 'nl', name: 'Dutch' },
+    { code: 'pl', name: 'Polish' },
+    { code: 'tr', name: 'Turkish' },
+  ];
+
+  const toggleLanguagePreference = async (langCode: string) => {
+    if (!subtitleSettings) return;
+    
+    const currentLangs = subtitleSettings.preferredLanguages || ['en'];
+    let newLangs: string[];
+    
+    if (currentLangs.includes(langCode)) {
+      // Remove language (but keep at least one)
+      newLangs = currentLangs.filter(l => l !== langCode);
+      if (newLangs.length === 0) newLangs = ['en'];
+    } else {
+      // Add language
+      newLangs = [...currentLangs, langCode];
+    }
+    
+    await subtitleService.saveSettings({ preferredLanguages: newLangs });
+    setSubtitleSettings(subtitleService.getSettings());
+  };
 
   // External player options
   const externalPlayers = [
@@ -340,6 +381,27 @@ export default function PlayerScreen() {
               ))}
             </View>
             
+            {/* Language Preferences Button */}
+            <Pressable 
+              style={styles.quickSettingRow}
+              onPress={() => setShowLanguagePicker(true)}
+            >
+              <View style={styles.quickSettingInfo}>
+                <Ionicons name="language" size={20} color={theme.colors.primary} />
+                <Text style={styles.quickSettingLabel}>Languages</Text>
+              </View>
+              <View style={styles.languageChips}>
+                {(subtitleSettings?.preferredLanguages || ['en']).slice(0, 3).map(lang => (
+                  <Text key={lang} style={styles.languageChipSmall}>
+                    {lang.toUpperCase()}
+                  </Text>
+                ))}
+                {(subtitleSettings?.preferredLanguages?.length || 0) > 3 && (
+                  <Text style={styles.languageChipSmall}>+{(subtitleSettings?.preferredLanguages?.length || 0) - 3}</Text>
+                )}
+              </View>
+            </Pressable>
+            
             <Pressable 
               style={styles.closeQuickSettings}
               onPress={() => setShowQuickSettings(false)}
@@ -549,6 +611,60 @@ export default function PlayerScreen() {
                 </Pressable>
               ))}
             </View>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Language Picker Modal */}
+      <Modal
+        visible={showLanguagePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLanguagePicker(false)}
+      >
+        <View style={styles.languagePickerOverlay}>
+          <View style={styles.languagePickerModal}>
+            <View style={styles.languagePickerHeader}>
+              <Text style={styles.languagePickerTitle}>Subtitle Languages</Text>
+              <Pressable onPress={() => setShowLanguagePicker(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </Pressable>
+            </View>
+            <Text style={styles.languagePickerSubtitle}>
+              Select your preferred subtitle languages (tap to toggle)
+            </Text>
+            
+            <ScrollView style={styles.languageList} showsVerticalScrollIndicator={false}>
+              {availableLanguages.map((lang) => {
+                const isSelected = subtitleSettings?.preferredLanguages?.includes(lang.code);
+                return (
+                  <Pressable
+                    key={lang.code}
+                    style={[styles.languageItem, isSelected && styles.languageItemSelected]}
+                    onPress={() => toggleLanguagePreference(lang.code)}
+                  >
+                    <View style={styles.languageInfo}>
+                      <Text style={[styles.languageName, isSelected && styles.languageNameSelected]}>
+                        {lang.name}
+                      </Text>
+                      <Text style={[styles.languageCode, isSelected && styles.languageCodeSelected]}>
+                        {lang.code.toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={[styles.languageCheckbox, isSelected && styles.languageCheckboxSelected]}>
+                      {isSelected && <Ionicons name="checkmark" size={18} color="#000" />}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            
+            <Pressable 
+              style={styles.languagePickerDone}
+              onPress={() => setShowLanguagePicker(false)}
+            >
+              <Text style={styles.languagePickerDoneText}>Done</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -913,5 +1029,115 @@ const styles = StyleSheet.create({
     fontSize: isTV ? 18 : 16,
     fontWeight: '500',
     color: theme.colors.text,
+  },
+  // Language picker styles
+  languageChips: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  languageChipSmall: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    backgroundColor: 'rgba(0, 217, 255, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  languagePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'flex-end',
+  },
+  languagePickerModal: {
+    backgroundColor: theme.colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: isTV ? 30 : 24,
+    maxHeight: '70%',
+  },
+  languagePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  languagePickerTitle: {
+    fontSize: isTV ? 24 : 20,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  languagePickerSubtitle: {
+    fontSize: isTV ? 14 : 12,
+    color: theme.colors.textSecondary,
+    marginBottom: 20,
+  },
+  languageList: {
+    maxHeight: 350,
+  },
+  languageItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.surface,
+    padding: isTV ? 16 : 14,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  languageItemSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+  },
+  languageInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  languageName: {
+    fontSize: isTV ? 18 : 16,
+    fontWeight: '500',
+    color: theme.colors.text,
+  },
+  languageNameSelected: {
+    color: theme.colors.primary,
+  },
+  languageCode: {
+    fontSize: isTV ? 14 : 12,
+    color: theme.colors.textSecondary,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  languageCodeSelected: {
+    backgroundColor: 'rgba(0, 217, 255, 0.2)',
+    color: theme.colors.primary,
+  },
+  languageCheckbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: theme.colors.textMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  languageCheckboxSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  languagePickerDone: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: isTV ? 16 : 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  languagePickerDoneText: {
+    fontSize: isTV ? 18 : 16,
+    fontWeight: 'bold',
+    color: '#000',
   },
 });
