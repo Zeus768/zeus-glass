@@ -12,6 +12,12 @@ export interface StreamSource {
   seeders?: number;
 }
 
+// Torrserver configuration
+interface TorrserverConfig {
+  url: string;
+  enabled: boolean;
+}
+
 // Get Torrentio configuration (stored API key for debrid)
 const getTorrentioConfig = async (): Promise<string | null> => {
   try {
@@ -21,12 +27,40 @@ const getTorrentioConfig = async (): Promise<string | null> => {
   }
 };
 
+// Get Torrserver configuration
+const getTorrserverConfig = async (): Promise<TorrserverConfig | null> => {
+  try {
+    const config = await AsyncStorage.getItem('torrserver_config');
+    return config ? JSON.parse(config) : null;
+  } catch {
+    return null;
+  }
+};
+
+// Save Torrserver configuration
+export const saveTorrserverConfig = async (url: string, enabled: boolean): Promise<void> => {
+  await AsyncStorage.setItem('torrserver_config', JSON.stringify({ url, enabled }));
+};
+
 // Scraper configuration
 const SCRAPERS = {
   // Torrent indexers (via Stremio addons) - these need IMDB IDs
   torrentio: {
     name: 'Torrentio',
     baseUrl: 'https://torrentio.strem.fun',
+    type: 'torrent' as const,
+  },
+  
+  // Additional Stremio addons for more torrent sources
+  knightcrawler: {
+    name: 'Knightcrawler',
+    baseUrl: 'https://knightcrawler.elfhosted.com',
+    type: 'torrent' as const,
+  },
+  
+  comet: {
+    name: 'Comet',
+    baseUrl: 'https://comet.elfhosted.com',
     type: 'torrent' as const,
   },
   
@@ -55,6 +89,14 @@ const SCRAPERS = {
     embedUrl: 'https://vidsrc.nl/embed',
     type: 'embed' as const,
   },
+  
+  // WatchSomuch - additional streaming source
+  watchsomuch: {
+    name: 'WatchSomuch',
+    baseUrl: 'https://watchsomuch-tv.lol',
+    type: 'embed' as const,
+  },
+  
   superEmbed: {
     name: 'SuperEmbed',
     baseUrl: 'https://multiembed.mov',
@@ -165,9 +207,9 @@ export const streamScraperService = {
   /**
    * Get all available streams for a TV show episode
    */
-  getTVStreams: async (tmdbId: string, imdbId: string | undefined, season: number, episode: number): Promise<StreamSource[]> => {
+  getTVStreams: async (tmdbId: string, imdbId?: string, title?: string, season?: number, episode?: number): Promise<StreamSource[]> => {
     const streams: StreamSource[] = [];
-    console.log(`[Scrapers] Getting TV streams for tmdb:${tmdbId}, S${season}E${episode}`);
+    console.log(`[Scrapers] Getting TV streams for tmdb:${tmdbId}, imdb:${imdbId}, S${season}E${episode}`);
     
     const embedPromises = [
       // VidSrc variants
@@ -187,25 +229,24 @@ export const streamScraperService = {
       streamScraperService.scrapeRive('tv', tmdbId, imdbId, season, episode),
       streamScraperService.scrapeFrembed('tv', tmdbId, season, episode),
       streamScraperService.scrapeWarezCDN('tv', tmdbId, imdbId, season, episode),
+      // WatchSomuch
+      streamScraperService.scrapeWatchSomuch('tv', tmdbId, season, episode),
     ];
-    
-    // Torrentio only if we have IMDB ID
-    if (imdbId) {
-      embedPromises.push(streamScraperService.scrapeTorrentio('series', imdbId, season, episode));
-    }
     
     try {
       const results = await Promise.allSettled(embedPromises);
       results.forEach((result) => {
         if (result.status === 'fulfilled' && result.value) {
-          streams.push(...result.value);
+          // Filter out torrent types - those go to debrid tab
+          const directOnly = result.value.filter((s: StreamSource) => s.type !== 'torrent');
+          streams.push(...directOnly);
         }
       });
     } catch (error) {
       console.error('Error scraping TV streams:', error);
     }
     
-    console.log(`[Scrapers] Found ${streams.length} TV streams`);
+    console.log(`[Scrapers] Found ${streams.length} TV direct streams`);
     return streams;
   },
 
@@ -496,6 +537,116 @@ export const streamScraperService = {
       type: 'embed' as const,
       source: 'WarezCDN',
     }];
+  },
+
+  // WatchSomuch scraper - streams from watchsomuch-tv.lol
+  scrapeWatchSomuch: async (type: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    try {
+      let embedUrl = '';
+      if (type === 'movie') {
+        embedUrl = `${SCRAPERS.watchsomuch.baseUrl}/movie/${tmdbId}`;
+      } else {
+        embedUrl = `${SCRAPERS.watchsomuch.baseUrl}/tv/${tmdbId}/${season}/${episode}`;
+      }
+      
+      return [{
+        name: 'WatchSomuch',
+        url: embedUrl,
+        quality: 'HD',
+        type: 'embed' as const,
+        source: 'WatchSomuch',
+      }];
+    } catch {
+      return [];
+    }
+  },
+
+  // Knightcrawler scraper (Stremio addon with more torrents)
+  scrapeKnightcrawler: async (type: 'movie' | 'series', imdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    try {
+      if (!imdbId || !imdbId.startsWith('tt')) return [];
+      
+      let url = `${SCRAPERS.knightcrawler.baseUrl}/stream/${type}/${imdbId}`;
+      if (type === 'series' && season !== undefined && episode !== undefined) {
+        url += `:${season}:${episode}`;
+      }
+      url += '.json';
+      
+      const response = await axios.get(url, { 
+        timeout: 10000,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36' }
+      });
+      
+      const streams = response.data?.streams || [];
+      return streams.map((stream: any) => ({
+        name: stream.title || stream.name || 'Knightcrawler',
+        url: `magnet:?xt=urn:btih:${stream.infoHash}`,
+        quality: extractQuality(stream.title || ''),
+        type: 'torrent' as const,
+        source: 'Knightcrawler',
+        size: extractSize(stream.title || ''),
+      })).filter((s: StreamSource) => s.url.includes('btih:'));
+    } catch {
+      return [];
+    }
+  },
+
+  // Comet scraper (another Stremio addon)
+  scrapeComet: async (type: 'movie' | 'series', imdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    try {
+      if (!imdbId || !imdbId.startsWith('tt')) return [];
+      
+      let url = `${SCRAPERS.comet.baseUrl}/stream/${type}/${imdbId}`;
+      if (type === 'series' && season !== undefined && episode !== undefined) {
+        url += `:${season}:${episode}`;
+      }
+      url += '.json';
+      
+      const response = await axios.get(url, { 
+        timeout: 10000,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36' }
+      });
+      
+      const streams = response.data?.streams || [];
+      return streams.map((stream: any) => ({
+        name: stream.title || stream.name || 'Comet',
+        url: `magnet:?xt=urn:btih:${stream.infoHash}`,
+        quality: extractQuality(stream.title || ''),
+        type: 'torrent' as const,
+        source: 'Comet',
+        size: extractSize(stream.title || ''),
+      })).filter((s: StreamSource) => s.url.includes('btih:'));
+    } catch {
+      return [];
+    }
+  },
+
+  // Torrserver support - connect to local/remote Torrserver instance
+  scrapeTorrserver: async (magnetUrl: string): Promise<StreamSource[]> => {
+    try {
+      const config = await getTorrserverConfig();
+      if (!config || !config.enabled || !config.url) return [];
+      
+      // Add torrent to Torrserver and get stream URL
+      const response = await axios.post(`${config.url}/torrents`, {
+        action: 'add',
+        link: magnetUrl,
+      }, { timeout: 15000 });
+      
+      if (response.data?.hash) {
+        const streamUrl = `${config.url}/stream?link=${magnetUrl}&index=0&play`;
+        return [{
+          name: 'Torrserver',
+          url: streamUrl,
+          quality: 'HD',
+          type: 'direct' as const,
+          source: 'Torrserver',
+        }];
+      }
+      return [];
+    } catch {
+      return [];
+    }
   },
 };
 

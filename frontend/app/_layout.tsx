@@ -27,7 +27,7 @@ const TABS = [
   { name: 'movies', title: 'MOVIES', route: '/movies' },
   { name: 'tv-shows', title: 'TV SHOWS', route: '/tv-shows' },
   { name: 'providers', title: 'PROVIDERS', route: '/providers' },
-  { name: 'live-channels', title: 'LIVE TV', route: '/live-channels' },
+  { name: 'live-tv', title: 'LIVE TV', route: '/live-tv' },
   { name: 'tv-guide', title: 'TV GUIDE', route: '/tv-guide' },
   { name: 'catch-up', title: 'CATCH UP', route: '/catch-up' },
   { name: 'search', title: 'SEARCH', route: '/search' },
@@ -419,7 +419,7 @@ export default function TabLayout() {
         <Tabs.Screen name="movies" />
         <Tabs.Screen name="tv-shows" />
         <Tabs.Screen name="providers" />
-        <Tabs.Screen name="live-channels" />
+        <Tabs.Screen name="live-tv" />
         <Tabs.Screen name="tv-guide" />
         <Tabs.Screen name="catch-up" />
         <Tabs.Screen name="search" />

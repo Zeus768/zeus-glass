@@ -107,20 +107,26 @@ export default function TVShowDetailScreen() {
     try {
       if (!tvShow) return;
       
-      const year = tvShow.first_air_date ? parseInt(tvShow.first_air_date.split('-')[0]) : undefined;
+      // Use IMDB ID for Torrentio - this is critical!
+      const imdbId = tvShow.imdb_id;
+      
+      errorLogService.info(`TV Show IMDB ID: ${imdbId || 'NOT FOUND'}`, 'TVDetail');
       
       // Fetch both debrid and direct streams in parallel
       const [debridResults, directResults] = await Promise.allSettled([
-        // Debrid cache search
+        // Debrid cache search - needs IMDB ID
         (async () => {
           const token = await realDebridService.getToken();
-          if (!token) return [];
-          errorLogService.info(`Searching cached torrents for "${tvShow.name}" S${episode.season_number}E${episode.episode_number}`, 'TVDetail');
+          if (!token) {
+            errorLogService.warn('No Real-Debrid token', 'TVDetail');
+            return [];
+          }
+          errorLogService.info(`Searching Torrentio for "${tvShow.name}" S${episode.season_number}E${episode.episode_number} (IMDB: ${imdbId})`, 'TVDetail');
           return await debridCacheService.searchCachedTV(
             tvShow.name,
             episode.season_number,
             episode.episode_number,
-            year
+            imdbId  // Pass IMDB ID, not year!
           );
         })(),
         // Direct streaming sources
@@ -128,17 +134,17 @@ export default function TVShowDetailScreen() {
           errorLogService.info(`Searching direct streams for "${tvShow.name}" S${episode.season_number}E${episode.episode_number}`, 'TVDetail');
           return await streamScraperService.getTVStreams(
             id, 
-            undefined, 
+            imdbId, 
             tvShow.name, 
             episode.season_number, 
-            episode.episode_number, 
-            year
+            episode.episode_number
           );
         })(),
       ]);
       
       if (debridResults.status === 'fulfilled') {
         setCachedTorrents(debridResults.value);
+        errorLogService.info(`Found ${debridResults.value.length} torrent results`, 'TVDetail');
       }
       
       if (directResults.status === 'fulfilled') {
