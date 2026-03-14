@@ -370,26 +370,32 @@ export default function TabLayout() {
   }, []);
 
   const headerPaddingTop = isTV ? 30 : Platform.OS === 'ios' ? 50 : 35;
+  
+  // Hide header and tab bar on player screen
+  const pathname = usePathname();
+  const isPlayerScreen = pathname === '/player' || pathname?.startsWith('/player');
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
+      <StatusBar barStyle="light-content" backgroundColor={isPlayerScreen ? '#000' : theme.colors.background} />
       
-      {/* Header with App Name and Donation Button */}
-      <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
-        <Text style={styles.appName}>ZEUS GLASS</Text>
-        <FocusableButton 
-          style={styles.donateBtn} 
-          onPress={() => setShowDonation(true)}
-          testID="open-donation-modal"
-        >
-          <Ionicons name="heart" size={isTV ? 28 : 18} color="#FFDD00" />
-          <Text style={styles.donateBtnText}>Donate</Text>
-        </FocusableButton>
-      </View>
+      {/* Header with App Name and Donation Button - hidden on player */}
+      {!isPlayerScreen && (
+        <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <Text style={styles.appName}>ZEUS GLASS</Text>
+          <FocusableButton 
+            style={styles.donateBtn} 
+            onPress={() => setShowDonation(true)}
+            testID="open-donation-modal"
+          >
+            <Ionicons name="heart" size={isTV ? 28 : 18} color="#FFDD00" />
+            <Text style={styles.donateBtnText}>Donate</Text>
+          </FocusableButton>
+        </View>
+      )}
       
-      {/* Custom Tab Bar - ALWAYS VISIBLE */}
-      <CustomTabBar />
+      {/* Custom Tab Bar - hidden on player */}
+      {!isPlayerScreen && <CustomTabBar />}
       
       {/* Screen Content via Tabs (hidden tab bar) */}
       <Tabs

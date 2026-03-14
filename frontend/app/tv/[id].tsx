@@ -257,6 +257,19 @@ export default function TVShowDetailScreen() {
                     {tvShow.number_of_seasons} Season{tvShow.number_of_seasons > 1 ? 's' : ''}
                   </Text>
                 )}
+                {/* Show status badge */}
+                {tvShow.status && (
+                  <View style={[
+                    styles.statusBadge,
+                    tvShow.status === 'Ended' || tvShow.status === 'Canceled' 
+                      ? styles.statusBadgeEnded 
+                      : styles.statusBadgeAiring,
+                  ]}>
+                    <Text style={styles.statusBadgeText}>
+                      {tvShow.status === 'Returning Series' ? 'Airing' : tvShow.status}
+                    </Text>
+                  </View>
+                )}
               </View>
               <Text style={styles.overview} numberOfLines={4}>{tvShow.overview}</Text>
               
@@ -622,6 +635,23 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.primary,
     fontWeight: theme.fontWeight.medium,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  statusBadgeEnded: {
+    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  statusBadgeAiring: {
+    backgroundColor: 'rgba(34, 197, 94, 0.3)',
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    textTransform: 'uppercase',
   },
   overview: {
     fontSize: isTV ? 16 : 14,

@@ -1,31 +1,41 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  ScrollView, 
   Pressable, 
   ActivityIndicator, 
   FlatList,
   Dimensions,
   Alert,
+  Linking,
+  Platform,
+  BackHandler,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme, isTV } from '../constants/theme';
-import { iptvService, IPTVChannel, IPTVCategory } from '../services/iptv';
+import { iptvService, IPTVCategory } from '../services/iptv';
+import { IPTVChannel } from '../types';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const NUM_COLUMNS = isTV ? 6 : 3;
-const ITEM_MARGIN = isTV ? 12 : 8;
-const ITEM_WIDTH = (SCREEN_WIDTH - (isTV ? 100 : 24) - (ITEM_MARGIN * (NUM_COLUMNS + 1))) / NUM_COLUMNS;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Grid sizing for channels
+const NUM_COLUMNS = isTV ? 5 : 3;
+const GRID_PADDING = isTV ? 24 : 12;
+const ITEM_GAP = isTV ? 10 : 6;
+const ITEM_WIDTH = (SCREEN_WIDTH - (GRID_PADDING * 2) - (ITEM_GAP * (NUM_COLUMNS - 1))) / NUM_COLUMNS;
+
+// Grid sizing for categories
+const CAT_COLUMNS = isTV ? 4 : 2;
+const CAT_ITEM_WIDTH = (SCREEN_WIDTH - (GRID_PADDING * 2) - (ITEM_GAP * (CAT_COLUMNS - 1))) / CAT_COLUMNS;
 
 export default function LiveTVScreen() {
   const router = useRouter();
   const [channels, setChannels] = useState<IPTVChannel[]>([]);
   const [categories, setCategories] = useState<IPTVCategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState({ channels: 0, categories: 0, status: 'Connecting...' });
   const [focusedChannel, setFocusedChannel] = useState<string | null>(null);
@@ -35,12 +45,23 @@ export default function LiveTVScreen() {
     loadData();
   }, []);
 
+  // Handle back button on TV
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (selectedCategory !== null) {
+        setSelectedCategory(null);
+        return true;
+      }
+      return false;
+    });
+    return () => backHandler.remove();
+  }, [selectedCategory]);
+
   const loadData = async () => {
     setLoading(true);
     setLoadProgress({ channels: 0, categories: 0, status: 'Connecting to IPTV server...' });
     
     try {
-      // Check if logged in
       const isLoggedIn = await iptvService.isLoggedIn();
       if (!isLoggedIn) {
         setLoadProgress({ channels: 0, categories: 0, status: 'Not logged in to IPTV' });
@@ -49,13 +70,10 @@ export default function LiveTVScreen() {
       }
 
       setLoadProgress(prev => ({ ...prev, status: 'Loading categories...' }));
-      
-      // Load categories first
       const categoriesData = await iptvService.getLiveCategories();
       setCategories(categoriesData || []);
       setLoadProgress(prev => ({ ...prev, categories: categoriesData?.length || 0, status: 'Loading channels...' }));
       
-      // Load all channels
       const channelsData = await iptvService.getLiveChannels();
       setChannels(channelsData || []);
       setLoadProgress(prev => ({ 
@@ -71,9 +89,22 @@ export default function LiveTVScreen() {
     }
   };
 
-  const filteredChannels = selectedCategory === 'all' 
-    ? channels 
-    : channels.filter(ch => ch.category_id === selectedCategory);
+  // Count channels per category
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    channels.forEach(ch => {
+      const catId = ch.category_id || '';
+      counts[catId] = (counts[catId] || 0) + 1;
+    });
+    return counts;
+  }, [channels]);
+
+  // Filtered channels for selected category
+  const filteredChannels = useMemo(() => {
+    if (selectedCategory === null) return [];
+    if (selectedCategory === 'all') return channels;
+    return channels.filter(ch => ch.category_id === selectedCategory);
+  }, [channels, selectedCategory]);
 
   const handleChannelPress = (channel: IPTVChannel) => {
     if (channel.stream_url) {
@@ -86,13 +117,34 @@ export default function LiveTVScreen() {
         }
       });
     } else {
-      Alert.alert('Error', 'No stream URL available for this channel');
+      Alert.alert('Error', 'No stream URL available');
     }
   };
 
-  const renderCategory = useCallback(({ item }: { item: IPTVCategory | { category_id: string; category_name: string } }) => {
-    const isSelected = selectedCategory === item.category_id;
+  const handleExternalPlayer = (channel: IPTVChannel) => {
+    if (!channel.stream_url) return;
+    
+    // Try VLC first, then MX Player, then system default
+    const vlcUrl = Platform.OS === 'android' 
+      ? `vlc://${channel.stream_url}`
+      : channel.stream_url;
+    
+    Alert.alert(
+      'Open with External Player',
+      `Play "${channel.name}" in:`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'VLC Player', onPress: () => Linking.openURL(vlcUrl).catch(() => Alert.alert('Error', 'VLC not installed')) },
+        { text: 'MX Player', onPress: () => Linking.openURL(`intent:${channel.stream_url}#Intent;package=com.mxtech.videoplayer.ad;end`).catch(() => Alert.alert('Error', 'MX Player not installed')) },
+        { text: 'Default', onPress: () => Linking.openURL(channel.stream_url).catch(() => {}) },
+      ]
+    );
+  };
+
+  // CATEGORY GRID VIEW
+  const renderCategoryCard = useCallback(({ item }: { item: { category_id: string; category_name: string } }) => {
     const isFocused = focusedCategory === item.category_id;
+    const count = item.category_id === 'all' ? channels.length : (categoryCounts[item.category_id] || 0);
     
     return (
       <Pressable
@@ -100,28 +152,34 @@ export default function LiveTVScreen() {
         onFocus={() => setFocusedCategory(item.category_id)}
         onBlur={() => setFocusedCategory(null)}
         style={[
-          styles.categoryButton,
-          isSelected && styles.categoryButtonActive,
-          isFocused && styles.categoryButtonFocused,
+          styles.categoryCard,
+          isFocused && styles.categoryCardFocused,
         ]}
+        data-testid={`category-${item.category_id}`}
       >
-        <Text style={[
-          styles.categoryText,
-          isSelected && styles.categoryTextActive,
-          isFocused && styles.categoryTextFocused,
-        ]} numberOfLines={1}>
+        <Ionicons 
+          name={item.category_id === 'all' ? 'grid' : 'folder'} 
+          size={isTV ? 32 : 24} 
+          color={isFocused ? '#000' : theme.colors.primary} 
+        />
+        <Text style={[styles.categoryCardName, isFocused && styles.categoryCardNameFocused]} numberOfLines={2}>
           {item.category_name}
+        </Text>
+        <Text style={[styles.categoryCardCount, isFocused && styles.categoryCardCountFocused]}>
+          {count} channels
         </Text>
       </Pressable>
     );
-  }, [selectedCategory, focusedCategory]);
+  }, [focusedCategory, channels.length, categoryCounts]);
 
+  // CHANNEL GRID VIEW
   const renderChannel = useCallback(({ item }: { item: IPTVChannel }) => {
     const isFocused = focusedChannel === item.id;
     
     return (
       <Pressable
         onPress={() => handleChannelPress(item)}
+        onLongPress={() => handleExternalPlayer(item)}
         onFocus={() => setFocusedChannel(item.id)}
         onBlur={() => setFocusedChannel(null)}
         style={[
@@ -130,27 +188,30 @@ export default function LiveTVScreen() {
         ]}
         data-testid={`channel-${item.id}`}
       >
-        {item.stream_icon ? (
+        {(item.stream_icon || item.logo) ? (
           <Image
-            source={{ uri: item.stream_icon }}
+            source={{ uri: item.stream_icon || item.logo }}
             style={styles.channelLogo}
             contentFit="contain"
           />
         ) : (
           <View style={styles.channelLogoPlaceholder}>
-            <Ionicons name="tv" size={isTV ? 40 : 30} color={theme.colors.textMuted} />
+            <Ionicons name="tv" size={isTV ? 36 : 24} color={theme.colors.textMuted} />
           </View>
         )}
-        <Text style={styles.channelName} numberOfLines={2}>{item.name}</Text>
-        {item.epg_channel_id && (
-          <View style={styles.epgBadge}>
-            <Text style={styles.epgBadgeText}>EPG</Text>
+        <Text style={[styles.channelName, isFocused && styles.channelNameFocused]} numberOfLines={2}>
+          {item.name}
+        </Text>
+        {isFocused && (
+          <View style={styles.playOverlay}>
+            <Ionicons name="play-circle" size={isTV ? 28 : 20} color="#FFF" />
           </View>
         )}
       </Pressable>
     );
-  }, [focusedChannel, router]);
+  }, [focusedChannel]);
 
+  // LOADING STATE
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -182,14 +243,13 @@ export default function LiveTVScreen() {
     );
   }
 
+  // EMPTY STATE
   if (channels.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Ionicons name="tv-outline" size={80} color={theme.colors.textMuted} />
         <Text style={styles.emptyTitle}>No Channels</Text>
-        <Text style={styles.emptyText}>
-          {iptvService.isLoggedIn() ? 'No live channels found in your IPTV service' : 'Please log in to your IPTV service in Settings'}
-        </Text>
+        <Text style={styles.emptyText}>Please log in to your IPTV service in Settings</Text>
         <Pressable style={styles.settingsButton} onPress={() => router.push('/settings')}>
           <Text style={styles.settingsButtonText}>Go to Settings</Text>
         </Pressable>
@@ -197,39 +257,72 @@ export default function LiveTVScreen() {
     );
   }
 
-  return (
-    <View style={styles.container} data-testid="live-tv-screen">
-      {/* Category Selector */}
-      <View style={styles.categoriesContainer}>
+  // FULLSCREEN CHANNEL VIEW (when category is selected)
+  if (selectedCategory !== null) {
+    const categoryName = selectedCategory === 'all' 
+      ? 'All Channels' 
+      : categories.find(c => c.category_id === selectedCategory)?.category_name || 'Category';
+    
+    return (
+      <View style={styles.container} data-testid="live-tv-channels">
+        {/* Header bar */}
+        <View style={styles.channelHeader}>
+          <Pressable 
+            onPress={() => setSelectedCategory(null)} 
+            style={styles.backButton}
+            data-testid="back-to-categories"
+          >
+            <Ionicons name="arrow-back" size={isTV ? 28 : 22} color={theme.colors.text} />
+            <Text style={styles.backText}>Back</Text>
+          </Pressable>
+          <Text style={styles.channelHeaderTitle}>{categoryName}</Text>
+          <Text style={styles.channelCount}>{filteredChannels.length} channels</Text>
+        </View>
+
+        {/* Hint */}
+        <Text style={styles.hintText}>Long-press a channel for external player</Text>
+
+        {/* Full screen channel grid */}
         <FlatList
-          data={[{ category_id: 'all', category_name: 'All Channels' }, ...categories]}
-          renderItem={renderCategory}
-          keyExtractor={(item) => item.category_id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesContent}
+          data={filteredChannels}
+          renderItem={renderChannel}
+          keyExtractor={(item) => item.id}
+          numColumns={NUM_COLUMNS}
+          contentContainerStyle={styles.channelsGrid}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={30}
+          maxToRenderPerBatch={30}
+          windowSize={7}
+          getItemLayout={(_, index) => ({
+            length: ITEM_WIDTH + ITEM_GAP,
+            offset: (ITEM_WIDTH + ITEM_GAP) * Math.floor(index / NUM_COLUMNS),
+            index,
+          })}
         />
       </View>
+    );
+  }
 
-      {/* Stats Bar */}
-      <View style={styles.statsBar}>
-        <Text style={styles.statsText}>
-          {filteredChannels.length} channels
-          {selectedCategory !== 'all' && ` in ${categories.find(c => c.category_id === selectedCategory)?.category_name || 'category'}`}
-        </Text>
+  // CATEGORIES GRID VIEW (main view)
+  const allCategories = [
+    { category_id: 'all', category_name: 'All Channels' },
+    ...categories,
+  ];
+
+  return (
+    <View style={styles.container} data-testid="live-tv-categories">
+      <View style={styles.headerBar}>
+        <Text style={styles.headerTitle}>Live TV</Text>
+        <Text style={styles.headerSubtitle}>{channels.length} channels in {categories.length} categories</Text>
       </View>
 
-      {/* Channels Grid */}
       <FlatList
-        data={filteredChannels}
-        renderItem={renderChannel}
-        keyExtractor={(item) => item.id}
-        numColumns={NUM_COLUMNS}
-        contentContainerStyle={styles.channelsGrid}
+        data={allCategories}
+        renderItem={renderCategoryCard}
+        keyExtractor={(item) => item.category_id}
+        numColumns={CAT_COLUMNS}
+        contentContainerStyle={styles.categoriesGrid}
         showsVerticalScrollIndicator={false}
-        initialNumToRender={20}
-        maxToRenderPerBatch={20}
-        windowSize={5}
       />
     </View>
   );
@@ -249,25 +342,23 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: theme.spacing.md,
     color: theme.colors.textSecondary,
-    fontSize: theme.fontSize.md,
+    fontSize: isTV ? 18 : 16,
   },
   progressBox: {
     marginTop: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: 12,
     padding: theme.spacing.lg,
     minWidth: 250,
   },
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    gap: 8,
+    paddingVertical: 6,
   },
   progressText: {
-    fontSize: theme.fontSize.sm,
+    fontSize: isTV ? 16 : 14,
     color: theme.colors.text,
   },
   emptyContainer: {
@@ -275,129 +366,179 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.background,
-    padding: theme.spacing.xl,
+    padding: 32,
   },
   emptyTitle: {
-    fontSize: theme.fontSize.xl,
+    fontSize: isTV ? 28 : 20,
     fontWeight: '700',
     color: theme.colors.text,
-    marginTop: theme.spacing.lg,
+    marginTop: 16,
   },
   emptyText: {
-    fontSize: theme.fontSize.md,
+    fontSize: isTV ? 18 : 14,
     color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginTop: theme.spacing.sm,
+    marginTop: 8,
   },
   settingsButton: {
-    marginTop: theme.spacing.xl,
+    marginTop: 24,
     backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.xl,
-    borderRadius: theme.borderRadius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 12,
   },
   settingsButtonText: {
     color: '#000',
     fontWeight: '700',
-    fontSize: theme.fontSize.md,
+    fontSize: isTV ? 18 : 16,
   },
-  categoriesContainer: {
+
+  // Header
+  headerBar: {
+    paddingHorizontal: GRID_PADDING,
+    paddingVertical: isTV ? 16 : 12,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  categoriesContent: {
-    paddingHorizontal: isTV ? 50 : 16,
-    paddingVertical: isTV ? 12 : 10,
-    gap: isTV ? 10 : 8,
+  headerTitle: {
+    fontSize: isTV ? 28 : 22,
+    fontWeight: '800',
+    color: theme.colors.text,
   },
-  categoryButton: {
-    paddingHorizontal: isTV ? 20 : 16,
-    paddingVertical: isTV ? 10 : 8,
-    borderRadius: isTV ? 20 : 16,
+  headerSubtitle: {
+    fontSize: isTV ? 16 : 13,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+
+  // Categories Grid
+  categoriesGrid: {
+    padding: GRID_PADDING,
+    gap: ITEM_GAP,
+  },
+  categoryCard: {
+    width: CAT_ITEM_WIDTH,
     backgroundColor: theme.colors.surface,
-    marginRight: isTV ? 10 : 8,
+    borderRadius: isTV ? 16 : 12,
+    padding: isTV ? 20 : 14,
+    margin: ITEM_GAP / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: isTV ? 120 : 90,
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  categoryButtonActive: {
+  categoryCardFocused: {
     backgroundColor: theme.colors.primary,
-  },
-  categoryButtonFocused: {
-    borderColor: theme.colors.focus,
+    borderColor: '#FFFFFF',
     transform: [{ scale: 1.05 }],
   },
-  categoryText: {
-    fontSize: isTV ? 16 : 14,
+  categoryCardName: {
+    fontSize: isTV ? 16 : 13,
+    fontWeight: '700',
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  categoryCardNameFocused: {
+    color: '#000',
+  },
+  categoryCardCount: {
+    fontSize: isTV ? 13 : 11,
     color: theme.colors.textSecondary,
+    marginTop: 4,
+  },
+  categoryCardCountFocused: {
+    color: 'rgba(0,0,0,0.6)',
+  },
+
+  // Channel View Header
+  channelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: GRID_PADDING,
+    paddingVertical: isTV ? 12 : 8,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    gap: 12,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingRight: 12,
+  },
+  backText: {
+    fontSize: isTV ? 18 : 14,
+    color: theme.colors.text,
     fontWeight: '600',
   },
-  categoryTextActive: {
-    color: '#000',
-    fontWeight: '700',
+  channelHeaderTitle: {
+    flex: 1,
+    fontSize: isTV ? 22 : 18,
+    fontWeight: '800',
+    color: theme.colors.text,
   },
-  categoryTextFocused: {
-    color: theme.colors.primary,
-  },
-  statsBar: {
-    paddingHorizontal: isTV ? 50 : 16,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
-  },
-  statsText: {
-    fontSize: theme.fontSize.sm,
+  channelCount: {
+    fontSize: isTV ? 15 : 13,
     color: theme.colors.textSecondary,
   },
+  hintText: {
+    fontSize: isTV ? 13 : 11,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: 4,
+  },
+
+  // Channels Grid
   channelsGrid: {
-    paddingHorizontal: isTV ? 50 : 12,
-    paddingVertical: theme.spacing.md,
+    padding: GRID_PADDING,
   },
   channelCard: {
     width: ITEM_WIDTH,
-    margin: ITEM_MARGIN / 2,
+    margin: ITEM_GAP / 2,
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
+    borderRadius: isTV ? 12 : 8,
+    padding: isTV ? 12 : 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: isTV ? 100 : 80,
     borderWidth: 2,
     borderColor: 'transparent',
+    position: 'relative',
   },
   channelCardFocused: {
     borderColor: theme.colors.primary,
     backgroundColor: theme.colors.surfaceLight,
-    transform: [{ scale: isTV ? 1.08 : 1.03 }],
+    transform: [{ scale: isTV ? 1.08 : 1.04 }],
   },
   channelLogo: {
-    width: isTV ? 80 : 60,
-    height: isTV ? 50 : 40,
-    marginBottom: theme.spacing.sm,
+    width: isTV ? 70 : 48,
+    height: isTV ? 44 : 32,
+    marginBottom: 4,
   },
   channelLogoPlaceholder: {
-    width: isTV ? 80 : 60,
-    height: isTV ? 50 : 40,
+    width: isTV ? 70 : 48,
+    height: isTV ? 44 : 32,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.surfaceLight,
-    borderRadius: theme.borderRadius.sm,
-    marginBottom: theme.spacing.sm,
+    borderRadius: 4,
+    marginBottom: 4,
   },
   channelName: {
-    fontSize: isTV ? 14 : 12,
+    fontSize: isTV ? 13 : 11,
     color: theme.colors.text,
     fontWeight: '600',
     textAlign: 'center',
   },
-  epgBadge: {
+  channelNameFocused: {
+    color: theme.colors.primary,
+  },
+  playOverlay: {
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: theme.colors.success,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  epgBadgeText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#000',
   },
 });

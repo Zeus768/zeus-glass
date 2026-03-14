@@ -97,7 +97,10 @@ export interface IPTVChannel {
   id: string;
   name: string;
   logo: string;
+  stream_icon?: string;
   category: string;
+  category_id?: string;
+  epg_channel_id?: string;
   epg?: EPGProgram[];
   stream_url: string;
 }

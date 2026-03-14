@@ -23,7 +23,7 @@ import { IPTVChannel, EPGProgram } from '../types';
 export default function TVGuideScreen() {
   const router = useRouter();
   const [channels, setChannels] = useState<IPTVChannel[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ category_id: string; category_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -76,7 +76,7 @@ export default function TVGuideScreen() {
       }));
       
       setChannels(channels || []);
-      setCategories([{ id: 'all', name: 'All' }, ...(categories || [])]);
+      setCategories([{ category_id: 'all', category_name: 'All' }, ...(categories || [])]);
       
       // Load EPG for first 10 channels only
       if (channels && channels.length > 0) {
@@ -88,7 +88,7 @@ export default function TVGuideScreen() {
       console.error('Error loading channels:', error);
       setLoadProgress(prev => ({ ...prev, status: 'Error loading channels' }));
       setChannels([]);
-      setCategories([{ id: 'all', name: 'All' }]);
+      setCategories([{ category_id: 'all', category_name: 'All' }]);
     } finally {
       setLoading(false);
     }
@@ -244,8 +244,8 @@ export default function TVGuideScreen() {
   const filteredChannels =
     selectedCategory === 'all'
       ? channels
-      : channels.filter((c) => c.category === selectedCategory || 
-          categories.find(cat => cat.id === selectedCategory)?.name === c.category);
+      : channels.filter((c) => c.category_id === selectedCategory || 
+          categories.find(cat => cat.category_id === selectedCategory)?.category_name === c.category);
 
   if (loading) {
     return (
@@ -316,26 +316,26 @@ export default function TVGuideScreen() {
         contentContainerStyle={styles.categoriesContent}
       >
         {categories.map((category) => {
-          const isCatFocused = focusedCategory === category.id;
+          const isCatFocused = focusedCategory === category.category_id;
           return (
             <Pressable
-              key={category.id}
-              onPress={() => setSelectedCategory(category.id)}
-              onFocus={() => setFocusedCategory(category.id)}
+              key={category.category_id}
+              onPress={() => setSelectedCategory(category.category_id)}
+              onFocus={() => setFocusedCategory(category.category_id)}
               onBlur={() => setFocusedCategory(null)}
               style={[
                 styles.categoryButton,
-                selectedCategory === category.id && styles.categoryButtonActive,
+                selectedCategory === category.category_id && styles.categoryButtonActive,
                 isCatFocused && styles.categoryButtonFocused,
               ]}
             >
               <Text
                 style={[
                   styles.categoryText,
-                  selectedCategory === category.id && styles.categoryTextActive,
+                  selectedCategory === category.category_id && styles.categoryTextActive,
                 ]}
               >
-                {category.name}
+                {category.category_name}
               </Text>
             </Pressable>
           );

@@ -52,6 +52,12 @@ let liveCategoriesCache: CategoriesCacheEntry | null = null;
 let vodCategoriesCache: CategoriesCacheEntry | null = null;
 let seriesCategoriesCache: CategoriesCacheEntry | null = null;
 
+// Category type for IPTV
+export interface IPTVCategory {
+  category_id: string;
+  category_name: string;
+}
+
 // Real Xtreme Codes IPTV Service
 export const iptvService = {
   // Clear all caches
@@ -196,9 +202,12 @@ export const iptvService = {
           id: stream.stream_id?.toString() || stream.num?.toString(),
           name: stream.name || 'Unknown Channel',
           logo: stream.stream_icon || '',
+          stream_icon: stream.stream_icon || '',
           category: stream.category_name || 'Uncategorized',
+          category_id: stream.category_id?.toString() || '',
+          epg_channel_id: stream.epg_channel_id || '',
           stream_url: `${protocol}://${cleanDomain}/live/${config.username}/${config.password}/${stream.stream_id}.ts`,
-          epg: [], // EPG loaded separately
+          epg: [],
         };
         channels.push(channel);
       }
@@ -212,7 +221,7 @@ export const iptvService = {
   },
 
   // Get live categories from Xtreme Codes
-  getLiveCategories: async (): Promise<{ id: string; name: string }[]> => {
+  getLiveCategories: async (): Promise<IPTVCategory[]> => {
     try {
       const config = await iptvService.getConfig();
       if (!config || !config.enabled) {
@@ -251,8 +260,8 @@ export const iptvService = {
         : response.data.live_categories || [];
       
       return categories.map((cat: any) => ({
-        id: cat.category_id?.toString() || cat.id?.toString(),
-        name: cat.category_name || cat.name || 'Unknown',
+        category_id: cat.category_id?.toString() || cat.id?.toString() || '',
+        category_name: cat.category_name || cat.name || 'Unknown',
       }));
     } catch (error) {
       console.error('Error fetching live categories:', error);
@@ -337,7 +346,7 @@ export const iptvService = {
   },
 
   // Get VOD Categories
-  getVODCategories: async (): Promise<{ id: string; name: string }[]> => {
+  getVODCategories: async (): Promise<IPTVCategory[]> => {
     try {
       const config = await iptvService.getConfig();
       if (!config || !config.enabled) return [];
@@ -371,8 +380,8 @@ export const iptvService = {
       const categories = Array.isArray(response.data) ? response.data : [];
       
       return categories.map((cat: any) => ({
-        id: cat.category_id?.toString() || cat.id?.toString(),
-        name: cat.category_name || cat.name || 'Unknown',
+        category_id: cat.category_id?.toString() || cat.id?.toString() || '',
+        category_name: cat.category_name || cat.name || 'Unknown',
       }));
     } catch (error) {
       console.error('Error fetching VOD categories:', error);
@@ -450,7 +459,7 @@ export const iptvService = {
   },
 
   // Get Series Categories
-  getSeriesCategories: async (): Promise<{ id: string; name: string }[]> => {
+  getSeriesCategories: async (): Promise<IPTVCategory[]> => {
     try {
       const config = await iptvService.getConfig();
       if (!config || !config.enabled) return [];
@@ -484,8 +493,8 @@ export const iptvService = {
       const categories = Array.isArray(response.data) ? response.data : [];
       
       return categories.map((cat: any) => ({
-        id: cat.category_id?.toString() || cat.id?.toString(),
-        name: cat.category_name || cat.name || 'Unknown',
+        category_id: cat.category_id?.toString() || cat.id?.toString() || '',
+        category_name: cat.category_name || cat.name || 'Unknown',
       }));
     } catch (error) {
       console.error('Error fetching series categories:', error);

@@ -13,8 +13,8 @@ export default function VODScreen() {
   const router = useRouter();
   const [movies, setMovies] = useState<VODItem[]>([]);
   const [series, setSeries] = useState<VODItem[]>([]);
-  const [movieCategories, setMovieCategories] = useState<{ id: string; name: string }[]>([]);
-  const [seriesCategories, setSeriesCategories] = useState<{ id: string; name: string }[]>([]);
+  const [movieCategories, setMovieCategories] = useState<{ category_id: string; category_name: string }[]>([]);
+  const [seriesCategories, setSeriesCategories] = useState<{ category_id: string; category_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [contentType, setContentType] = useState<ContentType>('movies');
@@ -59,8 +59,8 @@ export default function VODScreen() {
         iptvService.getVODCategories(),
         iptvService.getSeriesCategories(),
       ]);
-      setMovieCategories([{ id: 'all', name: 'All' }, ...movCats]);
-      setSeriesCategories([{ id: 'all', name: 'All' }, ...serCats]);
+      setMovieCategories([{ category_id: 'all', category_name: 'All' }, ...movCats]);
+      setSeriesCategories([{ category_id: 'all', category_name: 'All' }, ...serCats]);
       
       await loadMovies(1);
     } catch (error) {
@@ -279,27 +279,27 @@ export default function VODScreen() {
           contentContainerStyle={styles.categoriesContainer}
         >
           {currentCategories.map((category) => {
-            const isCatFocused = focusedCategory === category.id;
+            const isCatFocused = focusedCategory === category.category_id;
             return (
               <Pressable
-                key={category.id}
-                onPress={() => setSelectedCategory(category.id)}
-                onFocus={() => setFocusedCategory(category.id)}
+                key={category.category_id}
+                onPress={() => setSelectedCategory(category.category_id)}
+                onFocus={() => setFocusedCategory(category.category_id)}
                 onBlur={() => setFocusedCategory(null)}
                 style={[
                   styles.categoryButton,
-                  selectedCategory === category.id && styles.categoryButtonActive,
+                  selectedCategory === category.category_id && styles.categoryButtonActive,
                   isCatFocused && styles.categoryButtonFocused,
                 ]}
-                testID={`category-${category.id}`}
+                testID={`category-${category.category_id}`}
               >
                 <Text
                   style={[
                     styles.categoryText,
-                    selectedCategory === category.id && styles.categoryTextActive,
+                    selectedCategory === category.category_id && styles.categoryTextActive,
                   ]}
                 >
-                  {category.name}
+                  {category.category_name}
                 </Text>
               </Pressable>
             );

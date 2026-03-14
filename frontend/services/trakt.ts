@@ -21,12 +21,18 @@ const traktApi = axios.create({
   },
 });
 
-// Add auth token to requests
+// Add auth token to requests - with safety guard to prevent crashes
 traktApi.interceptors.request.use(async (config) => {
-  const token = await storage.getItem(STORAGE_KEYS.TRAKT_TOKEN);
-  if (token) {
-    const tokenData: TraktToken = JSON.parse(token);
-    config.headers.Authorization = `Bearer ${tokenData.access_token}`;
+  try {
+    const token = await storage.getItem(STORAGE_KEYS.TRAKT_TOKEN);
+    if (token) {
+      const tokenData: TraktToken = JSON.parse(token);
+      if (tokenData && tokenData.access_token) {
+        config.headers.Authorization = `Bearer ${tokenData.access_token}`;
+      }
+    }
+  } catch (e) {
+    console.warn('[Trakt] Failed to get token for request:', e);
   }
   return config;
 });
@@ -92,23 +98,43 @@ export const traktService = {
   },
 
   getToken: async (): Promise<TraktToken | null> => {
-    const token = await storage.getItem(STORAGE_KEYS.TRAKT_TOKEN);
-    return token ? JSON.parse(token) : null;
+    try {
+      const token = await storage.getItem(STORAGE_KEYS.TRAKT_TOKEN);
+      if (!token) return null;
+      const parsed = JSON.parse(token);
+      return parsed && parsed.access_token ? parsed : null;
+    } catch (e) {
+      console.warn('[Trakt] Failed to parse token:', e);
+      return null;
+    }
   },
 
   logout: async (): Promise<void> => {
-    await storage.deleteItem(STORAGE_KEYS.TRAKT_TOKEN);
+    try {
+      await storage.deleteItem(STORAGE_KEYS.TRAKT_TOKEN);
+    } catch (e) {
+      console.warn('[Trakt] Logout error:', e);
+    }
   },
 
   isAuthenticated: async (): Promise<boolean> => {
-    const token = await traktService.getToken();
-    return token !== null;
+    try {
+      const token = await traktService.getToken();
+      return token !== null;
+    } catch (e) {
+      return false;
+    }
   },
 
   // User
-  getCurrentUser: async (): Promise<TraktUser> => {
-    const response = await traktApi.get('/users/me');
-    return response.data;
+  getCurrentUser: async (): Promise<TraktUser | null> => {
+    try {
+      const response = await traktApi.get('/users/me');
+      return response.data;
+    } catch (e) {
+      console.warn('[Trakt] Failed to get current user:', e);
+      return null;
+    }
   },
 
   // Continue Watching (Playback Progress)
@@ -271,25 +297,49 @@ export const traktService = {
     }
   },
 
-  // Scrobble
-  startWatching: async (type: 'movie' | 'tv', id: number, progress: number): Promise<void> => {
-    await traktApi.post('/scrobble/start', {
-      [type]: { ids: { tmdb: id } },
-      progress,
-    });
+  // Scrobble - with IMDB ID support
+  startWatching: async (ids: { imdb?: string; tmdb?: number }, progress: number, season?: number, episode?: number): Promise<void> => {
+    try {
+      const body: any = { progress };
+      if (season !== undefined && episode !== undefined) {
+        body.show = { ids };
+        body.episode = { season, number: episode };
+      } else {
+        body.movie = { ids };
+      }
+      await traktApi.post('/scrobble/start', body);
+    } catch (e) {
+      console.warn('[Trakt] Scrobble start failed:', e);
+    }
   },
 
-  pauseWatching: async (type: 'movie' | 'tv', id: number, progress: number): Promise<void> => {
-    await traktApi.post('/scrobble/pause', {
-      [type]: { ids: { tmdb: id } },
-      progress,
-    });
+  pauseWatching: async (ids: { imdb?: string; tmdb?: number }, progress: number, season?: number, episode?: number): Promise<void> => {
+    try {
+      const body: any = { progress };
+      if (season !== undefined && episode !== undefined) {
+        body.show = { ids };
+        body.episode = { season, number: episode };
+      } else {
+        body.movie = { ids };
+      }
+      await traktApi.post('/scrobble/pause', body);
+    } catch (e) {
+      console.warn('[Trakt] Scrobble pause failed:', e);
+    }
   },
 
-  stopWatching: async (type: 'movie' | 'tv', id: number, progress: number): Promise<void> => {
-    await traktApi.post('/scrobble/stop', {
-      [type]: { ids: { tmdb: id } },
-      progress,
-    });
+  stopWatching: async (ids: { imdb?: string; tmdb?: number }, progress: number, season?: number, episode?: number): Promise<void> => {
+    try {
+      const body: any = { progress };
+      if (season !== undefined && episode !== undefined) {
+        body.show = { ids };
+        body.episode = { season, number: episode };
+      } else {
+        body.movie = { ids };
+      }
+      await traktApi.post('/scrobble/stop', body);
+    } catch (e) {
+      console.warn('[Trakt] Scrobble stop failed:', e);
+    }
   },
 };
