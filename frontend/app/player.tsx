@@ -13,6 +13,7 @@ import { subtitleService, SubtitleTrack, SubtitleSettings } from '../services/su
 import { traktService } from '../services/trakt';
 import { watchHistoryService } from '../services/watchHistoryService';
 import { useContentStore } from '../store/contentStore';
+import { playerState } from '../utils/playerState';
 import * as Clipboard from 'expo-clipboard';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -275,6 +276,14 @@ export default function PlayerScreen() {
     });
   }, []);
 
+  // Signal to layout that player is active (hides header/tabs)
+  useEffect(() => {
+    playerState.setActive(true);
+    return () => {
+      playerState.setActive(false);
+    };
+  }, []);
+
   useEffect(() => {
     // Determine if this is an embed URL
     const embedPatterns = ['vidsrc', 'embed', 'flixmomo', 'cineby', 'hydrahd', 'yflix', 'autoembed', 'smashystream', '2embed', 'multiembed'];
@@ -467,9 +476,10 @@ export default function PlayerScreen() {
   // Render WebView for embed sources
   if (isEmbed) {
     return (
-      <View style={styles.container}>
-        <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar hidden />
+      <Modal visible={true} transparent={false} animationType="none" statusBarTranslucent={true}>
+        <View style={styles.container}>
+          <Stack.Screen options={{ headerShown: false }} />
+          <StatusBar hidden />
         
         {/* Close Button for Embed */}
         <Pressable 
@@ -606,11 +616,13 @@ export default function PlayerScreen() {
           </View>
         )}
       </View>
+      </Modal>
     );
   }
 
   // Render native Video player for direct streams
   return (
+    <Modal visible={true} transparent={false} animationType="none" statusBarTranslucent={true}>
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar hidden />
@@ -874,6 +886,7 @@ export default function PlayerScreen() {
         </View>
       </Modal>
     </View>
+    </Modal>
   );
 }
 
@@ -881,12 +894,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
-    position: 'absolute',
+    ...(Platform.OS === 'web' ? {
+      position: 'fixed' as any,
+    } : {
+      position: 'absolute',
+    }),
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 9999,
+    zIndex: 99999,
   },
   videoContainer: {
     flex: 1,

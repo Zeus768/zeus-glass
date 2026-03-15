@@ -297,6 +297,78 @@ export const traktService = {
     }
   },
 
+  // Get watched movies (TMDB IDs set)
+  getWatchedMovies: async (): Promise<Set<number>> => {
+    try {
+      const response = await traktApi.get('/sync/watched/movies');
+      const ids = new Set<number>();
+      response.data?.forEach((item: any) => {
+        const tmdbId = item.movie?.ids?.tmdb;
+        if (tmdbId) ids.add(tmdbId);
+      });
+      return ids;
+    } catch (e) {
+      console.warn('[Trakt] Failed to get watched movies:', e);
+      return new Set();
+    }
+  },
+
+  // Get watched shows (TMDB IDs set)
+  getWatchedShows: async (): Promise<Set<number>> => {
+    try {
+      const response = await traktApi.get('/sync/watched/shows');
+      const ids = new Set<number>();
+      response.data?.forEach((item: any) => {
+        const tmdbId = item.show?.ids?.tmdb;
+        if (tmdbId) ids.add(tmdbId);
+      });
+      return ids;
+    } catch (e) {
+      console.warn('[Trakt] Failed to get watched shows:', e);
+      return new Set();
+    }
+  },
+
+  // Mark movie as watched
+  markAsWatched: async (type: 'movie' | 'show', ids: { imdb?: string; tmdb?: number }): Promise<boolean> => {
+    try {
+      const key = type === 'movie' ? 'movies' : 'shows';
+      await traktApi.post('/sync/history', {
+        [key]: [{ ids, watched_at: new Date().toISOString() }],
+      });
+      return true;
+    } catch (e) {
+      console.warn('[Trakt] Failed to mark as watched:', e);
+      return false;
+    }
+  },
+
+  // Get next up episode for a show
+  getShowProgress: async (traktId: number): Promise<{
+    nextEpisode: { season: number; number: number; title: string } | null;
+    completed: number;
+    aired: number;
+  } | null> => {
+    try {
+      const response = await traktApi.get(`/shows/${traktId}/progress/watched`, {
+        params: { hidden: false, specials: false, count_specials: false },
+      });
+      const data = response.data;
+      return {
+        nextEpisode: data.next_episode ? {
+          season: data.next_episode.season,
+          number: data.next_episode.number,
+          title: data.next_episode.title || `Episode ${data.next_episode.number}`,
+        } : null,
+        completed: data.completed || 0,
+        aired: data.aired || 0,
+      };
+    } catch (e) {
+      console.warn('[Trakt] Failed to get show progress:', e);
+      return null;
+    }
+  },
+
   // Scrobble - with IMDB ID support
   startWatching: async (ids: { imdb?: string; tmdb?: number }, progress: number, season?: number, episode?: number): Promise<void> => {
     try {

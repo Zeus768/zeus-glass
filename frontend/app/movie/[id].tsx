@@ -16,6 +16,7 @@ import { useContentStore } from '../../store/contentStore';
 import { Movie, CachedTorrent } from '../../types';
 import { QUALITY_OPTIONS } from '../../config/constants';
 import { errorLogService } from '../../services/errorLogService';
+import { PlayerChoice } from '../../components/PlayerChoice';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -58,6 +59,8 @@ export default function MovieDetailScreen() {
   const [resumeData, setResumeData] = useState<WatchHistoryItem | null>(null);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [pendingStreamUrl, setPendingStreamUrl] = useState<string | null>(null);
+  const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
+  const [pendingPlayerStream, setPendingPlayerStream] = useState<{ url: string; title: string } | null>(null);
 
   // Check for resume position on load
   useEffect(() => {
@@ -233,26 +236,9 @@ export default function MovieDetailScreen() {
 
   // Navigate to player with all metadata for tracking
   const navigateToPlayer = (streamUrl: string, streamType: 'video' | 'embed' = 'video', resumePosition?: number) => {
-    const params: any = {
-      url: streamUrl,
-      title: movie?.title || 'Movie',
-      type: streamType,
-      tmdbId: movie?.id?.toString(),
-      imdbId: movie?.imdb_id,
-      mediaType: 'movie',
-      posterPath: movie?.poster_path,
-      backdropPath: movie?.backdrop_path,
-    };
-    
-    // Add resume position if provided
-    if (resumePosition && resumePosition > 0) {
-      params.resumePosition = resumePosition.toString();
-    }
-    
-    router.push({
-      pathname: '/player',
-      params
-    });
+    // Show player choice dialog
+    setPendingPlayerStream({ url: streamUrl, title: movie?.title || 'Movie' });
+    setPlayerChoiceVisible(true);
   };
 
   // Check if should show resume prompt before playing
@@ -862,6 +848,17 @@ export default function MovieDetailScreen() {
           </View>
         </View>
       </Modal>
+      
+      {/* Player Choice Dialog */}
+      {pendingPlayerStream && (
+        <PlayerChoice
+          visible={playerChoiceVisible}
+          onClose={() => setPlayerChoiceVisible(false)}
+          streamUrl={pendingPlayerStream.url}
+          title={pendingPlayerStream.title}
+          type="movie"
+        />
+      )}
     </View>
   );
 }

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs, usePathname, useRouter } from 'expo-router';
+import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
 import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
+import { playerState } from '../utils/playerState';
 import { 
   Platform, 
   StatusBar, 
@@ -371,9 +372,17 @@ export default function TabLayout() {
 
   const headerPaddingTop = isTV ? 30 : Platform.OS === 'ios' ? 50 : 35;
   
-  // Hide header and tab bar on player screen
+  // Hide header and tab bar when player is active
+  const [isPlayerActive, setIsPlayerActive] = useState(false);
+  
+  useEffect(() => {
+    const unsub = playerState.subscribe((active) => setIsPlayerActive(active));
+    return unsub;
+  }, []);
+  
   const pathname = usePathname();
-  const isPlayerScreen = pathname === '/player' || pathname?.startsWith('/player');
+  const segments = useSegments();
+  const isPlayerScreen = isPlayerActive || segments[0] === 'player' || pathname === '/player' || pathname?.startsWith('/player');
 
   return (
     <View style={styles.container}>

@@ -11,6 +11,8 @@ import { streamScraperService, StreamSource } from '../../services/streamScraper
 import { useContentStore } from '../../store/contentStore';
 import { TVShow, CachedTorrent, Season, Episode } from '../../types';
 import { errorLogService } from '../../services/errorLogService';
+import { traktService } from '../../services/trakt';
+import { PlayerChoice } from '../../components/PlayerChoice';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -39,10 +41,15 @@ export default function TVShowDetailScreen() {
   // Focus states
   const [focusedSeason, setFocusedSeason] = useState<number | null>(null);
   const [focusedEpisode, setFocusedEpisode] = useState<number | null>(null);
+  const [nextUpEpisode, setNextUpEpisode] = useState<{ season: number; number: number; title: string } | null>(null);
+  const [showProgress, setShowProgress] = useState<{ completed: number; aired: number } | null>(null);
+  const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
+  const [pendingPlayerStream, setPendingPlayerStream] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     if (id) {
       loadTVShowDetails();
+      loadTraktProgress();
     }
   }, [id]);
 
@@ -67,6 +74,28 @@ export default function TVShowDetailScreen() {
       console.error('Error loading TV show details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTraktProgress = async () => {
+    try {
+      const isAuthed = await traktService.isAuthenticated();
+      if (!isAuthed) return;
+      
+      // Get Trakt show ID from TMDB external IDs
+      // We use the TMDB ID as lookup - Trakt supports this format
+      const progress = await traktService.getShowProgress(parseInt(id));
+      if (progress) {
+        setNextUpEpisode(progress.nextEpisode);
+        setShowProgress({ completed: progress.completed, aired: progress.aired });
+        
+        // Auto-jump to next up episode's season
+        if (progress.nextEpisode) {
+          setSelectedSeason(progress.nextEpisode.season);
+        }
+      }
+    } catch (e) {
+      console.warn('[TV Detail] Failed to load Trakt progress:', e);
     }
   };
 
@@ -165,13 +194,9 @@ export default function TVShowDetailScreen() {
       
       if (streamUrl) {
         setShowLinksModal(false);
-        router.push({
-          pathname: '/player',
-          params: { 
-            url: streamUrl, 
-            title: `${tvShow?.name} S${selectedEpisode?.season_number}E${selectedEpisode?.episode_number}` 
-          }
-        });
+        const title = `${tvShow?.name} S${selectedEpisode?.season_number}E${selectedEpisode?.episode_number}`;
+        setPendingPlayerStream({ url: streamUrl, title });
+        setPlayerChoiceVisible(true);
       } else {
         Alert.alert('Error', 'Failed to get streaming link.');
       }
@@ -185,13 +210,9 @@ export default function TVShowDetailScreen() {
 
   const handlePlayDirectStream = async (stream: StreamSource) => {
     setShowLinksModal(false);
-    router.push({
-      pathname: '/player',
-      params: { 
-        url: stream.url, 
-        title: `${tvShow?.name} S${selectedEpisode?.season_number}E${selectedEpisode?.episode_number}` 
-      }
-    });
+    const title = `${tvShow?.name} S${selectedEpisode?.season_number}E${selectedEpisode?.episode_number}`;
+    setPendingPlayerStream({ url: stream.url, title });
+    setPlayerChoiceVisible(true);
   };
 
   if (loading) {
@@ -286,6 +307,39 @@ export default function TVShowDetailScreen() {
               </Pressable>
             </View>
           </View>
+
+          {/* Next Up Episode (from Trakt) */}
+          {nextUpEpisode && (
+            <Pressable 
+              style={styles.nextUpContainer}
+              onPress={() => {
+                setSelectedSeason(nextUpEpisode.season);
+                // The episode will be visible in the episodes list
+              }}
+              data-testid="next-up-episode"
+            >
+              <View style={styles.nextUpHeader}>
+                <Ionicons name="play-forward" size={20} color={theme.colors.primary} />
+                <Text style={styles.nextUpLabel}>NEXT UP</Text>
+              </View>
+              <Text style={styles.nextUpTitle}>
+                S{nextUpEpisode.season}E{nextUpEpisode.number} - {nextUpEpisode.title}
+              </Text>
+              {showProgress && (
+                <View style={styles.progressBarContainer}>
+                  <View 
+                    style={[
+                      styles.progressBar, 
+                      { width: `${Math.round((showProgress.completed / Math.max(showProgress.aired, 1)) * 100)}%` }
+                    ]} 
+                  />
+                  <Text style={styles.progressText}>
+                    {showProgress.completed}/{showProgress.aired} episodes watched
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          )}
 
           {/* Season Selector */}
           <View style={styles.sectionHeader}>
@@ -528,6 +582,17 @@ export default function TVShowDetailScreen() {
           </View>
         </View>
       </Modal>
+      
+      {/* Player Choice Dialog */}
+      {pendingPlayerStream && (
+        <PlayerChoice
+          visible={playerChoiceVisible}
+          onClose={() => setPlayerChoiceVisible(false)}
+          streamUrl={pendingPlayerStream.url}
+          title={pendingPlayerStream.title}
+          type="tv"
+        />
+      )}
     </View>
   );
 }
@@ -637,21 +702,23 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.medium,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 6,
+    marginLeft: 4,
   },
   statusBadgeEnded: {
-    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: '#EF4444',
   },
   statusBadgeAiring: {
-    backgroundColor: 'rgba(34, 197, 94, 0.3)',
+    backgroundColor: '#22C55E',
   },
   statusBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   overview: {
     fontSize: isTV ? 16 : 14,
@@ -667,6 +734,50 @@ const styles = StyleSheet.create({
   favButtonText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
+  },
+  nextUpContainer: {
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.3)',
+    borderRadius: 12,
+    padding: isTV ? 16 : 12,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  nextUpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  nextUpLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: theme.colors.primary,
+    letterSpacing: 1,
+  },
+  nextUpTitle: {
+    fontSize: isTV ? 18 : 15,
+    fontWeight: '700',
+    color: theme.colors.text,
+    marginBottom: 8,
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    marginTop: 4,
   },
   // Sections
   sectionHeader: {

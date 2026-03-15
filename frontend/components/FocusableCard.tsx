@@ -12,6 +12,7 @@ interface FocusableCardProps {
   height?: number;
   index?: number;
   autoFocus?: boolean;
+  isWatched?: boolean;
 }
 
 const isMovie = (item: Movie | TVShow): item is Movie => 'title' in item;
@@ -22,6 +23,7 @@ export const FocusableCard: React.FC<FocusableCardProps> = ({
   height = isTV ? theme.tv.cardHeight : theme.mobile.cardHeight,
   index = 0,
   autoFocus = false,
+  isWatched = false,
 }) => {
   const router = useRouter();
   const [isFocused, setIsFocused] = useState(false);
@@ -31,6 +33,7 @@ export const FocusableCard: React.FC<FocusableCardProps> = ({
   const year = isMovie(item)
     ? item.release_date?.split('-')[0]
     : item.first_air_date?.split('-')[0];
+  const showStatus = !isMovie(item) ? (item as TVShow).status : undefined;
 
   const handlePress = useCallback(() => {
     if (isMovie(item)) {
@@ -79,6 +82,18 @@ export const FocusableCard: React.FC<FocusableCardProps> = ({
             {item.vote_average.toFixed(1)}
           </Text>
         </View>
+        {/* Watched tick */}
+        {isWatched && (
+          <View style={styles.watchedBadge} data-testid={`watched-${item.id}`}>
+            <Text style={styles.watchedCheck}>✓</Text>
+          </View>
+        )}
+        {/* Show status badge (Ended/Cancelled) */}
+        {showStatus && (showStatus === 'Ended' || showStatus === 'Canceled') && (
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>{showStatus}</Text>
+          </View>
+        )}
         {/* Focus Indicator Overlay */}
         {isFocused && (
           <View style={styles.focusOverlay}>
@@ -148,6 +163,37 @@ const styles = StyleSheet.create({
     color: theme.colors.gold,
     fontSize: isTV ? 16 : 12,
     fontWeight: '700',
+  },
+  watchedBadge: {
+    position: 'absolute',
+    top: isTV ? 12 : 8,
+    left: isTV ? 12 : 8,
+    backgroundColor: '#22C55E',
+    borderRadius: isTV ? 14 : 10,
+    width: isTV ? 28 : 20,
+    height: isTV ? 28 : 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  watchedCheck: {
+    color: '#fff',
+    fontSize: isTV ? 16 : 12,
+    fontWeight: '900',
+  },
+  statusBadge: {
+    position: 'absolute',
+    bottom: isTV ? 8 : 6,
+    left: isTV ? 8 : 6,
+    backgroundColor: '#EF4444',
+    borderRadius: 4,
+    paddingHorizontal: isTV ? 6 : 4,
+    paddingVertical: 1,
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: isTV ? 10 : 8,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   focusOverlay: {
     ...StyleSheet.absoluteFillObject,

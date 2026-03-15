@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, ScrollView, Alert, Modal } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { theme, isTV } from '../constants/theme';
+import { useRouter } from 'expo-router';
+import { PlayerChoice } from '../components/PlayerChoice';
 import { iptvService } from '../services/iptv';
 import { VODItem } from '../types';
 import { Ionicons } from '@expo/vector-icons';
@@ -140,12 +141,12 @@ export default function VODScreen() {
     }
   };
 
+  const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
+  const [pendingPlayerStream, setPendingPlayerStream] = useState<{ url: string; title: string } | null>(null);
+
   const playContent = (url: string, title: string) => {
-    // Use internal fullscreen player
-    router.push({
-      pathname: '/player',
-      params: { url, title },
-    });
+    setPendingPlayerStream({ url, title });
+    setPlayerChoiceVisible(true);
   };
 
   const currentContent = contentType === 'movies' ? movies : series;
@@ -433,6 +434,17 @@ export default function VODScreen() {
           </View>
         </View>
       </Modal>
+      
+      {/* Player Choice Dialog */}
+      {pendingPlayerStream && (
+        <PlayerChoice
+          visible={playerChoiceVisible}
+          onClose={() => setPlayerChoiceVisible(false)}
+          streamUrl={pendingPlayerStream.url}
+          title={pendingPlayerStream.title}
+          type="vod"
+        />
+      )}
     </View>
   );
 }

@@ -14,64 +14,74 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
 - **Storage**: AsyncStorage (client-side), no database
 
 ## What's Been Implemented
+
 ### Core Features
 - Home page with hero banner, trending movies/TV carousels
-- 10-tab navigation: HOME, MOVIES, TV SHOWS, PROVIDERS, LIVE TV, TV GUIDE, CATCH UP, SEARCH, VOD, SETTINGS
+- 10-tab navigation with cyan focus states for TV remote
 - Movie/TV detail pages with debrid + direct streaming links
-- Torrentio integration for finding torrents (direct + backend proxy)
+- Torrentio integration (direct + backend proxy fallback)
 - Real-Debrid device-code OAuth flow
 - Trakt device-code auth with proxy fallback
 - IPTV Xtreme Codes integration (Live channels, VOD, EPG)
-- Internal player (Zeus Player) with subtitles support
+- Internal player (Zeus Player) with Modal fullscreen overlay
 - Zeus Vault backup/restore
 - Parental controls with PIN
 - Streaming providers page (Netflix, Disney+, Prime, HBO, etc.)
 
-### Bug Fixes (March 13, 2026)
-- FIXED: Invalid TMDB API key in providersService.ts (hardcoded key replaced with shared constant)
-- FIXED: Search crash caused by missing STORAGE_KEYS (ALLDEBRID_API_KEY -> ALLDEBRID_TOKEN, PREMIUMIZE_API_KEY -> PREMIUMIZE_TOKEN)
-- FIXED: Tab focus states enhanced with cyan background + white border + 1.15x scale for TV remote
-- FIXED: Torrentio search no longer gated behind debrid token (shows results without login)
-- FIXED: TV show torrent search also ungated from debrid token
-- FIXED: Trakt auth with proxy fallback for environments with CORS issues
-- FIXED: Player fullscreen now handles TV devices separately (no landscape lock on TV)
-- FIXED: Added web fullscreen support (requestFullscreen/exitFullscreen)
-- ADDED: Backend proxy endpoints for Torrentio (/api/torrentio/stream/) and Trakt (/api/trakt/device/code, /api/trakt/device/token)
-- ADDED: with_watch_monetization_types=flatrate param for provider discovery API
+### Session 2 Changes (March 15, 2026)
+- **PlayerChoice dialog**: Universal player selector on ALL play actions (Internal, VLC, MX Player, Just Player, System Default) - integrated in movies, TV shows, IPTV Live TV, VOD, TV Guide
+- **IPTV categories fixed**: Channels now include `category_id` for proper categorization. Categories show correct channel counts.
+- **Live TV page rewritten**: Fullscreen category drill-down - tap a category to see full-grid channels, back button to return. Long-press for quick VLC launch.
+- **Player fullscreen via Modal**: Player wrapped in `<Modal>` for true native fullscreen on Android TV/Fire TV
+- **Trakt watch tracking**: Added `getWatchedMovies/Shows`, `markAsWatched`, `getShowProgress` methods
+- **Next Up episode**: TV show detail shows next unwatched episode with progress bar when Trakt connected
+- **Watched tick marks**: FocusableCard supports `isWatched` prop with green tick badge
+- **Show status badges**: "ENDED" (red) and "Airing" (green) badges on TV show cards and detail pages
+- **TV Guide categories fixed**: Updated to use `category_id`/`category_name` format
+- **VOD categories fixed**: Updated to use consistent `IPTVCategory` type
+- **Trakt crash fixed**: All Trakt methods wrapped in try-catch, scrobble signatures corrected
+- **playerState event system**: Global state manager for player fullscreen (hides header/tabs on native)
+
+### Session 1 Changes (March 13, 2026)
+- Fixed invalid TMDB API key in providersService.ts
+- Fixed search crash (missing STORAGE_KEYS)
+- Enhanced tab focus states for TV remote
+- Torrentio search works without debrid token
+- Backend proxy endpoints for Torrentio and Trakt
+- Player TV-specific fullscreen path
+- Added `with_watch_monetization_types=flatrate` for provider discovery
 
 ## Prioritized Backlog
 
-### P0 - Critical (Still needs user verification on actual TV device)
-- Debrid links: Torrentio direct call works on native devices, proxy blocked by Cloudflare from cloud
-- TV/Shield remote navigation: Focus states implemented, needs testing on actual Shield/Firestick
-- Trakt login: Proxy added, needs testing on device
+### P0 - User Verification Needed
+- IPTV categories with channel counts (code done, needs Shield TV testing)
+- PlayerChoice dialog on all play actions (code done, needs device testing)
+- Player fullscreen via Modal (works on native, not web)
+- Trakt auth flow (proxy fallback added)
 
-### P1 - High Priority
-- Zeus Vault save/restore: Code looks functional, needs device testing
-- Player fullscreen: TV-specific path added, needs device testing
-- Infinite scroll on Providers page: Needs implementation (currently loads one page)
+### P1 - Remaining Work
+- Watched tick marks integration into home/browse pages (FocusableCard supports it, need to wire up Trakt data)
+- Shield TV performance optimization (lazy loading, reduce re-renders)
+- Infinite scroll on Providers page
+- Enhanced D-pad navigation focus across all screens
 
-### P2 - Medium Priority
-- UI elements "chopped" on TV screens: Needs device testing
-- TV Guide EPG loading: Progress bar exists but needs verification
-- Progress indicators for stream scraping: Implemented but needs verification
-- Parental controls enable button: Code is correct, needs device testing
-
-### P3 - Future Tasks
-- More torrent scrapers (Torrserver, watchsomuch-tv.lol)
-- Live TV tab completion (channel listing)
-- IMDB/Trakt login improvements
-- External Player (VLC) integration
+### P2 - Future
+- More torrent scrapers (Torrserver, watchsomuch)
+- Zeus Vault improvements
 - GitLab CI/CD setup
+- PiP mode for player (browse while watching in corner)
+
+## Key Architecture
+- All API calls use `process.env.EXPO_PUBLIC_BACKEND_URL`
+- Backend routes prefixed with `/api`
+- TMDB key via constants (`FALLBACK_TMDB_KEY`)
+- Torrentio: Direct first, proxy fallback
+- Trakt: Direct first, proxy fallback
+- IPTV categories use `IPTVCategory` type with `category_id`/`category_name`
+- PlayerChoice component is the universal player selector
+- Player uses `<Modal>` for native fullscreen
 
 ## IPTV Credentials (Testing)
 - Domain: thenewdns.co
 - Username: patrickteddyirl@gmail.com
 - Password: 3cb7f892dc747bb4
-
-## Key Architecture Notes
-- All API calls from frontend use process.env.EXPO_PUBLIC_BACKEND_URL
-- Backend routes prefixed with /api
-- TMDB API key shared via constants (FALLBACK_TMDB_KEY)
-- Torrentio: Direct call first, proxy fallback for web
-- Trakt: Direct API first, proxy fallback for CORS

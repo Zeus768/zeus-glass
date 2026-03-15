@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { theme, isTV } from '../constants/theme';
 import { iptvService, IPTVCategory } from '../services/iptv';
 import { IPTVChannel } from '../types';
+import { PlayerChoice } from '../components/PlayerChoice';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -40,6 +41,8 @@ export default function LiveTVScreen() {
   const [loadProgress, setLoadProgress] = useState({ channels: 0, categories: 0, status: 'Connecting...' });
   const [focusedChannel, setFocusedChannel] = useState<string | null>(null);
   const [focusedCategory, setFocusedCategory] = useState<string | null>(null);
+  const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
+  const [selectedStream, setSelectedStream] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -108,37 +111,20 @@ export default function LiveTVScreen() {
 
   const handleChannelPress = (channel: IPTVChannel) => {
     if (channel.stream_url) {
-      router.push({
-        pathname: '/player',
-        params: { 
-          url: channel.stream_url, 
-          title: channel.name,
-          type: 'live'
-        }
-      });
+      setSelectedStream({ url: channel.stream_url, title: channel.name });
+      setPlayerChoiceVisible(true);
     } else {
       Alert.alert('Error', 'No stream URL available');
     }
   };
 
   const handleExternalPlayer = (channel: IPTVChannel) => {
+    // Long-press goes directly to VLC
     if (!channel.stream_url) return;
-    
-    // Try VLC first, then MX Player, then system default
     const vlcUrl = Platform.OS === 'android' 
       ? `vlc://${channel.stream_url}`
       : channel.stream_url;
-    
-    Alert.alert(
-      'Open with External Player',
-      `Play "${channel.name}" in:`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'VLC Player', onPress: () => Linking.openURL(vlcUrl).catch(() => Alert.alert('Error', 'VLC not installed')) },
-        { text: 'MX Player', onPress: () => Linking.openURL(`intent:${channel.stream_url}#Intent;package=com.mxtech.videoplayer.ad;end`).catch(() => Alert.alert('Error', 'MX Player not installed')) },
-        { text: 'Default', onPress: () => Linking.openURL(channel.stream_url).catch(() => {}) },
-      ]
-    );
+    Linking.openURL(vlcUrl).catch(() => Alert.alert('Error', 'VLC not installed'));
   };
 
   // CATEGORY GRID VIEW
@@ -299,6 +285,16 @@ export default function LiveTVScreen() {
             index,
           })}
         />
+        
+        {selectedStream && (
+          <PlayerChoice
+            visible={playerChoiceVisible}
+            onClose={() => setPlayerChoiceVisible(false)}
+            streamUrl={selectedStream.url}
+            title={selectedStream.title}
+            type="live"
+          />
+        )}
       </View>
     );
   }
@@ -324,6 +320,16 @@ export default function LiveTVScreen() {
         contentContainerStyle={styles.categoriesGrid}
         showsVerticalScrollIndicator={false}
       />
+      
+      {selectedStream && (
+        <PlayerChoice
+          visible={playerChoiceVisible}
+          onClose={() => setPlayerChoiceVisible(false)}
+          streamUrl={selectedStream.url}
+          title={selectedStream.title}
+          type="live"
+        />
+      )}
     </View>
   );
 }

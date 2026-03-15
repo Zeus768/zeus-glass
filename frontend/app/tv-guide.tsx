@@ -19,6 +19,7 @@ import { theme, isTV } from '../constants/theme';
 import { iptvService } from '../services/iptv';
 import { recordingService, RecordingCategory } from '../services/recordingService';
 import { IPTVChannel, EPGProgram } from '../types';
+import { PlayerChoice } from '../components/PlayerChoice';
 
 export default function TVGuideScreen() {
   const router = useRouter();
@@ -28,6 +29,8 @@ export default function TVGuideScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<IPTVChannel | null>(null);
+  const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
+  const [pendingPlayerStream, setPendingPlayerStream] = useState<{ url: string; title: string } | null>(null);
   const [recordDuration, setRecordDuration] = useState('60');
   const [scheduleDate, setScheduleDate] = useState<Date | null>(null);
   const [repeatType, setRepeatType] = useState<'once' | 'daily' | 'weekly'>('once');
@@ -149,14 +152,8 @@ export default function TVGuideScreen() {
   };
 
   const handlePlayChannel = (channel: IPTVChannel) => {
-    router.push({
-      pathname: '/player',
-      params: {
-        url: channel.stream_url,
-        title: channel.name,
-        isLive: 'true',
-      },
-    });
+    setPendingPlayerStream({ url: channel.stream_url, title: channel.name });
+    setPlayerChoiceVisible(true);
   };
 
   const handleRecordPress = (channel: IPTVChannel) => {
@@ -637,6 +634,17 @@ export default function TVGuideScreen() {
           </View>
         </View>
       </Modal>
+      
+      {/* Player Choice Dialog */}
+      {pendingPlayerStream && (
+        <PlayerChoice
+          visible={playerChoiceVisible}
+          onClose={() => setPlayerChoiceVisible(false)}
+          streamUrl={pendingPlayerStream.url}
+          title={pendingPlayerStream.title}
+          type="live"
+        />
+      )}
     </View>
   );
 }
