@@ -12,6 +12,9 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const isTV = Platform.isTV || SCREEN_WIDTH > 1200;
 const isSmallScreen = SCREEN_WIDTH < 400;
 
+// TV modal scale factor - reduce by ~50%
+const tvScale = 0.6;
+
 type ServiceType = 'real-debrid' | 'alldebrid' | 'premiumize' | 'trakt';
 
 interface QRAuthModalProps {
@@ -308,7 +311,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           <View style={[styles.qrWrapper, isTV && styles.qrWrapperTV]}>
             <QRCode
               value={verificationUrl}
-              size={isTV ? 300 : isSmallScreen ? 150 : 180}
+              size={isTV ? 160 : isSmallScreen ? 150 : 180}
               backgroundColor="white"
               color="black"
             />
@@ -429,7 +432,7 @@ const styles = StyleSheet.create({
     maxWidth: 500,
   },
   modalContainerTV: {
-    maxWidth: 900,
+    maxWidth: 550,  // Reduced from 900
   },
   modal: {
     backgroundColor: theme.colors.card,
@@ -439,7 +442,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   modalTV: {
-    borderRadius: 24,
+    borderRadius: 16,  // Reduced from 24
     borderWidth: 2,
   },
   header: {
@@ -451,7 +454,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
   },
   headerTV: {
-    padding: 30,
+    padding: 18,  // Reduced from 30
   },
   title: {
     fontSize: 18,
@@ -459,7 +462,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   titleTV: {
-    fontSize: 32,
+    fontSize: 22,  // Reduced from 32
   },
   closeButton: {
     padding: theme.spacing.sm,
@@ -468,14 +471,14 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   contentTV: {
-    padding: 40,
+    padding: 24,  // Reduced from 40
   },
   loadingContainer: {
     padding: theme.spacing.xxl,
     alignItems: 'center',
   },
   loadingContainerTV: {
-    padding: 60,
+    padding: 40,  // Reduced from 60
   },
   loadingText: {
     marginTop: theme.spacing.md,
@@ -483,15 +486,15 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   loadingTextTV: {
-    fontSize: 22,
-    marginTop: 20,
+    fontSize: 16,  // Reduced from 22
+    marginTop: 14,
   },
   errorContainer: {
     padding: theme.spacing.xxl,
     alignItems: 'center',
   },
   errorContainerTV: {
-    padding: 60,
+    padding: 40,  // Reduced from 60
   },
   errorText: {
     marginTop: theme.spacing.md,
@@ -500,8 +503,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   errorTextTV: {
-    fontSize: 22,
-    marginTop: 20,
+    fontSize: 16,  // Reduced from 22
+    marginTop: 14,
   },
   retryButton: {
     marginTop: theme.spacing.lg,
@@ -511,9 +514,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
   },
   retryButtonTV: {
-    paddingHorizontal: 40,
-    paddingVertical: 18,
-    marginTop: 30,
+    paddingHorizontal: 28,  // Reduced from 40
+    paddingVertical: 12,    // Reduced from 18
+    marginTop: 20,
   },
   retryButtonText: {
     fontSize: 14,
@@ -521,7 +524,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   retryButtonTextTV: {
-    fontSize: 20,
+    fontSize: 16,  // Reduced from 20
   },
   instructions: {
     fontSize: 14,
@@ -530,8 +533,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   instructionsTV: {
-    fontSize: 22,
-    marginBottom: 30,
+    fontSize: 16,  // Reduced from 22
+    marginBottom: 20,
   },
   authContainer: {
     flexDirection: 'row',
@@ -555,8 +558,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   qrWrapperTV: {
-    padding: 24,
-    borderRadius: 20,
+    padding: 14,  // Reduced from 24
+    borderRadius: 12,
   },
   qrLabel: {
     marginTop: 12,
@@ -564,8 +567,8 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   qrLabelTV: {
-    fontSize: 18,
-    marginTop: 20,
+    fontSize: 14,  // Reduced from 18
+    marginTop: 12,
   },
   divider: {
     width: 1,
@@ -574,8 +577,8 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
   },
   dividerTV: {
-    height: 350,
-    marginHorizontal: 40,
+    height: 200,  // Reduced from 350
+    marginHorizontal: 24,
   },
   dividerHorizontal: {
     width: '80%',
@@ -596,8 +599,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   codeLabelTV: {
-    fontSize: 22,
-    marginBottom: 15,
+    fontSize: 16,  // Reduced from 22
+    marginBottom: 10,
   },
   codeBadge: {
     paddingHorizontal: 20,
@@ -607,9 +610,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   codeBadgeTV: {
-    paddingHorizontal: 40,
-    paddingVertical: 20,
-    marginBottom: 20,
+    paddingHorizontal: 24,  // Reduced from 40
+    paddingVertical: 12,    // Reduced from 20
+    marginBottom: 14,
   },
   codeText: {
     fontSize: 24,
@@ -618,8 +621,8 @@ const styles = StyleSheet.create({
     letterSpacing: 6,
   },
   codeTextTV: {
-    fontSize: 42,
-    letterSpacing: 10,
+    fontSize: 28,  // Reduced from 42
+    letterSpacing: 8,
   },
   urlLabel: {
     fontSize: 12,
@@ -627,8 +630,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   urlLabelTV: {
-    fontSize: 18,
-    marginBottom: 12,
+    fontSize: 14,  // Reduced from 18
+    marginBottom: 8,
   },
   urlTextSmall: {
     fontSize: 12,
@@ -637,7 +640,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   urlTextSmallTV: {
-    fontSize: 20,
+    fontSize: 14,  // Reduced from 20
   },
   copyButton: {
     flexDirection: 'row',
@@ -654,12 +657,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   copyButtonTV: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    marginTop: 20,
-    marginBottom: 24,
-    gap: 12,
+    paddingVertical: 10,   // Reduced from 16
+    paddingHorizontal: 20, // Reduced from 32
+    borderRadius: 10,
+    marginTop: 12,
+    marginBottom: 16,
+    gap: 8,
   },
   copyButtonText: {
     fontSize: 14,
@@ -667,7 +670,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   copyButtonTextTV: {
-    fontSize: 22,
+    fontSize: 15,  // Reduced from 22
   },
   statusContainer: {
     flexDirection: 'row',
@@ -679,8 +682,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
   },
   statusContainerTV: {
-    marginTop: 30,
-    padding: 20,
+    marginTop: 18,  // Reduced from 30
+    padding: 14,
   },
   statusText: {
     marginLeft: theme.spacing.md,
@@ -688,8 +691,8 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   statusTextTV: {
-    fontSize: 22,
-    marginLeft: 20,
+    fontSize: 15,  // Reduced from 22
+    marginLeft: 14,
   },
   // Premiumize-specific styles
   urlContainer: {

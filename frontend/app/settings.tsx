@@ -477,7 +477,7 @@ export default function SettingsScreen() {
       ]}>
         <View style={styles.accountHeader}>
           <View style={styles.accountTitleContainer}>
-            <Ionicons name={icon as any} size={isTV ? 32 : 24} color={theme.colors.primary} />
+            <Ionicons name={icon as any} size={isTV ? 20 : 24} color={theme.colors.primary} />
             <Text style={styles.accountTitle}>{title}</Text>
           </View>
           {account ? (
@@ -1251,84 +1251,84 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    padding: isTV ? 40 : theme.spacing.md,
+    padding: isTV ? 20 : theme.spacing.md,  // Reduced from 40
   },
   sectionTitle: {
-    fontSize: isTV ? 36 : theme.fontSize.xl,
+    fontSize: isTV ? 22 : theme.fontSize.xl,  // Reduced from 36
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
-    marginBottom: isTV ? 24 : theme.spacing.md,
+    marginBottom: isTV ? 14 : theme.spacing.md,  // Reduced from 24
   },
   accountCard: {
     backgroundColor: theme.colors.card,
-    borderRadius: isTV ? 20 : theme.borderRadius.md,
-    padding: isTV ? 28 : theme.spacing.md,
-    marginBottom: isTV ? 20 : theme.spacing.md,
-    borderWidth: isTV ? 3 : 1,
+    borderRadius: isTV ? 14 : theme.borderRadius.md,  // Reduced from 20
+    padding: isTV ? 16 : theme.spacing.md,           // Reduced from 28
+    marginBottom: isTV ? 12 : theme.spacing.md,      // Reduced from 20
+    borderWidth: isTV ? 2 : 1,                       // Reduced from 3
     borderColor: theme.colors.border,
   },
   accountCardFocused: {
     borderColor: '#FFFFFF',
-    borderWidth: isTV ? 5 : 3,
+    borderWidth: isTV ? 3 : 3,  // Reduced from 5
     backgroundColor: 'rgba(0, 217, 255, 0.15)',
     shadowColor: '#00D9FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: isTV ? 30 : 20,
-    elevation: 30,
-    transform: [{ scale: isTV ? 1.03 : 1.01 }],
+    shadowRadius: isTV ? 20 : 20,  // Reduced from 30
+    elevation: 20,
+    transform: [{ scale: isTV ? 1.02 : 1.01 }],  // Reduced from 1.03
   },
   accountHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: isTV ? 20 : theme.spacing.md,
+    marginBottom: isTV ? 12 : theme.spacing.md,  // Reduced from 20
   },
   accountTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   accountTitle: {
-    fontSize: isTV ? 28 : theme.fontSize.lg,
+    fontSize: isTV ? 18 : theme.fontSize.lg,  // Reduced from 28
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
-    marginLeft: isTV ? 16 : theme.spacing.sm,
+    marginLeft: isTV ? 10 : theme.spacing.sm,  // Reduced from 16
   },
   loginButton: {
     backgroundColor: theme.colors.primary,
-    paddingHorizontal: isTV ? 32 : theme.spacing.lg,
-    paddingVertical: isTV ? 16 : theme.spacing.sm,
-    borderRadius: isTV ? 16 : theme.borderRadius.md,
-    borderWidth: isTV ? 4 : 2,
+    paddingHorizontal: isTV ? 18 : theme.spacing.lg,  // Reduced from 32
+    paddingVertical: isTV ? 10 : theme.spacing.sm,    // Reduced from 16
+    borderRadius: isTV ? 10 : theme.borderRadius.md,  // Reduced from 16
+    borderWidth: isTV ? 2 : 2,                        // Reduced from 4
     borderColor: 'transparent',
   },
   loginText: {
-    fontSize: isTV ? 22 : theme.fontSize.md,
+    fontSize: isTV ? 15 : theme.fontSize.md,  // Reduced from 22
     fontWeight: theme.fontWeight.semibold,
     color: '#000',
   },
   logoutButton: {
     backgroundColor: theme.colors.error,
-    paddingHorizontal: isTV ? 32 : theme.spacing.lg,
-    paddingVertical: isTV ? 16 : theme.spacing.sm,
-    borderRadius: isTV ? 16 : theme.borderRadius.md,
-    borderWidth: isTV ? 4 : 2,
+    paddingHorizontal: isTV ? 18 : theme.spacing.lg,  // Reduced from 32
+    paddingVertical: isTV ? 10 : theme.spacing.sm,    // Reduced from 16
+    borderRadius: isTV ? 10 : theme.borderRadius.md,  // Reduced from 16
+    borderWidth: isTV ? 2 : 2,                        // Reduced from 4
     borderColor: 'transparent',
   },
   logoutText: {
-    fontSize: isTV ? 22 : theme.fontSize.md,
+    fontSize: isTV ? 15 : theme.fontSize.md,  // Reduced from 22
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text,
   },
   buttonFocused: {
     borderColor: '#FFFFFF',
-    borderWidth: isTV ? 5 : 4,
-    transform: [{ scale: isTV ? 1.18 : 1.12 }],
+    borderWidth: isTV ? 3 : 4,   // Reduced from 5
+    transform: [{ scale: isTV ? 1.1 : 1.12 }],  // Reduced from 1.18
     shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: isTV ? 30 : 25,
-    elevation: 40,
+    shadowRadius: isTV ? 18 : 25,  // Reduced from 30
+    elevation: 30,
   },
   buttonTextFocused: {
     fontWeight: '900' as const,
@@ -1336,8 +1336,8 @@ const styles = StyleSheet.create({
   // Zeus Vault styles
   vaultCard: {
     backgroundColor: theme.colors.card,
-    borderRadius: isTV ? 20 : theme.borderRadius.md,
-    padding: isTV ? 28 : theme.spacing.md,
+    borderRadius: isTV ? 14 : theme.borderRadius.md,  // Reduced from 20
+    padding: isTV ? 16 : theme.spacing.md,            // Reduced from 28
     borderWidth: 2,
     borderColor: '#FFD700',
   },
@@ -1345,18 +1345,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: isTV ? 20 : theme.spacing.md,
+    marginBottom: isTV ? 12 : theme.spacing.md,  // Reduced from 20
   },
   vaultTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: isTV ? 16 : 12,
+    gap: isTV ? 10 : 12,  // Reduced from 16
   },
   vaultTitleContainer: {
     gap: 2,
   },
   vaultTitle: {
-    fontSize: isTV ? 26 : 20,
+    fontSize: isTV ? 18 : 20,  // Reduced from 26
     fontWeight: '700',
     color: '#FFD700',
   },

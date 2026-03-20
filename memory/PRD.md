@@ -29,13 +29,21 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
 - Streaming providers page (Netflix, Disney+, Prime, HBO, etc.)
 
 ### Session 3 Changes (March 20, 2026)
+- **TV UI Size Reduction (~50% reduction for TV)**:
+  - Reduced global theme font sizes for TV by ~40-50%
+  - Reduced card sizes in theme (cardWidth: 160, cardHeight: 240)
+  - Reduced tab bar padding, font sizes, and spacing
+  - Reduced header "ZEUS GLASS" and donate button sizes
+  - Reduced donation modal sizes (QR code, fonts, padding)
+  - Reduced QR auth modal sizes (modal width, QR code 160px, fonts)
+  - Reduced settings page card padding and font sizes
+  - Reduced account card button sizes and icon sizes
 - **Zeus Vault Improvements**:
   - Updated to use `expo-file-system/legacy` API for SDK 54 compatibility
   - Improved error handling with fallbacks for TV devices
   - Renamed buttons for clarity: "Save Backup", "Restore Backup", "Share/Copy", "Paste Import"
   - Added user feedback with success/error alerts
   - Added clipboard fallback when Share is not available (for TV devices)
-  - Fixed internal save functionality to always work on all platforms
 - **Parental Controls**: Verified working - Enable button opens PIN setup modal correctly
 - **Added data-testid attributes** to Zeus Vault and Parental Controls buttons for testing
 

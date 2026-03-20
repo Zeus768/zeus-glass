@@ -70,13 +70,14 @@ export const theme = {
     xl: 24,
   },
   fontSize: {
-    xs: isTV ? 16 : 12,
-    sm: isTV ? 18 : 14,
-    md: isTV ? 22 : 16,
-    lg: isTV ? 28 : 20,
-    xl: isTV ? 36 : 24,
-    xxl: isTV ? 48 : 32,
-    huge: isTV ? 64 : 48,
+    // Reduced TV font sizes by ~40-50% for better screen fit
+    xs: isTV ? 12 : 12,
+    sm: isTV ? 14 : 14,
+    md: isTV ? 16 : 16,
+    lg: isTV ? 20 : 20,
+    xl: isTV ? 24 : 24,
+    xxl: isTV ? 32 : 32,
+    huge: isTV ? 40 : 48,
   },
   fontWeight: {
     normal: '400' as const,
@@ -85,11 +86,12 @@ export const theme = {
     bold: '700' as const,
   },
   tv: {
-    focusBorderWidth: 4,
-    focusScale: 1.08,
-    cardWidth: 220,
-    cardHeight: 330,
-    carouselItemSpacing: 20,
+    // Reduced TV sizes by ~30% for better screen fit
+    focusBorderWidth: 3,
+    focusScale: 1.05,
+    cardWidth: 160,
+    cardHeight: 240,
+    carouselItemSpacing: 14,
   },
   mobile: {
     cardWidth: 140,

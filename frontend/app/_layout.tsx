@@ -97,16 +97,16 @@ const tabBarStyles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
   },
   scrollContent: {
-    paddingHorizontal: isTV ? 40 : 12,
-    paddingVertical: isTV ? 10 : 10,
-    gap: isTV ? 8 : 4,
+    paddingHorizontal: isTV ? 20 : 12,  // Reduced from 40
+    paddingVertical: isTV ? 6 : 10,      // Reduced from 10
+    gap: isTV ? 4 : 4,                   // Reduced from 8
   },
   tab: {
-    paddingHorizontal: isTV ? 24 : 16,
-    paddingVertical: isTV ? 12 : 8,
-    borderRadius: isTV ? 10 : 8,
+    paddingHorizontal: isTV ? 14 : 16,   // Reduced from 24
+    paddingVertical: isTV ? 8 : 8,       // Reduced from 12
+    borderRadius: isTV ? 8 : 8,          // Reduced from 10
     position: 'relative',
-    borderWidth: 3,
+    borderWidth: 2,                      // Reduced from 3
     borderColor: 'transparent',
   },
   tabActive: {
@@ -116,15 +116,15 @@ const tabBarStyles = StyleSheet.create({
   tabFocused: {
     backgroundColor: '#00D9FF',
     borderColor: '#FFFFFF',
-    borderWidth: 3,
-    transform: [{ scale: 1.15 }],
+    borderWidth: 2,
+    transform: [{ scale: 1.08 }],  // Reduced from 1.15
   },
   tabText: {
-    fontSize: isTV ? 18 : 14,
+    fontSize: isTV ? 13 : 14,         // Reduced from 18
     fontWeight: '700',
     color: theme.colors.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: isTV ? 1.5 : 0.8,
+    letterSpacing: isTV ? 1 : 0.8,    // Reduced from 1.5
   },
   tabTextActive: {
     color: theme.colors.primary,
@@ -136,9 +136,9 @@ const tabBarStyles = StyleSheet.create({
   activeIndicator: {
     position: 'absolute',
     bottom: 0,
-    left: isTV ? 20 : 16,
-    right: isTV ? 20 : 16,
-    height: isTV ? 4 : 3,
+    left: isTV ? 12 : 16,    // Reduced from 20
+    right: isTV ? 12 : 16,
+    height: isTV ? 3 : 3,    // Reduced from 4
     backgroundColor: theme.colors.primary,
     borderRadius: 2,
   },
@@ -192,7 +192,7 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
           </FocusableButton>
           
           <View style={[donationStyles.coffeeIcon, isTV && donationStyles.coffeeIconTV]}>
-            <Text style={[donationStyles.coffeeEmoji, isTV && { fontSize: 80 }]}>☕</Text>
+            <Text style={[donationStyles.coffeeEmoji, isTV && { fontSize: 40 }]}>☕</Text>
           </View>
           
           <Text style={[donationStyles.title, isTV && donationStyles.titleTV]}>Support Zeus Glass</Text>
@@ -207,7 +207,7 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
               style={[donationStyles.qrCode, isTV && donationStyles.qrCodeTV]}
               contentFit="contain"
             />
-            <Text style={[donationStyles.qrText, isTV && { fontSize: 20 }]}>Scan to donate</Text>
+            <Text style={[donationStyles.qrText, isTV && { fontSize: 14 }]}>Scan to donate</Text>
           </View>
           
           <FocusableButton 
@@ -216,10 +216,10 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
             testID="donate-button"
           >
             <Ionicons name="heart" size={isTV ? 32 : 22} color="#000" />
-            <Text style={[donationStyles.donateButtonText, isTV && { fontSize: 24 }]}>Buy Me a Coffee</Text>
+            <Text style={[donationStyles.donateButtonText, isTV && { fontSize: 16 }]}>Buy Me a Coffee</Text>
           </FocusableButton>
           
-          <Text style={[donationStyles.thankYou, isTV && { fontSize: 18 }]}>Thank you for your support!</Text>
+          <Text style={[donationStyles.thankYou, isTV && { fontSize: 13 }]}>Thank you for your support!</Text>
         </View>
       </View>
     </Modal>
@@ -244,10 +244,10 @@ const donationStyles = StyleSheet.create({
     borderColor: theme.colors.gold,
   },
   modalTV: {
-    maxWidth: 700,
-    padding: 50,
-    borderRadius: 32,
-    borderWidth: 3,
+    maxWidth: 450,  // Reduced from 700
+    padding: 30,    // Reduced from 50
+    borderRadius: 24,
+    borderWidth: 2,
   },
   closeButton: {
     position: 'absolute',
@@ -267,10 +267,10 @@ const donationStyles = StyleSheet.create({
     marginBottom: 20,
   },
   coffeeIconTV: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    marginBottom: 30,
+    width: 80,  // Reduced from 150
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 16,
   },
   coffeeEmoji: {
     fontSize: 50,
@@ -282,8 +282,8 @@ const donationStyles = StyleSheet.create({
     marginBottom: 10,
   },
   titleTV: {
-    fontSize: 42,
-    marginBottom: 16,
+    fontSize: 26,  // Reduced from 42
+    marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
@@ -293,8 +293,8 @@ const donationStyles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   subtitleTV: {
-    fontSize: 22,
-    marginBottom: 36,
+    fontSize: 16,  // Reduced from 22
+    marginBottom: 20,
   },
   qrContainer: {
     backgroundColor: '#fff',
@@ -304,17 +304,17 @@ const donationStyles = StyleSheet.create({
     marginBottom: 24,
   },
   qrContainerTV: {
-    padding: 30,
-    marginBottom: 36,
-    borderRadius: 20,
+    padding: 16,  // Reduced from 30
+    marginBottom: 20,
+    borderRadius: 12,
   },
   qrCode: {
-    width: 200,
-    height: 200,
+    width: 180,  // Reduced from 200
+    height: 180,
   },
   qrCodeTV: {
-    width: 320,
-    height: 320,
+    width: 180,  // Reduced from 320
+    height: 180,
   },
   qrText: {
     marginTop: 12,
@@ -333,10 +333,10 @@ const donationStyles = StyleSheet.create({
     marginBottom: 20,
   },
   donateButtonTV: {
-    paddingVertical: 22,
-    paddingHorizontal: 50,
-    marginBottom: 28,
-    borderRadius: 40,
+    paddingVertical: 14,  // Reduced from 22
+    paddingHorizontal: 28,  // Reduced from 50
+    marginBottom: 16,
+    borderRadius: 24,
   },
   donateButtonText: {
     fontSize: 18,
@@ -397,7 +397,7 @@ export default function TabLayout() {
             onPress={() => setShowDonation(true)}
             testID="open-donation-modal"
           >
-            <Ionicons name="heart" size={isTV ? 28 : 18} color="#FFDD00" />
+            <Ionicons name="heart" size={isTV ? 18 : 18} color="#FFDD00" />
             <Text style={styles.donateBtnText}>Donate</Text>
           </FocusableButton>
         </View>
@@ -446,29 +446,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: theme.colors.background,
-    paddingHorizontal: isTV ? 50 : 20,
-    paddingBottom: isTV ? 8 : 12,
-    paddingTop: isTV ? 10 : 0,
+    paddingHorizontal: isTV ? 24 : 20,  // Reduced from 50
+    paddingBottom: isTV ? 4 : 12,       // Reduced from 8
+    paddingTop: isTV ? 6 : 0,           // Reduced from 10
   },
   appName: {
-    fontSize: isTV ? 28 : 24,  // Smaller on TV
+    fontSize: isTV ? 20 : 24,  // Reduced from 28
     fontWeight: 'bold',
     color: theme.colors.primary,
-    letterSpacing: isTV ? 3 : 2,
+    letterSpacing: isTV ? 2 : 2,  // Reduced from 3
   },
   donateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 221, 0, 0.15)',
-    paddingVertical: isTV ? 12 : 10,
-    paddingHorizontal: isTV ? 24 : 18,
-    borderRadius: isTV ? 25 : 25,
+    paddingVertical: isTV ? 8 : 10,    // Reduced from 12
+    paddingHorizontal: isTV ? 16 : 18, // Reduced from 24
+    borderRadius: isTV ? 20 : 25,
     borderWidth: isTV ? 2 : 2,
     borderColor: '#FFDD00',
-    gap: isTV ? 8 : 8,
+    gap: isTV ? 6 : 8,  // Reduced from 8
   },
   donateBtnText: {
-    fontSize: isTV ? 18 : 14,
+    fontSize: isTV ? 14 : 14,  // Reduced from 18
     fontWeight: '700',
     color: '#FFDD00',
   },
