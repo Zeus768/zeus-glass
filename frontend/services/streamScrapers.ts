@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { proxiedGet } from './proxiedFetch';
 
 // Stream source interface
 export interface StreamSource {
@@ -296,7 +297,7 @@ export const streamScraperService = {
       url += '.json';
       
       console.log('[Torrentio] Fetching:', url);
-      const response = await axios.get(url, { timeout: 15000 });
+      const response = await proxiedGet(url, { timeout: 15000 });
       const streams = response.data?.streams || [];
       
       console.log(`[Torrentio] Found ${streams.length} streams`);
@@ -591,7 +592,7 @@ export const streamScraperService = {
       }
       url += '.json';
       
-      const response = await axios.get(url, { 
+      const response = await proxiedGet(url, { 
         timeout: 10000,
         headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36' }
       });
@@ -621,7 +622,7 @@ export const streamScraperService = {
       }
       url += '.json';
       
-      const response = await axios.get(url, { 
+      const response = await proxiedGet(url, { 
         timeout: 10000,
         headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36' }
       });

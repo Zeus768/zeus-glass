@@ -148,15 +148,19 @@ export const testProxy = async (proxy: ProxyServer): Promise<{ success: boolean;
   const startTime = Date.now();
   
   try {
-    // Simple connectivity test - in production you'd want a proper proxy test
-    // On React Native, we can't directly test proxies, so we'll simulate
-    // In a real implementation, you'd use a native module or backend service
+    // Use the backend proxy test endpoint for real connectivity check
+    const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+    const proxyUrl = `${proxy.type}://${proxy.host}:${proxy.port}`;
     
-    // Simulate latency test
-    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+    const response = await fetch(`${backendUrl}/api/proxy/test?proxy_url=${encodeURIComponent(proxyUrl)}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await response.json();
     
-    const latency = Date.now() - startTime;
-    return { success: true, latency };
+    if (data.success) {
+      return { success: true, latency: data.latency_ms || (Date.now() - startTime) };
+    }
+    return { success: false, latency: -1 };
   } catch (error) {
     return { success: false, latency: -1 };
   }

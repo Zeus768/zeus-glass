@@ -16,6 +16,8 @@ interface CarouselProps {
   data: (Movie | TVShow)[];
   onSeeAll?: () => void;
   icon?: keyof typeof Ionicons.glyphMap;
+  watchedIds?: Set<number>;
+  mediaType?: 'movie' | 'tv' | 'mixed';
 }
 
 const isMovie = (item: Movie | TVShow): item is Movie => 'title' in item;
@@ -24,9 +26,10 @@ interface CarouselItemProps {
   item: Movie | TVShow;
   index: number;
   onPress: (item: Movie | TVShow) => void;
+  isWatched?: boolean;
 }
 
-const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress }) => {
+const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress, isWatched }) => {
   const [isFocused, setIsFocused] = useState(false);
   
   const imageUrl = tmdbService.getImageUrl(item.poster_path, 'w342');
@@ -74,6 +77,12 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress }) => 
             </Text>
           </View>
         </View>
+        {/* Watched tick badge */}
+        {isWatched && (
+          <View style={styles.watchedBadge} data-testid={`watched-carousel-${item.id}`}>
+            <Text style={styles.watchedCheck}>✓</Text>
+          </View>
+        )}
         {/* Focus Play Indicator - BIG and OBVIOUS */}
         {isFocused && (
           <View style={styles.focusPlayOverlay}>
@@ -92,7 +101,7 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress }) => 
   );
 };
 
-export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon }) => {
+export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon, watchedIds, mediaType = 'mixed' }) => {
   const router = useRouter();
 
   const handlePress = useCallback((item: Movie | TVShow) => {
@@ -102,6 +111,11 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon 
       router.push(`/tv/${item.id}`);
     }
   }, [router]);
+
+  const checkWatched = useCallback((item: Movie | TVShow): boolean => {
+    if (!watchedIds || watchedIds.size === 0) return false;
+    return watchedIds.has(item.id);
+  }, [watchedIds]);
 
   // Return empty container when no data to avoid layout issues
   if (!data || data.length === 0) {
@@ -141,6 +155,7 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon 
               item={item}
               index={index}
               onPress={handlePress}
+              isWatched={checkWatched(item)}
             />
           ))}
         </ScrollView>
@@ -306,5 +321,22 @@ const styles = StyleSheet.create({
   },
   yearFocused: {
     color: theme.colors.primary,
+  },
+  watchedBadge: {
+    position: 'absolute',
+    top: isTV ? 12 : 8,
+    left: isTV ? 12 : 8,
+    backgroundColor: '#22C55E',
+    borderRadius: isTV ? 14 : 10,
+    width: isTV ? 28 : 20,
+    height: isTV ? 28 : 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  watchedCheck: {
+    color: '#fff',
+    fontSize: isTV ? 16 : 12,
+    fontWeight: '900',
   },
 });

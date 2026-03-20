@@ -531,6 +531,56 @@ async def trakt_device_token(code: str, client_id: str, client_secret: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================
+# STREAMING PROXY ENDPOINT
+# Routes streaming requests through a configured proxy server
+# ============================================
+class ProxyFetchRequest(BaseModel):
+    url: str
+    proxy_url: str
+    method: str = "GET"
+    headers: Optional[dict] = None
+
+@api_router.post("/proxy/fetch")
+async def proxy_fetch(request: ProxyFetchRequest):
+    """Fetch a URL through a proxy server for geo-unblocking"""
+    try:
+        proxies = request.proxy_url
+        async with httpx.AsyncClient(proxy=proxies, timeout=30.0, follow_redirects=True) as client_proxy:
+            if request.method.upper() == "GET":
+                response = await client_proxy.get(
+                    request.url,
+                    headers=request.headers or {}
+                )
+            else:
+                response = await client_proxy.post(
+                    request.url,
+                    headers=request.headers or {}
+                )
+            
+            return {
+                "status_code": response.status_code,
+                "data": response.text,
+                "headers": dict(response.headers),
+            }
+    except Exception as e:
+        logger.error(f"Proxy fetch error: {e}")
+        raise HTTPException(status_code=502, detail=f"Proxy request failed: {str(e)}")
+
+@api_router.get("/proxy/test")
+async def proxy_test(proxy_url: str):
+    """Test if a proxy server is reachable"""
+    try:
+        async with httpx.AsyncClient(proxy=proxy_url, timeout=10.0) as client_proxy:
+            response = await client_proxy.get("https://httpbin.org/ip")
+            return {
+                "success": True,
+                "ip": response.json().get("origin", "unknown"),
+                "latency_ms": int(response.elapsed.total_seconds() * 1000),
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 # Include the router in the main app
 app.include_router(api_router)
 

@@ -10,6 +10,7 @@ import { Carousel } from '../components/Carousel';
 import { ContinueWatchingCarousel } from '../components/ContinueWatchingCarousel';
 import { useContentStore } from '../store/contentStore';
 import { tmdbService } from '../services/tmdb';
+import { useWatchedStore } from '../stores/useWatchedStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HERO_HEIGHT = isTV ? SCREEN_HEIGHT * 0.75 : SCREEN_HEIGHT * 0.65;
@@ -39,6 +40,10 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [heroMovie, setHeroMovie] = useState<any>(null);
   const [heroFocused, setHeroFocused] = useState(false);
+
+  // Watched status from Trakt
+  const watchedMovies = useWatchedStore((s) => s.watchedMovies);
+  const watchedShows = useWatchedStore((s) => s.watchedShows);
 
   useEffect(() => {
     if (trendingMovies.length > 0 && !heroMovie) {
@@ -188,19 +193,19 @@ export default function HomeScreen() {
           )}
 
           {/* Trending Movies - with flame icon */}
-          <Carousel title="Trending Movies" data={trendingMovies} icon="flame" />
+          <Carousel title="Trending Movies" data={trendingMovies} icon="flame" watchedIds={watchedMovies} />
           
           {/* Trending TV Shows - with flame icon */}
-          <Carousel title="Trending TV Shows" data={trendingTVShows} icon="flame" />
+          <Carousel title="Trending TV Shows" data={trendingTVShows} icon="flame" watchedIds={watchedShows} />
           
           {/* Popular Movies */}
-          <Carousel title="Popular Movies" data={popularMovies} icon="star" />
+          <Carousel title="Popular Movies" data={popularMovies} icon="star" watchedIds={watchedMovies} />
           
           {/* Popular TV Shows */}
-          <Carousel title="Popular TV Shows" data={popularTVShows} icon="star" />
+          <Carousel title="Popular TV Shows" data={popularTVShows} icon="star" watchedIds={watchedShows} />
           
           {/* In Cinemas */}
-          <Carousel title="In Cinemas" data={nowPlayingMovies} icon="film" />
+          <Carousel title="In Cinemas" data={nowPlayingMovies} icon="film" watchedIds={watchedMovies} />
         </View>
       </ScrollView>
     </View>

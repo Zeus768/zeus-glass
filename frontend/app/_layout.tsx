@@ -5,6 +5,7 @@ import { theme, isTV } from '../constants/theme';
 import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
 import { playerState } from '../utils/playerState';
+import { initWatchedStore } from '../stores/useWatchedStore';
 import { 
   Platform, 
   StatusBar, 
@@ -366,6 +367,10 @@ export default function TabLayout() {
       try {
         await loadFavorites();
       } catch {}
+      // Initialize watched store (loads cache + syncs from Trakt if connected)
+      try {
+        await initWatchedStore();
+      } catch {}
     };
     init();
   }, []);
@@ -396,6 +401,7 @@ export default function TabLayout() {
             style={styles.donateBtn} 
             onPress={() => setShowDonation(true)}
             testID="open-donation-modal"
+            {...(Platform.isTV && { focusable: false, accessible: false })}
           >
             <Ionicons name="heart" size={isTV ? 18 : 18} color="#FFDD00" />
             <Text style={styles.donateBtnText}>Donate</Text>

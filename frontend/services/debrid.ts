@@ -10,6 +10,7 @@ import {
 } from '../config/constants';
 import { DebridAccount, StreamLink, CachedTorrent } from '../types';
 import { errorLogService } from './errorLogService';
+import { proxiedGet, proxiedPost } from './proxiedFetch';
 
 // Get backend URL for proxy calls (web only)
 const getBackendUrl = () => {
