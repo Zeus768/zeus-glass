@@ -17,18 +17,31 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 │   └── tests/             # pytest tests for proxy endpoints
 └── frontend/
     ├── app/               # Expo Router pages
-    │   ├── _layout.tsx    # Main tab layout, header, donation modal
-    │   ├── index.tsx      # Home page with hero + carousels
+    │   ├── _layout.tsx    # Main tab layout, header, donation modal, watched store init
+    │   ├── index.tsx      # Home page with hero + Next Up + carousels
     │   ├── settings.tsx   # Accounts, VPN, scrapers, vault
     │   ├── search.tsx     # Universal search
     │   ├── movie/[id].tsx # Movie detail + stream selection
     │   ├── tv/[id].tsx    # TV show detail
     │   ├── live-tv.tsx    # IPTV channels
     │   └── tv-guide.tsx   # EPG guide
-    ├── components/        # Reusable UI components
-    ├── services/          # API integrations (debrid, tmdb, trakt, scrapers, proxy)
-    ├── stores/            # Zustand stores (watched status)
-    └── store/             # Auth & content stores
+    ├── components/
+    │   ├── Carousel.tsx         # Horizontal carousel with watched badge support
+    │   ├── NextUpCarousel.tsx   # Next Up episode cards from Trakt
+    │   ├── DebridDownloadDialog.tsx
+    │   ├── IPTVPipPlayer.tsx
+    │   ├── SourcesSearchDialog.tsx
+    │   └── FocusableCard.tsx
+    ├── services/
+    │   ├── debrid.ts
+    │   ├── tmdb.ts              # Added getEpisodeDetails, getTVShowBasic
+    │   ├── trakt.ts             # Added getWatchedShowsWithIds
+    │   ├── streamScrapers.ts    # Uses proxiedFetch
+    │   ├── proxiedFetch.ts      # Centralized proxy routing
+    │   ├── proxyService.ts      # Proxy settings & real backend testing
+    │   └── scraperStatusService.ts
+    └── stores/
+        └── useWatchedStore.ts   # Watched status + Next Up from Trakt
 ```
 
 ## What's Been Implemented
@@ -40,72 +53,49 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - Horizontal carousels for Trending, Popular, In Cinemas content
 - Movie & TV show detail pages with stream source selection
 - Universal search across TMDB
-- Tab-based navigation (Home, Movies, TV Shows, Providers, Live TV, TV Guide, Catch Up, Search, VOD, Settings)
+- Tab-based navigation
+
+### Next Up Enhancement (Complete - 2026-03-20)
+- **"Next Up" horizontal carousel** on home page showing next unwatched episode for each show the user is watching
+- Episode still/backdrop images from TMDB, green S01E05 badge, show title, episode title
+- Green play button focus state, tapping navigates to the TV show detail page
+- Data from Trakt `getShowProgress` + TMDB episode details
+- Cached in AsyncStorage for offline access
+- Gracefully hidden when Trakt is not connected
+
+### Watched Tick Marks (Complete - 2026-03-20)
+- Green checkmark badges on carousel cards for watched content
+- `useWatchedStore` Zustand store syncs from Trakt on app startup
+- Passed to all home page carousels via `watchedIds` prop
+
+### Donation Modal Bug Fix (Complete - 2026-03-20)
+- Fixed: Donate button no longer captures TV remote focus from settings
+- `focusable={false}` on TV devices prevents accidental triggering
+
+### VPN/Proxy Integration (Complete - 2026-03-20)
+- Backend `/api/proxy/fetch` and `/api/proxy/test` endpoints
+- `proxiedFetch.ts` utility for routing streaming requests through proxy
+- Integrated into Torrentio, Knightcrawler, Comet scrapers
+- Real proxy connectivity testing replaces simulated tests
 
 ### Debrid Integration (Complete)
-- Real-Debrid, AllDebrid, Premiumize authentication via QR code flow
-- Debrid link resolution and unrestricting
-- Cache search for instant playback
-- Download progress dialog for non-cached torrents (DebridDownloadDialog)
+- Real-Debrid, AllDebrid, Premiumize authentication via QR code
+- Debrid link resolution, cache search, download progress dialog
 
 ### IPTV (Complete)
-- Xtreme Codes login support
-- Live TV channel listing with fullscreen drill-down
-- EPG TV Guide
-- Picture-in-Picture (PiP) mode for IPTV viewing while browsing
-
-### Trakt Integration (Complete - Updated 2026-03-20)
-- Device code authentication
-- Watched status tracking via `useWatchedStore` Zustand store
-- **Watched tick marks on carousel cards** (green checkmark badge)
-- Watched data syncs from Trakt on app startup
+- Xtreme Codes login, Live TV, EPG TV Guide, Picture-in-Picture
 
 ### Stream Scrapers (Complete)
-- Torrentio integration with configurable addons
-- Knightcrawler and Comet Stremio addon scrapers
-- DDLValley, RLSBB, ScnSrc scene release scrapers
-- Source search dialog to search all scrapers simultaneously
-- Scraper health status checker in Settings
-
-### VPN/Proxy (Complete - Updated 2026-03-20)
-- Proxy server selection UI with country flags
-- **Backend proxy endpoint** (`/api/proxy/fetch`) for geo-unblocking
-- **Backend proxy test endpoint** (`/api/proxy/test`) for connectivity testing
-- **Integrated into streaming requests** (Torrentio, Knightcrawler, Comet scrapers use proxiedFetch)
-- Real proxy connectivity testing through backend (replaces simulated tests)
-
-### TV Optimization (In Progress)
-- 30-50% size reduction for TV-optimized UI
-- `React.memo` on FocusableCard for performance
-- TV remote focus states with visible cyan highlights
+- Torrentio, Knightcrawler, Comet, DDLValley, RLSBB, ScnSrc
+- Source search dialog, scraper health checker
 
 ### App Branding (Complete)
-- Custom Zeus Glass icon and splash screen
-- Version 1.5.0
-
-### Bug Fixes (Updated 2026-03-20)
-- **Fixed: Donation Modal appearing instead of auth modals** - Prevented Donate button from capturing TV focus with `focusable={false}` on TV devices
-- Fixed: Stream link focus visibility on TV
-- Fixed: Torrent badge labels (TORRENT vs DOWNLOAD)
-
-### Settings Features (Complete)
-- Account management (Trakt, Debrid services, IPTV)
-- Torrentio configuration
-- Streaming proxy/VPN settings with real proxy testing
-- Scraper health status checker
-- Zeus Vault backup/restore
-- Donation modal
-- Error logs viewer
-
-## Known Limitations
-- Public proxy servers in the built-in list are unreliable; users should add their own
-- Torrentio may return 403 on some server IPs
-- Web preview doesn't support TV-specific features (focus, PiP, file system)
+- Custom icon, splash screen, version 1.5.0
 
 ## Pending Tasks
-- P2: Performance optimization for Shield/Fire TV (FlashList, re-render profiling)
-- P2: VPN speed test feature in proxy settings
-- P3: Settings page scrolling fix (web-only issue)
+- P2: Performance optimization for Shield/Fire TV
+- P2: VPN speed test feature
+- P3: Settings page scrolling fix (web-only)
 - P3: IMDB Login integration
 - P3: GitLab CI/CD setup
 
