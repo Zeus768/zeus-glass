@@ -6,10 +6,12 @@ export interface StreamSource {
   name: string;
   url: string;
   quality: string;
-  type: 'direct' | 'embed' | 'torrent';
+  type: 'direct' | 'embed' | 'torrent' | 'ddl';
   source: string;
   size?: string;
   seeders?: number;
+  releaseGroup?: string;
+  releaseType?: string;
 }
 
 // Torrserver configuration
@@ -152,6 +154,23 @@ const SCRAPERS = {
     name: 'WarezCDN',
     baseUrl: 'https://embed.warezcdn.com',
     type: 'embed' as const,
+  },
+  
+  // Scene Release Sites (DDL - Direct Download Links)
+  ddlvalley: {
+    name: 'DDLValley',
+    baseUrl: 'https://www.ddlvalley.me',
+    type: 'ddl' as const,
+  },
+  scnsrc: {
+    name: 'Scene Source',
+    baseUrl: 'https://scnsrc.me',
+    type: 'ddl' as const,
+  },
+  rlsbb: {
+    name: 'RLSBB',
+    baseUrl: 'https://rlsbb.ru',
+    type: 'ddl' as const,
   },
 };
 
@@ -647,6 +666,102 @@ export const streamScraperService = {
     } catch {
       return [];
     }
+  },
+
+  /**
+   * Get all sources with progress callback for search dialog
+   */
+  getAllSourcesWithProgress: async (
+    type: 'movie' | 'tv',
+    tmdbId: string,
+    imdbId?: string,
+    title?: string,
+    year?: number,
+    season?: number,
+    episode?: number,
+    onProgress?: (source: string, status: 'searching' | 'done' | 'error', count: number, results?: StreamSource[]) => void
+  ): Promise<StreamSource[]> => {
+    const allStreams: StreamSource[] = [];
+    
+    // Define all sources to search
+    const sources = [
+      { name: 'Torrentio', fn: async () => {
+        if (!imdbId) return [];
+        return streamScraperService.scrapeTorrentio(type === 'tv' ? 'series' : 'movie', imdbId, season, episode);
+      }},
+      { name: 'Knightcrawler', fn: async () => {
+        if (!imdbId) return [];
+        return streamScraperService.scrapeKnightcrawler(type === 'tv' ? 'series' : 'movie', imdbId, season, episode);
+      }},
+      { name: 'Comet', fn: async () => {
+        if (!imdbId) return [];
+        return streamScraperService.scrapeComet(type === 'tv' ? 'series' : 'movie', imdbId, season, episode);
+      }},
+      { name: 'VidSrc', fn: () => streamScraperService.scrapeVidSrc(type, tmdbId, season, episode) },
+      { name: 'VidSrc Pro', fn: () => streamScraperService.scrapeVidSrcPro(type, tmdbId, season, episode) },
+      { name: 'VidSrc.xyz', fn: () => streamScraperService.scrapeVidSrcXyz(type, tmdbId, season, episode) },
+      { name: 'VidSrc.nl', fn: () => streamScraperService.scrapeVidSrcNl(type, tmdbId, season, episode) },
+      { name: 'SuperEmbed', fn: () => streamScraperService.scrapeSuperEmbed(type, tmdbId, imdbId, season, episode) },
+      { name: 'SmashyStream', fn: () => streamScraperService.scrapeSmashyStream(type, tmdbId, season, episode) },
+      { name: '2Embed', fn: () => streamScraperService.scrapeTwoEmbed(type, tmdbId, imdbId, season, episode) },
+      { name: 'AutoEmbed', fn: () => streamScraperService.scrapeAutoEmbed(type, tmdbId, season, episode) },
+      { name: 'Embed.su', fn: () => streamScraperService.scrapeEmbedSu(type, tmdbId, season, episode) },
+      { name: 'MoviesAPI', fn: () => streamScraperService.scrapeMoviesApi(type, tmdbId, season, episode) },
+      { name: 'Videasy', fn: () => streamScraperService.scrapeVideasy(type, tmdbId, season, episode) },
+      { name: 'Rive', fn: () => streamScraperService.scrapeRive(type, tmdbId, imdbId, season, episode) },
+      { name: 'FrEmbed', fn: () => streamScraperService.scrapeFrembed(type, tmdbId, season, episode) },
+      { name: 'WarezCDN', fn: () => streamScraperService.scrapeWarezCDN(type, tmdbId, imdbId, season, episode) },
+      { name: 'WatchSomuch', fn: () => streamScraperService.scrapeWatchSomuch(type, tmdbId, season, episode) },
+    ];
+
+    // Search all sources in parallel with individual progress updates
+    const promises = sources.map(async ({ name, fn }) => {
+      if (onProgress) onProgress(name, 'searching', 0);
+      try {
+        const results = await fn();
+        if (onProgress) onProgress(name, 'done', results.length, results);
+        return results;
+      } catch (err) {
+        console.log(`[${name}] Error:`, err);
+        if (onProgress) onProgress(name, 'error', 0);
+        return [];
+      }
+    });
+
+    const results = await Promise.allSettled(promises);
+    results.forEach(result => {
+      if (result.status === 'fulfilled' && result.value) {
+        allStreams.push(...result.value);
+      }
+    });
+
+    return allStreams;
+  },
+
+  /**
+   * Get list of all available scraper names for UI display
+   */
+  getScraperList: (): string[] => {
+    return [
+      'Torrentio',
+      'Knightcrawler', 
+      'Comet',
+      'VidSrc',
+      'VidSrc Pro',
+      'VidSrc.xyz',
+      'VidSrc.nl',
+      'SuperEmbed',
+      'SmashyStream',
+      '2Embed',
+      'AutoEmbed',
+      'Embed.su',
+      'MoviesAPI',
+      'Videasy',
+      'Rive',
+      'FrEmbed',
+      'WarezCDN',
+      'WatchSomuch',
+    ];
   },
 };
 

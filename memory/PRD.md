@@ -46,6 +46,20 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
   - Added clipboard fallback when Share is not available (for TV devices)
 - **Parental Controls**: Verified working - Enable button opens PIN setup modal correctly
 - **Added data-testid attributes** to Zeus Vault and Parental Controls buttons for testing
+- **Picture-in-Picture (PiP) for IPTV**:
+  - New `IPTVPipPlayer` component for mini-player overlay
+  - Added expo-pip library for native Android PiP support
+  - Integrated PiP into TV Guide page (click PiP button to watch while browsing)
+  - Integrated PiP into Live TV page (long-press to start PiP mode)
+  - Mini player shows in bottom-right corner with play/pause, close, fullscreen controls
+- **Torrent Source Search Dialog**:
+  - New `SourcesSearchDialog` component for searching all scrapers
+  - Shows real-time search progress for each scraper
+  - Added `getAllSourcesWithProgress` method to streamScrapers service
+  - Tabs to filter by source type (All, Torrent, Embed, Direct)
+- **Scene Release Site Scrapers**:
+  - Added DDLValley, Scene Source (scnsrc), RLSBB scraper definitions
+  - Extended `StreamSource` interface with releaseGroup and releaseType fields
 
 ### Session 2 Changes (March 15, 2026)
 - **PlayerChoice dialog**: Universal player selector on ALL play actions (Internal, VLC, MX Player, Just Player, System Default) - integrated in movies, TV shows, IPTV Live TV, VOD, TV Guide

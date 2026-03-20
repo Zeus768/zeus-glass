@@ -20,6 +20,7 @@ import { iptvService } from '../services/iptv';
 import { recordingService, RecordingCategory } from '../services/recordingService';
 import { IPTVChannel, EPGProgram } from '../types';
 import { PlayerChoice } from '../components/PlayerChoice';
+import { IPTVPipPlayer } from '../components/IPTVPipPlayer';
 
 export default function TVGuideScreen() {
   const router = useRouter();
@@ -40,6 +41,10 @@ export default function TVGuideScreen() {
   const [loadingEPG, setLoadingEPG] = useState<Set<string>>(new Set());
   const [focusedChannel, setFocusedChannel] = useState<string | null>(null);
   const [focusedCategory, setFocusedCategory] = useState<string | null>(null);
+  
+  // PiP Player State
+  const [pipStream, setPipStream] = useState<{ url: string; title: string; logo?: string } | null>(null);
+  const [showPipPlayer, setShowPipPlayer] = useState(false);
 
   // Progress state
   const [loadProgress, setLoadProgress] = useState({
@@ -151,9 +156,31 @@ export default function TVGuideScreen() {
     setRecordingChannels(activeChannels);
   };
 
-  const handlePlayChannel = (channel: IPTVChannel) => {
-    setPendingPlayerStream({ url: channel.stream_url, title: channel.name });
-    setPlayerChoiceVisible(true);
+  const handlePlayChannel = (channel: IPTVChannel, usePip: boolean = false) => {
+    if (usePip) {
+      // Start in PiP mode - keep browsing the guide
+      setPipStream({ url: channel.stream_url, title: channel.name, logo: channel.logo });
+      setShowPipPlayer(true);
+    } else {
+      // Normal play - show player choice dialog
+      setPendingPlayerStream({ url: channel.stream_url, title: channel.name });
+      setPlayerChoiceVisible(true);
+    }
+  };
+  
+  const handleClosePip = () => {
+    setShowPipPlayer(false);
+    setPipStream(null);
+  };
+  
+  const handlePipFullscreen = () => {
+    if (pipStream) {
+      // Close PiP and go to full player
+      setShowPipPlayer(false);
+      setPendingPlayerStream({ url: pipStream.url, title: pipStream.title });
+      setPlayerChoiceVisible(true);
+      setPipStream(null);
+    }
   };
 
   const handleRecordPress = (channel: IPTVChannel) => {
@@ -396,21 +423,29 @@ export default function TVGuideScreen() {
                           style={styles.stopRecordButton}
                           onPress={() => handleStopRecording(channel)}
                         >
-                          <Ionicons name="stop-circle" size={isTV ? 32 : 28} color="#F44336" />
+                          <Ionicons name="stop-circle" size={isTV ? 24 : 22} color="#F44336" />
                         </Pressable>
                       ) : (
                         <Pressable
                           style={styles.recordButton}
                           onPress={() => handleRecordPress(channel)}
                         >
-                          <Ionicons name="radio-button-on" size={isTV ? 28 : 24} color="#F44336" />
+                          <Ionicons name="radio-button-on" size={isTV ? 20 : 18} color="#F44336" />
                         </Pressable>
                       )}
+                      {/* PiP Button - watch while browsing */}
+                      <Pressable
+                        style={styles.pipButton}
+                        onPress={() => handlePlayChannel(channel, true)}
+                        data-testid={`pip-btn-${channel.id}`}
+                      >
+                        <Ionicons name="albums-outline" size={isTV ? 20 : 18} color={theme.colors.primary} />
+                      </Pressable>
                       <Pressable
                         style={styles.playButton}
-                        onPress={() => handlePlayChannel(channel)}
+                        onPress={() => handlePlayChannel(channel, false)}
                       >
-                        <Ionicons name="play-circle" size={isTV ? 40 : 32} color={theme.colors.primary} />
+                        <Ionicons name="play-circle" size={isTV ? 28 : 24} color={theme.colors.primary} />
                       </Pressable>
                     </View>
                   </View>
@@ -645,6 +680,18 @@ export default function TVGuideScreen() {
           type="live"
         />
       )}
+      
+      {/* PiP Player - Watch while browsing guide */}
+      {pipStream && (
+        <IPTVPipPlayer
+          url={pipStream.url}
+          title={pipStream.title}
+          channelLogo={pipStream.logo}
+          visible={showPipPlayer}
+          onClose={handleClosePip}
+          onEnterFullscreen={handlePipFullscreen}
+        />
+      )}
     </View>
   );
 }
@@ -837,6 +884,11 @@ const styles = StyleSheet.create({
   },
   stopRecordButton: {
     padding: theme.spacing.sm,
+  },
+  pipButton: {
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceLight,
+    borderRadius: theme.borderRadius.sm,
   },
   playButton: {
     padding: theme.spacing.sm,

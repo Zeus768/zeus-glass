@@ -19,6 +19,7 @@ import { theme, isTV } from '../constants/theme';
 import { iptvService, IPTVCategory } from '../services/iptv';
 import { IPTVChannel } from '../types';
 import { PlayerChoice } from '../components/PlayerChoice';
+import { IPTVPipPlayer } from '../components/IPTVPipPlayer';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -43,6 +44,10 @@ export default function LiveTVScreen() {
   const [focusedCategory, setFocusedCategory] = useState<string | null>(null);
   const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
   const [selectedStream, setSelectedStream] = useState<{ url: string; title: string } | null>(null);
+  
+  // PiP Player State
+  const [pipStream, setPipStream] = useState<{ url: string; title: string; logo?: string } | null>(null);
+  const [showPipPlayer, setShowPipPlayer] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -109,12 +114,35 @@ export default function LiveTVScreen() {
     return channels.filter(ch => ch.category_id === selectedCategory);
   }, [channels, selectedCategory]);
 
-  const handleChannelPress = (channel: IPTVChannel) => {
-    if (channel.stream_url) {
+  const handleChannelPress = (channel: IPTVChannel, usePip: boolean = false) => {
+    if (!channel.stream_url) {
+      Alert.alert('Error', 'No stream URL available');
+      return;
+    }
+    
+    if (usePip) {
+      // Start in PiP mode - keep browsing
+      setPipStream({ url: channel.stream_url, title: channel.name, logo: channel.logo });
+      setShowPipPlayer(true);
+    } else {
+      // Normal play - show player choice dialog
       setSelectedStream({ url: channel.stream_url, title: channel.name });
       setPlayerChoiceVisible(true);
-    } else {
-      Alert.alert('Error', 'No stream URL available');
+    }
+  };
+  
+  const handleClosePip = () => {
+    setShowPipPlayer(false);
+    setPipStream(null);
+  };
+  
+  const handlePipFullscreen = () => {
+    if (pipStream) {
+      // Close PiP and go to full player
+      setShowPipPlayer(false);
+      setSelectedStream({ url: pipStream.url, title: pipStream.title });
+      setPlayerChoiceVisible(true);
+      setPipStream(null);
     }
   };
 
@@ -164,8 +192,8 @@ export default function LiveTVScreen() {
     
     return (
       <Pressable
-        onPress={() => handleChannelPress(item)}
-        onLongPress={() => handleExternalPlayer(item)}
+        onPress={() => handleChannelPress(item, false)}
+        onLongPress={() => handleChannelPress(item, true)} // Long press = PiP mode
         onFocus={() => setFocusedChannel(item.id)}
         onBlur={() => setFocusedChannel(null)}
         style={[
@@ -190,7 +218,13 @@ export default function LiveTVScreen() {
         </Text>
         {isFocused && (
           <View style={styles.playOverlay}>
-            <Ionicons name="play-circle" size={isTV ? 28 : 20} color="#FFF" />
+            <View style={styles.overlayButtons}>
+              <Ionicons name="play-circle" size={isTV ? 22 : 18} color="#FFF" />
+              <View style={styles.pipHint}>
+                <Ionicons name="albums-outline" size={isTV ? 12 : 10} color="#FFF" />
+                <Text style={styles.pipHintText}>Hold</Text>
+              </View>
+            </View>
           </View>
         )}
       </Pressable>
@@ -328,6 +362,18 @@ export default function LiveTVScreen() {
           streamUrl={selectedStream.url}
           title={selectedStream.title}
           type="live"
+        />
+      )}
+      
+      {/* PiP Player - Watch while browsing */}
+      {pipStream && (
+        <IPTVPipPlayer
+          url={pipStream.url}
+          title={pipStream.title}
+          channelLogo={pipStream.logo}
+          visible={showPipPlayer}
+          onClose={handleClosePip}
+          onEnterFullscreen={handlePipFullscreen}
         />
       )}
     </View>
@@ -546,5 +592,24 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
+  },
+  overlayButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  pipHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 2,
+  },
+  pipHintText: {
+    fontSize: isTV ? 10 : 8,
+    color: '#FFF',
+    fontWeight: '500',
   },
 });

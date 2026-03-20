@@ -62,7 +62,8 @@
           "showVerboseWarnings": false
         }
       ],
-      "./plugins/withAndroidTV"
+      "./plugins/withAndroidTV",
+      "expo-pip"
     ],
     "experiments": {
       "typedRoutes": true
