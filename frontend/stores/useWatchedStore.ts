@@ -1,20 +1,36 @@
 import { create } from 'zustand';
 import { traktService } from '../services/trakt';
+import { tmdbService } from '../services/tmdb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WATCHED_MOVIES_KEY = '@zeus_watched_movies';
 const WATCHED_SHOWS_KEY = '@zeus_watched_shows';
 const LAST_SYNC_KEY = '@zeus_watched_last_sync';
+const NEXT_UP_KEY = '@zeus_next_up';
+
+export interface NextUpItem {
+  showTmdbId: number;
+  showTitle: string;
+  showPoster: string | null;
+  episodeTitle: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  episodeStill: string | null;
+  overview: string | null;
+}
 
 interface WatchedStore {
   watchedMovies: Set<number>;
   watchedShows: Set<number>;
+  nextUpItems: NextUpItem[];
   isLoading: boolean;
+  isLoadingNextUp: boolean;
   lastSynced: Date | null;
   isTraktConnected: boolean;
   
   // Actions
   syncFromTrakt: () => Promise<void>;
+  fetchNextUp: () => Promise<void>;
   isMovieWatched: (tmdbId: number) => boolean;
   isShowWatched: (tmdbId: number) => boolean;
   markMovieWatched: (tmdbId: number) => void;
@@ -26,7 +42,9 @@ interface WatchedStore {
 export const useWatchedStore = create<WatchedStore>((set, get) => ({
   watchedMovies: new Set(),
   watchedShows: new Set(),
+  nextUpItems: [],
   isLoading: false,
+  isLoadingNextUp: false,
   lastSynced: null,
   isTraktConnected: false,
 
@@ -34,28 +52,32 @@ export const useWatchedStore = create<WatchedStore>((set, get) => ({
     set({ isTraktConnected: connected });
     if (connected) {
       get().syncFromTrakt();
+      get().fetchNextUp();
     }
   },
 
   loadFromCache: async () => {
     try {
-      const [moviesJson, showsJson, lastSyncStr] = await Promise.all([
+      const [moviesJson, showsJson, lastSyncStr, nextUpJson] = await Promise.all([
         AsyncStorage.getItem(WATCHED_MOVIES_KEY),
         AsyncStorage.getItem(WATCHED_SHOWS_KEY),
         AsyncStorage.getItem(LAST_SYNC_KEY),
+        AsyncStorage.getItem(NEXT_UP_KEY),
       ]);
 
       const movies = moviesJson ? new Set<number>(JSON.parse(moviesJson)) : new Set<number>();
       const shows = showsJson ? new Set<number>(JSON.parse(showsJson)) : new Set<number>();
       const lastSynced = lastSyncStr ? new Date(lastSyncStr) : null;
+      const nextUpItems: NextUpItem[] = nextUpJson ? JSON.parse(nextUpJson) : [];
 
       set({
         watchedMovies: movies,
         watchedShows: shows,
         lastSynced,
+        nextUpItems,
       });
 
-      console.log(`[WatchedStore] Loaded from cache: ${movies.size} movies, ${shows.size} shows`);
+      console.log(`[WatchedStore] Loaded from cache: ${movies.size} movies, ${shows.size} shows, ${nextUpItems.length} next up`);
     } catch (error) {
       console.warn('[WatchedStore] Failed to load from cache:', error);
     }
@@ -104,6 +126,77 @@ export const useWatchedStore = create<WatchedStore>((set, get) => ({
     } catch (error) {
       console.warn('[WatchedStore] Failed to sync from Trakt:', error);
       set({ isLoading: false });
+    }
+  },
+
+  fetchNextUp: async () => {
+    const { isTraktConnected, isLoadingNextUp } = get();
+    
+    if (!isTraktConnected || isLoadingNextUp) return;
+
+    set({ isLoadingNextUp: true });
+
+    try {
+      const isLoggedIn = await traktService.isLoggedIn();
+      if (!isLoggedIn) {
+        set({ isLoadingNextUp: false });
+        return;
+      }
+
+      // Get all watched shows with their Trakt IDs
+      const watchedShows = await traktService.getWatchedShowsWithIds();
+      
+      // Limit to most recent 15 shows to avoid too many API calls
+      const recentShows = watchedShows.slice(0, 15);
+
+      // Get progress for each show (in parallel batches of 5)
+      const nextUpResults: NextUpItem[] = [];
+
+      for (let i = 0; i < recentShows.length; i += 5) {
+        const batch = recentShows.slice(i, i + 5);
+        const progressResults = await Promise.allSettled(
+          batch.map(async (show) => {
+            const progress = await traktService.getShowProgress(show.traktId);
+            if (!progress?.nextEpisode) return null;
+
+            // Get episode still and show poster from TMDB
+            const [episodeDetails, showInfo] = await Promise.all([
+              tmdbService.getEpisodeDetails(
+                show.tmdbId,
+                progress.nextEpisode.season,
+                progress.nextEpisode.number
+              ),
+              tmdbService.getTVShowBasic(show.tmdbId),
+            ]);
+
+            return {
+              showTmdbId: show.tmdbId,
+              showTitle: showInfo?.name || show.title,
+              showPoster: showInfo?.poster_path || null,
+              episodeTitle: progress.nextEpisode.title,
+              seasonNumber: progress.nextEpisode.season,
+              episodeNumber: progress.nextEpisode.number,
+              episodeStill: episodeDetails?.still_path || showInfo?.backdrop_path || null,
+              overview: episodeDetails?.overview || null,
+            } as NextUpItem;
+          })
+        );
+
+        for (const result of progressResults) {
+          if (result.status === 'fulfilled' && result.value) {
+            nextUpResults.push(result.value);
+          }
+        }
+      }
+
+      // Cache the results
+      await AsyncStorage.setItem(NEXT_UP_KEY, JSON.stringify(nextUpResults));
+
+      set({ nextUpItems: nextUpResults, isLoadingNextUp: false });
+      console.log(`[WatchedStore] Fetched ${nextUpResults.length} next up items`);
+    } catch (error) {
+      console.warn('[WatchedStore] Failed to fetch next up:', error);
+      set({ isLoadingNextUp: false });
     }
   },
 

@@ -107,6 +107,30 @@ export const tmdbService = {
     return response.data;
   },
 
+  // Get a specific episode's details (for Next Up)
+  getEpisodeDetails: async (tvId: number, seasonNumber: number, episodeNumber: number): Promise<any> => {
+    try {
+      const response = await tmdbApi.get(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  // Get TV show basic info (poster, backdrop) by ID
+  getTVShowBasic: async (id: number): Promise<{ poster_path: string | null; backdrop_path: string | null; name: string } | null> => {
+    try {
+      const response = await tmdbApi.get(`/tv/${id}`);
+      return {
+        poster_path: response.data.poster_path,
+        backdrop_path: response.data.backdrop_path,
+        name: response.data.name,
+      };
+    } catch {
+      return null;
+    }
+  },
+
   // Search
   searchMulti: async (query: string): Promise<(Movie | TVShow)[]> => {
     const response = await tmdbApi.get('/search/multi', {

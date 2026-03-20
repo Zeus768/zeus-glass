@@ -329,6 +329,29 @@ export const traktService = {
     }
   },
 
+  // Get watched shows with full IDs (for Next Up)
+  getWatchedShowsWithIds: async (): Promise<Array<{
+    tmdbId: number;
+    traktId: number;
+    title: string;
+    year?: number;
+  }>> => {
+    try {
+      const response = await traktApi.get('/sync/watched/shows');
+      return (response.data || [])
+        .filter((item: any) => item.show?.ids?.tmdb && item.show?.ids?.trakt)
+        .map((item: any) => ({
+          tmdbId: item.show.ids.tmdb,
+          traktId: item.show.ids.trakt,
+          title: item.show.title,
+          year: item.show.year,
+        }));
+    } catch (e) {
+      console.warn('[Trakt] Failed to get watched shows with ids:', e);
+      return [];
+    }
+  },
+
   // Mark movie as watched
   markAsWatched: async (type: 'movie' | 'show', ids: { imdb?: string; tmdb?: number }): Promise<boolean> => {
     try {

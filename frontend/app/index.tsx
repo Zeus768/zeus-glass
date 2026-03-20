@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { theme, isTV } from '../constants/theme';
 import { Carousel } from '../components/Carousel';
 import { ContinueWatchingCarousel } from '../components/ContinueWatchingCarousel';
+import { NextUpCarousel } from '../components/NextUpCarousel';
 import { useContentStore } from '../store/contentStore';
 import { tmdbService } from '../services/tmdb';
 import { useWatchedStore } from '../stores/useWatchedStore';
@@ -44,6 +45,8 @@ export default function HomeScreen() {
   // Watched status from Trakt
   const watchedMovies = useWatchedStore((s) => s.watchedMovies);
   const watchedShows = useWatchedStore((s) => s.watchedShows);
+  const nextUpItems = useWatchedStore((s) => s.nextUpItems);
+  const isLoadingNextUp = useWatchedStore((s) => s.isLoadingNextUp);
 
   useEffect(() => {
     if (trendingMovies.length > 0 && !heroMovie) {
@@ -164,6 +167,9 @@ export default function HomeScreen() {
               icon="play-circle"
             />
           )}
+
+          {/* Next Up - Shows you're watching with next unwatched episode */}
+          <NextUpCarousel items={nextUpItems} isLoading={isLoadingNextUp} />
           
           {/* My Watchlist - Movies - Trakt */}
           {watchlistMovies.length > 0 && (
