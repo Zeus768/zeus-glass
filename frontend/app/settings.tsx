@@ -26,6 +26,7 @@ import { parentalControlService, ParentalControlSettings } from '../services/par
 import { subtitleService, SubtitleSettings } from '../services/subtitleService';
 import { streamFilterService, OneClickPlaySettings } from '../services/streamFilterService';
 import { zeusVaultService, VaultData } from '../services/zeusVaultService';
+import { proxyService, ProxySettings, getAvailableCountries } from '../services/proxyService';
 import { formatDistanceToNow, format } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -106,6 +107,10 @@ export default function SettingsScreen() {
   // Torrentio configuration URL
   const TORRENTIO_CONFIGURE_URL = 'https://torrentio.strem.fun/configure';
 
+  // VPN/Proxy state
+  const [proxySettings, setProxySettings] = useState<ProxySettings | null>(null);
+  const [proxyCountries, setProxyCountries] = useState<{ code: string; name: string; flag: string }[]>([]);
+
   useEffect(() => {
     // Initialize services
     errorLogService.init();
@@ -137,6 +142,12 @@ export default function SettingsScreen() {
     
     // Load Torrentio config
     loadTorrentioConfig();
+    
+    // Load VPN/Proxy settings
+    proxyService.getSettings().then(settings => {
+      setProxySettings(settings);
+    });
+    setProxyCountries(getAvailableCountries());
   }, []);
 
   // Zeus Vault functions
@@ -763,6 +774,100 @@ export default function SettingsScreen() {
                 <Ionicons name="clipboard-outline" size={18} color={theme.colors.text} />
                 <Text style={styles.vaultButtonText}>Paste Import</Text>
               </Pressable>
+            </View>
+          </View>
+        </AccountSection>
+
+        {/* VPN / Proxy Section */}
+        <AccountSection title="VPN / Proxy">
+          <View style={styles.settingsCard}>
+            <View style={styles.vpnHeader}>
+              <View style={styles.vpnTitleRow}>
+                <Ionicons 
+                  name="shield" 
+                  size={24} 
+                  color={proxySettings?.enabled ? theme.colors.success : theme.colors.textSecondary} 
+                />
+                <View style={styles.vpnTitleContainer}>
+                  <Text style={styles.vpnTitle}>Streaming Proxy</Text>
+                  <Text style={styles.vpnSubtitle}>
+                    {proxySettings?.enabled 
+                      ? `Connected to ${proxyCountries.find(c => c.code === proxySettings.selectedCountry)?.name || 'Unknown'}`
+                      : 'Route traffic through proxy servers'
+                    }
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={proxySettings?.enabled || false}
+                onValueChange={async (value) => {
+                  if (value && !proxySettings?.selectedCountry) {
+                    // Need to select a country first
+                    Alert.alert('Select Country', 'Please select a country first');
+                    return;
+                  }
+                  if (value && proxySettings?.selectedCountry) {
+                    await proxyService.enableProxy(proxySettings.selectedCountry);
+                  } else {
+                    await proxyService.disableProxy();
+                  }
+                  const updated = await proxyService.getSettings();
+                  setProxySettings(updated);
+                }}
+                trackColor={{ false: theme.colors.surfaceLight, true: theme.colors.success + '50' }}
+                thumbColor={proxySettings?.enabled ? theme.colors.success : theme.colors.textSecondary}
+              />
+            </View>
+
+            <Text style={styles.vpnCountryLabel}>Select Country:</Text>
+            <View style={styles.vpnCountryGrid}>
+              {proxyCountries.map(country => {
+                const isSelected = proxySettings?.selectedCountry === country.code;
+                return (
+                  <Pressable
+                    key={country.code}
+                    style={[
+                      styles.vpnCountryButton,
+                      isSelected && styles.vpnCountryButtonSelected,
+                      focusedElement === `vpn-${country.code}` && styles.vpnCountryButtonFocused,
+                    ]}
+                    onPress={async () => {
+                      const newSettings = {
+                        ...proxySettings!,
+                        selectedCountry: country.code,
+                        enabled: true,
+                      };
+                      await proxyService.saveSettings(newSettings);
+                      setProxySettings(newSettings);
+                      if (proxySettings?.enabled) {
+                        await proxyService.enableProxy(country.code);
+                      }
+                    }}
+                    onFocus={() => setFocusedElement(`vpn-${country.code}`)}
+                    onBlur={() => setFocusedElement(null)}
+                    data-testid={`vpn-country-${country.code}`}
+                  >
+                    <Text style={styles.vpnCountryFlag}>{country.flag}</Text>
+                    <Text style={[
+                      styles.vpnCountryName, 
+                      isSelected && styles.vpnCountryNameSelected
+                    ]}>
+                      {country.name}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.vpnInfoBox}>
+              <Ionicons name="information-circle-outline" size={18} color={theme.colors.textSecondary} />
+              <Text style={styles.vpnInfoText}>
+                Proxy routes streaming traffic only. May help access geo-restricted content.
+                Free proxies may be slower than direct connection.
+              </Text>
             </View>
           </View>
         </AccountSection>
@@ -1919,5 +2024,91 @@ const styles = StyleSheet.create({
   },
   logoutButtonText: {
     color: theme.colors.text,
+  },
+  // VPN / Proxy styles
+  vpnHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: isTV ? 16 : 12,
+  },
+  vpnTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: isTV ? 12 : 10,
+    flex: 1,
+  },
+  vpnTitleContainer: {
+    flex: 1,
+  },
+  vpnTitle: {
+    fontSize: isTV ? 18 : 16,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  vpnSubtitle: {
+    fontSize: isTV ? 13 : 12,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  vpnCountryLabel: {
+    fontSize: isTV ? 14 : 13,
+    color: theme.colors.textSecondary,
+    marginBottom: isTV ? 12 : 10,
+    fontWeight: '600',
+  },
+  vpnCountryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: isTV ? 12 : 10,
+    marginBottom: isTV ? 16 : 14,
+  },
+  vpnCountryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: isTV ? 16 : 14,
+    paddingVertical: isTV ? 12 : 10,
+    borderRadius: isTV ? 12 : 10,
+    gap: isTV ? 10 : 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    minWidth: isTV ? 160 : 140,
+  },
+  vpnCountryButtonSelected: {
+    borderColor: theme.colors.success,
+    backgroundColor: theme.colors.success + '15',
+  },
+  vpnCountryButtonFocused: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary + '20',
+    transform: [{ scale: 1.05 }],
+  },
+  vpnCountryFlag: {
+    fontSize: isTV ? 24 : 20,
+  },
+  vpnCountryName: {
+    fontSize: isTV ? 14 : 13,
+    color: theme.colors.text,
+    fontWeight: '500',
+    flex: 1,
+  },
+  vpnCountryNameSelected: {
+    color: theme.colors.success,
+    fontWeight: '600',
+  },
+  vpnInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: theme.colors.surfaceLight,
+    padding: isTV ? 14 : 12,
+    borderRadius: 8,
+    gap: 10,
+  },
+  vpnInfoText: {
+    fontSize: isTV ? 12 : 11,
+    color: theme.colors.textSecondary,
+    flex: 1,
+    lineHeight: isTV ? 18 : 16,
   },
 });

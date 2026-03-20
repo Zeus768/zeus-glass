@@ -85,6 +85,17 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
   - Auto-plays when stream is ready
   - Retry button on error
   - Integrated in both Movie and TV Show detail pages
+- **VPN/Proxy Feature** (NEW):
+  - New `proxyService.ts` with 4 country support (USA, UK, Germany, Netherlands)
+  - VPN/Proxy section in Settings with country selector
+  - Toggle switch to enable/disable proxy
+  - Country flags and checkmark for selected country
+  - Info box explaining proxy functionality
+  - Settings persistence via AsyncStorage
+- **Performance Optimizations**:
+  - Added `memo()` to FocusableCard component
+  - Custom comparison function to prevent unnecessary re-renders
+  - Better performance on TV devices with large content lists
 
 ### Session 2 Changes (March 15, 2026)
 - **PlayerChoice dialog**: Universal player selector on ALL play actions (Internal, VLC, MX Player, Just Player, System Default) - integrated in movies, TV shows, IPTV Live TV, VOD, TV Guide

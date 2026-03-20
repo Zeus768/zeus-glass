@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { Pressable, StyleSheet, View, Text, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { theme, isTV } from '../constants/theme';
@@ -17,7 +17,8 @@ interface FocusableCardProps {
 
 const isMovie = (item: Movie | TVShow): item is Movie => 'title' in item;
 
-export const FocusableCard: React.FC<FocusableCardProps> = ({
+// Memoized component for better performance on TV (prevents re-renders)
+export const FocusableCard: React.FC<FocusableCardProps> = memo(({
   item,
   width = isTV ? theme.tv.cardWidth : theme.mobile.cardWidth,
   height = isTV ? theme.tv.cardHeight : theme.mobile.cardHeight,
@@ -230,3 +231,16 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
 });
+
+// Custom comparison for memo - only re-render if these props change
+const areEqual = (prevProps: FocusableCardProps, nextProps: FocusableCardProps) => {
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.isWatched === nextProps.isWatched &&
+    prevProps.width === nextProps.width &&
+    prevProps.height === nextProps.height
+  );
+};
+
+// Export with custom memo comparison
+export default memo(FocusableCard, areEqual);
