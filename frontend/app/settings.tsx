@@ -921,7 +921,7 @@ export default function SettingsScreen() {
         {/* App Info */}
         <AccountSection title="About">
           <View style={styles.infoCard}>
-            <Text style={styles.infoText}>Zeus Glass v1.0.0</Text>
+            <Text style={styles.infoText}>Zeus Glass v1.5.0</Text>
             <Text style={styles.infoSubtext}>Premium Streaming Platform</Text>
           </View>
         </AccountSection>

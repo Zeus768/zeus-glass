@@ -17,6 +17,7 @@ import { Movie, CachedTorrent } from '../../types';
 import { QUALITY_OPTIONS } from '../../config/constants';
 import { errorLogService } from '../../services/errorLogService';
 import { PlayerChoice } from '../../components/PlayerChoice';
+import { SourcesSearchDialog } from '../../components/SourcesSearchDialog';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -61,6 +62,9 @@ export default function MovieDetailScreen() {
   const [pendingStreamUrl, setPendingStreamUrl] = useState<string | null>(null);
   const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
   const [pendingPlayerStream, setPendingPlayerStream] = useState<{ url: string; title: string } | null>(null);
+  
+  // Sources search dialog state
+  const [showSourcesDialog, setShowSourcesDialog] = useState(false);
 
   // Check for resume position on load
   useEffect(() => {
@@ -434,6 +438,14 @@ export default function MovieDetailScreen() {
             <Pressable style={styles.playButton} onPress={loadStreamLinks}>
               <Ionicons name="play" size={24} color={theme.colors.text} />
               <Text style={styles.playButtonText}>Play</Text>
+            </Pressable>
+            <Pressable 
+              style={styles.searchAllButton} 
+              onPress={() => setShowSourcesDialog(true)}
+              data-testid="search-all-sources-btn"
+            >
+              <Ionicons name="search" size={20} color={theme.colors.text} />
+              <Text style={styles.searchAllButtonText}>All Sources</Text>
             </Pressable>
             <Pressable
               style={styles.favoriteButton}
@@ -859,6 +871,31 @@ export default function MovieDetailScreen() {
           type="movie"
         />
       )}
+      
+      {/* Sources Search Dialog */}
+      {movie && (
+        <SourcesSearchDialog
+          visible={showSourcesDialog}
+          onClose={() => setShowSourcesDialog(false)}
+          onSelectSource={(source) => {
+            setShowSourcesDialog(false);
+            // Handle source selection
+            if ('hash' in source) {
+              // It's a torrent - resolve debrid link
+              handleTorrentSelect(source as CachedTorrent);
+            } else {
+              // It's a direct stream
+              setPendingPlayerStream({ url: source.url, title: source.name });
+              setPlayerChoiceVisible(true);
+            }
+          }}
+          title={movie.title}
+          tmdbId={id!}
+          imdbId={movie.imdb_id || undefined}
+          year={movie.release_date ? parseInt(movie.release_date.split('-')[0]) : undefined}
+          type="movie"
+        />
+      )}
     </View>
   );
 }
@@ -975,6 +1012,22 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.sm,
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+  },
+  searchAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    gap: theme.spacing.xs,
+  },
+  searchAllButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text,
   },
   favoriteButton: {

@@ -60,6 +60,10 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
 - **Scene Release Site Scrapers**:
   - Added DDLValley, Scene Source (scnsrc), RLSBB scraper definitions
   - Extended `StreamSource` interface with releaseGroup and releaseType fields
+- **App Icon Updated**: New Zeus Glass icon (1024x1024) for APK
+- **Version Updated**: Changed to v1.5.0 in app.json and settings display
+- **README.md Overhaul**: Added new icon, version history, feature list, build instructions
+- **Sources Search Dialog Integration**: Added "All Sources" button to movie detail page
 
 ### Session 2 Changes (March 15, 2026)
 - **PlayerChoice dialog**: Universal player selector on ALL play actions (Internal, VLC, MX Player, Just Player, System Default) - integrated in movies, TV shows, IPTV Live TV, VOD, TV Guide
