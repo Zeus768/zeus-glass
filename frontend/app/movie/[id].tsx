@@ -65,6 +65,9 @@ export default function MovieDetailScreen() {
   
   // Sources search dialog state
   const [showSourcesDialog, setShowSourcesDialog] = useState(false);
+  
+  // TV Focus state for stream sources
+  const [focusedStream, setFocusedStream] = useState<string | null>(null);
 
   // Check for resume position on load
   useEffect(() => {
@@ -305,10 +308,21 @@ export default function MovieDetailScreen() {
     setGettingStream(true);
     
     try {
+      // Check if Real-Debrid is connected
+      const token = await realDebridService.getToken();
+      if (!token) {
+        Alert.alert(
+          'Login Required', 
+          'Please login to Real-Debrid in Settings to play torrent sources.',
+          [{ text: 'OK', onPress: () => setShowLinksModal(false) }]
+        );
+        return;
+      }
+      
       if (torrent.cached) {
         errorLogService.info(`Getting cached stream for "${torrent.title}"`, 'MovieDetail');
       } else {
-        errorLogService.info(`Starting download for "${torrent.title}" (not cached)`, 'MovieDetail');
+        errorLogService.info(`Starting download for "${torrent.title}" (not cached, may take longer)`, 'MovieDetail');
       }
       
       // Get direct stream URL from Real-Debrid
@@ -324,12 +338,29 @@ export default function MovieDetailScreen() {
         // Check for resume
         checkResumeAndPlay(streamUrl, 'video');
       } else {
-        errorLogService.error('Failed to get stream URL', 'MovieDetail');
-        Alert.alert('Error', 'Failed to get streaming link. Please try again.');
+        errorLogService.error('Failed to get stream URL - null response', 'MovieDetail');
+        Alert.alert(
+          'Streaming Error', 
+          torrent.cached 
+            ? 'Failed to get streaming link. The torrent may have expired from the cache. Please try another source.'
+            : 'Failed to start download. The torrent may be unavailable. Please try a different source.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error: any) {
       errorLogService.error(`Stream error: ${error.message}`, 'MovieDetail', error);
-      Alert.alert('Error', error.message || 'Failed to start stream');
+      
+      // More specific error messages
+      let errorMessage = 'Failed to start stream.';
+      if (error.message?.includes('token') || error.message?.includes('auth')) {
+        errorMessage = 'Authentication error. Please re-login to Real-Debrid in Settings.';
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = 'Request timed out. Please check your connection and try again.';
+      } else if (error.message?.includes('magnet_error')) {
+        errorMessage = 'Invalid torrent. Please try a different source.';
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setGettingStream(false);
       setSelectedTorrent(null);
@@ -679,57 +710,74 @@ export default function MovieDetailScreen() {
                     groupedTorrents[quality]?.length > 0 && (
                       <View key={quality} style={styles.qualitySection}>
                         <Text style={styles.qualityTitle}>{quality}</Text>
-                        {groupedTorrents[quality].map((torrent, index) => (
-                          <Pressable 
-                            key={index} 
-                            style={[
-                              styles.linkCard,
-                              !torrent.cached && styles.linkCardUncached,
-                              selectedTorrent?.hash === torrent.hash && gettingStream && styles.linkCardActive
-                            ]}
-                            onPress={() => handlePlayTorrent(torrent)}
-                            disabled={gettingStream}
-                          >
-                            <View style={styles.linkInfo}>
-                              {torrent.cached ? (
-                                <View style={styles.cachedBadge}>
-                                  <Ionicons name="flash" size={12} color="#000" />
-                                  <Text style={styles.cachedText}>CACHED</Text>
-                                </View>
-                              ) : (
-                                <View style={styles.uncachedBadge}>
-                                  <Ionicons name="cloud-download" size={12} color={theme.colors.text} />
-                                  <Text style={styles.uncachedText}>DOWNLOAD</Text>
-                                </View>
-                              )}
-                              <Text style={[styles.linkSource, !torrent.cached && styles.linkSourceUncached]}>
-                                {torrent.source.toUpperCase()}
-                              </Text>
-                              {torrent.size && (
-                                <Text style={[styles.linkSize, !torrent.cached && styles.linkSizeUncached]}>
-                                  {torrent.size}
+                        {groupedTorrents[quality].map((torrent, index) => {
+                          const isSelected = selectedTorrent?.hash === torrent.hash;
+                          const isFocusedItem = focusedStream === `torrent-${torrent.hash}`;
+                          
+                          return (
+                            <Pressable 
+                              key={index} 
+                              style={[
+                                styles.linkCard,
+                                !torrent.cached && styles.linkCardUncached,
+                                isSelected && gettingStream && styles.linkCardActive,
+                                isFocusedItem && styles.linkCardFocused,
+                              ]}
+                              onPress={() => handlePlayTorrent(torrent)}
+                              onFocus={() => setFocusedStream(`torrent-${torrent.hash}`)}
+                              onBlur={() => setFocusedStream(null)}
+                              disabled={gettingStream}
+                              data-testid={`torrent-${torrent.hash?.substring(0, 8)}`}
+                            >
+                              <View style={styles.linkInfo}>
+                                {torrent.cached ? (
+                                  <View style={styles.cachedBadge}>
+                                    <Ionicons name="flash" size={12} color="#000" />
+                                    <Text style={styles.cachedText}>INSTANT</Text>
+                                  </View>
+                                ) : (
+                                  <View style={styles.torrentBadge}>
+                                    <Ionicons name="magnet" size={12} color={theme.colors.text} />
+                                    <Text style={styles.torrentText}>TORRENT</Text>
+                                  </View>
+                                )}
+                                <Text style={[
+                                  styles.linkSource, 
+                                  !torrent.cached && styles.linkSourceUncached,
+                                  isFocusedItem && styles.linkSourceFocused
+                                ]}>
+                                  {torrent.source.toUpperCase()}
                                 </Text>
-                              )}
-                              {torrent.seeders > 0 && (
-                                <View style={styles.seedersContainer}>
-                                  <Ionicons name="people" size={14} color={torrent.cached ? theme.colors.success : theme.colors.textSecondary} />
-                                  <Text style={[styles.seedersText, !torrent.cached && styles.seedersTextUncached]}>
-                                    {torrent.seeders}
+                                {torrent.size && (
+                                  <Text style={[
+                                    styles.linkSize, 
+                                    !torrent.cached && styles.linkSizeUncached,
+                                    isFocusedItem && styles.linkSizeFocused
+                                  ]}>
+                                    {torrent.size}
                                   </Text>
-                                </View>
+                                )}
+                                {torrent.seeders > 0 && (
+                                  <View style={styles.seedersContainer}>
+                                    <Ionicons name="people" size={14} color={torrent.cached ? theme.colors.success : theme.colors.textSecondary} />
+                                    <Text style={[styles.seedersText, !torrent.cached && styles.seedersTextUncached]}>
+                                      {torrent.seeders}
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
+                              {isSelected && gettingStream ? (
+                                <ActivityIndicator size="small" color={torrent.cached ? theme.colors.gold : theme.colors.primary} />
+                              ) : (
+                                <Ionicons 
+                                  name="play-circle" 
+                                  size={isTV ? 28 : 32} 
+                                  color={isFocusedItem ? '#000' : (torrent.cached ? theme.colors.gold : theme.colors.primary)} 
+                                />
                               )}
-                            </View>
-                            {selectedTorrent?.hash === torrent.hash && gettingStream ? (
-                              <ActivityIndicator size="small" color={torrent.cached ? theme.colors.gold : theme.colors.primary} />
-                            ) : (
-                              <Ionicons 
-                                name="play-circle" 
-                                size={32} 
-                                color={torrent.cached ? theme.colors.gold : theme.colors.primary} 
-                              />
-                            )}
-                          </Pressable>
-                        ))}
+                            </Pressable>
+                          );
+                        })}
                       </View>
                     )
                   ))}
@@ -1122,11 +1170,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
+    padding: isTV ? theme.spacing.lg : theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     marginBottom: theme.spacing.sm,
-    borderWidth: 1,
+    borderWidth: isTV ? 3 : 1,
     borderColor: theme.colors.border,
+  },
+  linkCardFocused: {
+    backgroundColor: theme.colors.primary,
+    borderColor: '#FFFFFF',
+    borderWidth: 3,
+    transform: [{ scale: 1.02 }],
   },
   linkInfo: {
     flex: 1,
@@ -1181,6 +1235,29 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.textSecondary,
+  },
+  torrentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(138, 43, 226, 0.3)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    gap: 2,
+    borderWidth: 1,
+    borderColor: '#8A2BE2',
+  },
+  torrentText: {
+    fontSize: 10,
+    fontWeight: theme.fontWeight.bold,
+    color: '#D8BFD8',
+  },
+  linkSourceFocused: {
+    color: '#000',
+    fontWeight: '800',
+  },
+  linkSizeFocused: {
+    color: '#333',
   },
   linkCardActive: {
     borderColor: theme.colors.gold,

@@ -64,6 +64,18 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
 - **Version Updated**: Changed to v1.5.0 in app.json and settings display
 - **README.md Overhaul**: Added new icon, version history, feature list, build instructions
 - **Sources Search Dialog Integration**: Added "All Sources" button to movie detail page
+- **TV Navigation Focus Fix for Stream Sources**:
+  - Added visible focus state (cyan background) to torrent/stream link cards on both Movie and TV Show pages
+  - Focus state changes text color to black for better visibility
+  - Added `focusedStream` state for tracking which item is focused
+- **"DOWNLOAD" Badge Changed to "TORRENT"**:
+  - Changed uncached torrent badge from "DOWNLOAD" to "TORRENT" with magnet icon
+  - Changed "CACHED" to "INSTANT" with flash icon for clarity
+  - Added purple/violet styling for torrent badge
+- **Better Debrid Error Messages**:
+  - Added Real-Debrid login check before attempting to play
+  - Shows "Login Required" alert if not logged in
+  - Specific error messages for auth errors, timeouts, and invalid torrents
 
 ### Session 2 Changes (March 15, 2026)
 - **PlayerChoice dialog**: Universal player selector on ALL play actions (Internal, VLC, MX Player, Just Player, System Default) - integrated in movies, TV shows, IPTV Live TV, VOD, TV Guide

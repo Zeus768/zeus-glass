@@ -41,6 +41,7 @@ export default function TVShowDetailScreen() {
   // Focus states
   const [focusedSeason, setFocusedSeason] = useState<number | null>(null);
   const [focusedEpisode, setFocusedEpisode] = useState<number | null>(null);
+  const [focusedStream, setFocusedStream] = useState<string | null>(null);
   const [nextUpEpisode, setNextUpEpisode] = useState<{ season: number; number: number; title: string } | null>(null);
   const [showProgress, setShowProgress] = useState<{ completed: number; aired: number } | null>(null);
   const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
@@ -524,31 +525,57 @@ export default function TVShowDetailScreen() {
                 </View>
               ) : (
                 <ScrollView style={styles.modalScroll}>
-                  {cachedTorrents.map((torrent, index) => (
-                    <Pressable 
-                      key={index} 
-                      style={[styles.linkCard, selectedTorrent?.hash === torrent.hash && gettingStream && styles.linkCardActive]}
-                      onPress={() => handlePlayTorrent(torrent)}
-                      disabled={gettingStream}
-                    >
-                      <View style={styles.linkInfo}>
-                        <View style={torrent.cached ? styles.cachedBadge : styles.uncachedBadge}>
-                          <Ionicons name={torrent.cached ? "flash" : "cloud-download"} size={12} color={torrent.cached ? "#000" : theme.colors.text} />
-                          <Text style={torrent.cached ? styles.cachedText : styles.uncachedText}>
-                            {torrent.cached ? 'CACHED' : 'DOWNLOAD'}
+                  {cachedTorrents.map((torrent, index) => {
+                    const isFocused = focusedStream === `torrent-${torrent.hash}`;
+                    const isSelected = selectedTorrent?.hash === torrent.hash;
+                    
+                    return (
+                      <Pressable 
+                        key={index} 
+                        style={[
+                          styles.linkCard, 
+                          isSelected && gettingStream && styles.linkCardActive,
+                          isFocused && styles.linkCardFocused,
+                        ]}
+                        onPress={() => handlePlayTorrent(torrent)}
+                        onFocus={() => setFocusedStream(`torrent-${torrent.hash}`)}
+                        onBlur={() => setFocusedStream(null)}
+                        disabled={gettingStream}
+                        data-testid={`torrent-${torrent.hash?.substring(0, 8)}`}
+                      >
+                        <View style={styles.linkInfo}>
+                          <View style={torrent.cached ? styles.cachedBadge : styles.torrentBadge}>
+                            <Ionicons name={torrent.cached ? "flash" : "magnet"} size={12} color={torrent.cached ? "#000" : theme.colors.text} />
+                            <Text style={torrent.cached ? styles.cachedText : styles.torrentText}>
+                              {torrent.cached ? 'INSTANT' : 'TORRENT'}
+                            </Text>
+                          </View>
+                          <Text style={[styles.linkSource, isFocused && styles.linkSourceFocused]}>
+                            {torrent.source.toUpperCase()}
                           </Text>
+                          {torrent.size && (
+                            <Text style={[styles.linkSize, isFocused && styles.linkSizeFocused]}>
+                              {torrent.size}
+                            </Text>
+                          )}
+                          {torrent.quality && (
+                            <Text style={[styles.linkQuality, isFocused && styles.linkQualityFocused]}>
+                              {torrent.quality}
+                            </Text>
+                          )}
                         </View>
-                        <Text style={styles.linkSource}>{torrent.source.toUpperCase()}</Text>
-                        {torrent.size && <Text style={styles.linkSize}>{torrent.size}</Text>}
-                        {torrent.quality && <Text style={styles.linkQuality}>{torrent.quality}</Text>}
-                      </View>
-                      {selectedTorrent?.hash === torrent.hash && gettingStream ? (
-                        <ActivityIndicator size="small" color={theme.colors.gold} />
-                      ) : (
-                        <Ionicons name="play-circle" size={32} color={torrent.cached ? theme.colors.gold : theme.colors.primary} />
-                      )}
-                    </Pressable>
-                  ))}
+                        {isSelected && gettingStream ? (
+                          <ActivityIndicator size="small" color={theme.colors.gold} />
+                        ) : (
+                          <Ionicons 
+                            name="play-circle" 
+                            size={isTV ? 28 : 32} 
+                            color={isFocused ? '#000' : (torrent.cached ? theme.colors.gold : theme.colors.primary)} 
+                          />
+                        )}
+                      </Pressable>
+                    );
+                  })}
                 </ScrollView>
               )
             ) : (
@@ -1021,11 +1048,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
+    padding: isTV ? theme.spacing.lg : theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     marginBottom: theme.spacing.sm,
-    borderWidth: 1,
+    borderWidth: isTV ? 3 : 1,
     borderColor: theme.colors.border,
+  },
+  linkCardFocused: {
+    backgroundColor: theme.colors.primary,
+    borderColor: '#FFFFFF',
+    borderWidth: 3,
+    transform: [{ scale: 1.02 }],
   },
   linkCardActive: {
     borderColor: theme.colors.gold,
@@ -1043,14 +1076,24 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
   },
+  linkSourceFocused: {
+    color: '#000',
+    fontWeight: '800',
+  },
   linkSize: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
+  },
+  linkSizeFocused: {
+    color: '#333',
   },
   linkQuality: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.primary,
     fontWeight: theme.fontWeight.medium,
+  },
+  linkQualityFocused: {
+    color: '#222',
   },
   cachedBadge: {
     flexDirection: 'row',
@@ -1081,6 +1124,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.textSecondary,
+  },
+  torrentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(138, 43, 226, 0.3)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    gap: 2,
+    borderWidth: 1,
+    borderColor: '#8A2BE2',
+  },
+  torrentText: {
+    fontSize: 10,
+    fontWeight: theme.fontWeight.bold,
+    color: '#D8BFD8',
   },
   streamTypeBadge: {
     flexDirection: 'row',
