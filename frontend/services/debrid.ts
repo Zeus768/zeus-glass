@@ -483,6 +483,88 @@ export const realDebridService = {
       return [];
     }
   },
+
+  // Add magnet to Real-Debrid and return torrent ID
+  addMagnet: async (magnet: string): Promise<{ id: string } | null> => {
+    try {
+      const token = await realDebridService.getToken();
+      if (!token) return null;
+
+      const formData = new URLSearchParams();
+      formData.append('magnet', magnet);
+
+      const response = await axios.post(
+        `${REAL_DEBRID_BASE_URL}/rest/1.0/torrents/addMagnet`,
+        formData.toString(),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          timeout: 15000,
+        }
+      );
+
+      if (response.data?.id) {
+        return { id: response.data.id };
+      }
+      return null;
+    } catch (error) {
+      console.error('[Real-Debrid] Error adding magnet:', error);
+      return null;
+    }
+  },
+
+  // Get torrent info by ID
+  getTorrentInfo: async (torrentId: string): Promise<any | null> => {
+    try {
+      const token = await realDebridService.getToken();
+      if (!token) return null;
+
+      const response = await axios.get(
+        `${REAL_DEBRID_BASE_URL}/rest/1.0/torrents/info/${torrentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          timeout: 10000,
+        }
+      );
+
+      return response.data || null;
+    } catch (error) {
+      console.error('[Real-Debrid] Error getting torrent info:', error);
+      return null;
+    }
+  },
+
+  // Select files for a torrent
+  selectFiles: async (torrentId: string, fileIds: string = 'all'): Promise<boolean> => {
+    try {
+      const token = await realDebridService.getToken();
+      if (!token) return false;
+
+      const formData = new URLSearchParams();
+      formData.append('files', fileIds);
+
+      await axios.post(
+        `${REAL_DEBRID_BASE_URL}/rest/1.0/torrents/selectFiles/${torrentId}`,
+        formData.toString(),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          timeout: 10000,
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.error('[Real-Debrid] Error selecting files:', error);
+      return false;
+    }
+  },
 };
 
 // ============================================

@@ -76,6 +76,15 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
   - Added Real-Debrid login check before attempting to play
   - Shows "Login Required" alert if not logged in
   - Specific error messages for auth errors, timeouts, and invalid torrents
+- **Debrid Download Progress Dialog** (NEW):
+  - New `DebridDownloadDialog` component shows download stages
+  - Stages: Checking auth → Adding torrent → Checking cache → Downloading → Getting link → Ready
+  - Progress bar with percentage
+  - Stage icons and color-coded status
+  - Shows torrent title, quality, size, source
+  - Auto-plays when stream is ready
+  - Retry button on error
+  - Integrated in both Movie and TV Show detail pages
 
 ### Session 2 Changes (March 15, 2026)
 - **PlayerChoice dialog**: Universal player selector on ALL play actions (Internal, VLC, MX Player, Just Player, System Default) - integrated in movies, TV shows, IPTV Live TV, VOD, TV Guide

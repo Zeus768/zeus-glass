@@ -18,6 +18,7 @@ import { QUALITY_OPTIONS } from '../../config/constants';
 import { errorLogService } from '../../services/errorLogService';
 import { PlayerChoice } from '../../components/PlayerChoice';
 import { SourcesSearchDialog } from '../../components/SourcesSearchDialog';
+import { DebridDownloadDialog } from '../../components/DebridDownloadDialog';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -68,6 +69,10 @@ export default function MovieDetailScreen() {
   
   // TV Focus state for stream sources
   const [focusedStream, setFocusedStream] = useState<string | null>(null);
+  
+  // Debrid download dialog state
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [downloadingTorrent, setDownloadingTorrent] = useState<CachedTorrent | null>(null);
 
   // Check for resume position on load
   useEffect(() => {
@@ -304,67 +309,25 @@ export default function MovieDetailScreen() {
   };
 
   const handlePlayTorrent = async (torrent: CachedTorrent) => {
-    setSelectedTorrent(torrent);
-    setGettingStream(true);
+    // Close the links modal and open the download dialog
+    setShowLinksModal(false);
+    setDownloadingTorrent(torrent);
+    setShowDownloadDialog(true);
+  };
+  
+  const handleStreamReady = (streamUrl: string) => {
+    setShowDownloadDialog(false);
+    setDownloadingTorrent(null);
     
-    try {
-      // Check if Real-Debrid is connected
-      const token = await realDebridService.getToken();
-      if (!token) {
-        Alert.alert(
-          'Login Required', 
-          'Please login to Real-Debrid in Settings to play torrent sources.',
-          [{ text: 'OK', onPress: () => setShowLinksModal(false) }]
-        );
-        return;
-      }
-      
-      if (torrent.cached) {
-        errorLogService.info(`Getting cached stream for "${torrent.title}"`, 'MovieDetail');
-      } else {
-        errorLogService.info(`Starting download for "${torrent.title}" (not cached, may take longer)`, 'MovieDetail');
-      }
-      
-      // Get direct stream URL from Real-Debrid
-      const streamUrl = await debridCacheService.getStreamUrl(
-        torrent.hash,
-        torrent.file_id
-      );
-      
-      if (streamUrl) {
-        errorLogService.info('Got stream URL, navigating to player', 'MovieDetail');
-        setShowLinksModal(false);
-        
-        // Check for resume
-        checkResumeAndPlay(streamUrl, 'video');
-      } else {
-        errorLogService.error('Failed to get stream URL - null response', 'MovieDetail');
-        Alert.alert(
-          'Streaming Error', 
-          torrent.cached 
-            ? 'Failed to get streaming link. The torrent may have expired from the cache. Please try another source.'
-            : 'Failed to start download. The torrent may be unavailable. Please try a different source.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error: any) {
-      errorLogService.error(`Stream error: ${error.message}`, 'MovieDetail', error);
-      
-      // More specific error messages
-      let errorMessage = 'Failed to start stream.';
-      if (error.message?.includes('token') || error.message?.includes('auth')) {
-        errorMessage = 'Authentication error. Please re-login to Real-Debrid in Settings.';
-      } else if (error.message?.includes('timeout')) {
-        errorMessage = 'Request timed out. Please check your connection and try again.';
-      } else if (error.message?.includes('magnet_error')) {
-        errorMessage = 'Invalid torrent. Please try a different source.';
-      }
-      
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setGettingStream(false);
-      setSelectedTorrent(null);
-    }
+    // Check for resume and play
+    checkResumeAndPlay(streamUrl, 'video');
+  };
+  
+  const handleTorrentSelect = async (torrent: CachedTorrent) => {
+    // For sources dialog selection
+    setShowSourcesDialog(false);
+    setDownloadingTorrent(torrent);
+    setShowDownloadDialog(true);
   };
 
   const handleFavoriteToggle = () => {
@@ -944,6 +907,17 @@ export default function MovieDetailScreen() {
           type="movie"
         />
       )}
+      
+      {/* Debrid Download Progress Dialog */}
+      <DebridDownloadDialog
+        visible={showDownloadDialog}
+        torrent={downloadingTorrent}
+        onClose={() => {
+          setShowDownloadDialog(false);
+          setDownloadingTorrent(null);
+        }}
+        onStreamReady={handleStreamReady}
+      />
     </View>
   );
 }

@@ -13,6 +13,7 @@ import { TVShow, CachedTorrent, Season, Episode } from '../../types';
 import { errorLogService } from '../../services/errorLogService';
 import { traktService } from '../../services/trakt';
 import { PlayerChoice } from '../../components/PlayerChoice';
+import { DebridDownloadDialog } from '../../components/DebridDownloadDialog';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -43,6 +44,10 @@ export default function TVShowDetailScreen() {
   const [focusedEpisode, setFocusedEpisode] = useState<number | null>(null);
   const [focusedStream, setFocusedStream] = useState<string | null>(null);
   const [nextUpEpisode, setNextUpEpisode] = useState<{ season: number; number: number; title: string } | null>(null);
+  
+  // Download dialog state
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [downloadingTorrent, setDownloadingTorrent] = useState<CachedTorrent | null>(null);
   const [showProgress, setShowProgress] = useState<{ completed: number; aired: number } | null>(null);
   const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
   const [pendingPlayerStream, setPendingPlayerStream] = useState<{ url: string; title: string } | null>(null);
@@ -187,26 +192,20 @@ export default function TVShowDetailScreen() {
   };
 
   const handlePlayTorrent = async (torrent: CachedTorrent) => {
-    setSelectedTorrent(torrent);
-    setGettingStream(true);
+    // Close the links modal and open the download dialog
+    setShowLinksModal(false);
+    setDownloadingTorrent(torrent);
+    setShowDownloadDialog(true);
+  };
+  
+  const handleStreamReady = (streamUrl: string) => {
+    setShowDownloadDialog(false);
+    setDownloadingTorrent(null);
     
-    try {
-      const streamUrl = await debridCacheService.getStreamUrl(torrent.hash, torrent.file_id);
-      
-      if (streamUrl) {
-        setShowLinksModal(false);
-        const title = `${tvShow?.name} S${selectedEpisode?.season_number}E${selectedEpisode?.episode_number}`;
-        setPendingPlayerStream({ url: streamUrl, title });
-        setPlayerChoiceVisible(true);
-      } else {
-        Alert.alert('Error', 'Failed to get streaming link.');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to start stream');
-    } finally {
-      setGettingStream(false);
-      setSelectedTorrent(null);
-    }
+    // Navigate to player
+    const title = `${tvShow?.name} S${selectedEpisode?.season_number}E${selectedEpisode?.episode_number}`;
+    setPendingPlayerStream({ url: streamUrl, title });
+    setPlayerChoiceVisible(true);
   };
 
   const handlePlayDirectStream = async (stream: StreamSource) => {
@@ -620,6 +619,17 @@ export default function TVShowDetailScreen() {
           type="tv"
         />
       )}
+      
+      {/* Debrid Download Progress Dialog */}
+      <DebridDownloadDialog
+        visible={showDownloadDialog}
+        torrent={downloadingTorrent}
+        onClose={() => {
+          setShowDownloadDialog(false);
+          setDownloadingTorrent(null);
+        }}
+        onStreamReady={handleStreamReady}
+      />
     </View>
   );
 }
