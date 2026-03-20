@@ -28,6 +28,17 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
 - Parental controls with PIN
 - Streaming providers page (Netflix, Disney+, Prime, HBO, etc.)
 
+### Session 3 Changes (March 20, 2026)
+- **Zeus Vault Improvements**:
+  - Updated to use `expo-file-system/legacy` API for SDK 54 compatibility
+  - Improved error handling with fallbacks for TV devices
+  - Renamed buttons for clarity: "Save Backup", "Restore Backup", "Share/Copy", "Paste Import"
+  - Added user feedback with success/error alerts
+  - Added clipboard fallback when Share is not available (for TV devices)
+  - Fixed internal save functionality to always work on all platforms
+- **Parental Controls**: Verified working - Enable button opens PIN setup modal correctly
+- **Added data-testid attributes** to Zeus Vault and Parental Controls buttons for testing
+
 ### Session 2 Changes (March 15, 2026)
 - **PlayerChoice dialog**: Universal player selector on ALL play actions (Internal, VLC, MX Player, Just Player, System Default) - integrated in movies, TV shows, IPTV Live TV, VOD, TV Guide
 - **IPTV categories fixed**: Channels now include `category_id` for proper categorization. Categories show correct channel counts.
@@ -58,8 +69,11 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
 - PlayerChoice dialog on all play actions (code done, needs device testing)
 - Player fullscreen via Modal (works on native, not web)
 - Trakt auth flow (proxy fallback added)
+- Zeus Vault Save/Restore functionality (improved, needs native testing)
+- Parental Controls PIN setup (verified working in web preview)
 
 ### P1 - Remaining Work
+- Picture-in-Picture (PiP) mode for player (browse while watching in corner)
 - Watched tick marks integration into home/browse pages (FocusableCard supports it, need to wire up Trakt data)
 - Shield TV performance optimization (lazy loading, reduce re-renders)
 - Infinite scroll on Providers page
@@ -67,9 +81,8 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
 
 ### P2 - Future
 - More torrent scrapers (Torrserver, watchsomuch)
-- Zeus Vault improvements
 - GitLab CI/CD setup
-- PiP mode for player (browse while watching in corner)
+- IMDB Login integration (needs clarification)
 
 ## Key Architecture
 - All API calls use `process.env.EXPO_PUBLIC_BACKEND_URL`
@@ -80,6 +93,7 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
 - IPTV categories use `IPTVCategory` type with `category_id`/`category_name`
 - PlayerChoice component is the universal player selector
 - Player uses `<Modal>` for native fullscreen
+- Zeus Vault uses `expo-file-system/legacy` for SDK 54 compatibility
 
 ## IPTV Credentials (Testing)
 - Domain: thenewdns.co

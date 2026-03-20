@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+// Use legacy API for SDK 54+ compatibility (will need full migration in SDK 55)
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';

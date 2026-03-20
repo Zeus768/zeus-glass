@@ -143,13 +143,28 @@ export default function SettingsScreen() {
   const handleSaveVault = async () => {
     setVaultLoading(true);
     try {
-      // Use file export for proper backup
-      const success = await zeusVaultService.exportToFile();
-      if (success) {
+      // First, save to internal storage (always works)
+      const internalSuccess = await zeusVaultService.saveVault();
+      
+      if (internalSuccess) {
+        // Update status
         const status = await zeusVaultService.getVaultStatus();
         setVaultStatus(status);
+        
+        // Now try file export (may fail on TV devices)
+        try {
+          await zeusVaultService.exportToFile();
+        } catch (fileError) {
+          // File export failed, but internal save worked
+          console.log('[ZeusVault] File export not available, using internal storage');
+        }
+        
+        Alert.alert('Zeus Vault', `Backup saved successfully! ${status.accountCount} account(s) backed up.`);
+      } else {
+        Alert.alert('Error', 'Failed to save vault');
       }
     } catch (error) {
+      console.error('[ZeusVault] Save error:', error);
       Alert.alert('Error', 'Failed to export vault');
     } finally {
       setVaultLoading(false);
@@ -159,13 +174,33 @@ export default function SettingsScreen() {
   const handleRestoreVault = async () => {
     setVaultLoading(true);
     try {
-      // Use file import for proper restore
-      const success = await zeusVaultService.importFromFile();
+      // First try file import (for mobile devices)
+      let success = false;
+      
+      try {
+        success = await zeusVaultService.importFromFile();
+      } catch (fileError) {
+        console.log('[ZeusVault] File import not available, trying internal restore');
+      }
+      
+      // If file import didn't work, try internal restore
+      if (!success) {
+        const vault = await zeusVaultService.restoreVault();
+        if (vault) {
+          await zeusVaultService.applyVaultData(vault);
+          success = true;
+        }
+      }
+      
       if (success) {
         const status = await zeusVaultService.getVaultStatus();
         setVaultStatus(status);
+        Alert.alert('Zeus Vault', 'Vault restored successfully! Please restart the app to see your accounts.');
+      } else {
+        Alert.alert('Zeus Vault', 'No backup found. Please create a backup first.');
       }
     } catch (error) {
+      console.error('[ZeusVault] Restore error:', error);
       Alert.alert('Error', 'Failed to import vault');
     } finally {
       setVaultLoading(false);
@@ -177,12 +212,21 @@ export default function SettingsScreen() {
     try {
       const vaultJson = await zeusVaultService.exportVault();
       if (vaultJson) {
-        await Share.share({
-          message: vaultJson,
-          title: 'Zeus Vault Backup',
-        });
+        try {
+          await Share.share({
+            message: vaultJson,
+            title: 'Zeus Vault Backup',
+          });
+        } catch (shareError) {
+          // Share not available (e.g., on TV), copy to clipboard instead
+          Clipboard.setString(vaultJson);
+          Alert.alert('Zeus Vault', 'Backup data copied to clipboard. You can paste it to restore on another device.');
+        }
+      } else {
+        Alert.alert('Zeus Vault', 'No data to export. Please add some accounts first.');
       }
     } catch (error) {
+      console.error('[ZeusVault] Export error:', error);
       Alert.alert('Error', 'Failed to export vault');
     } finally {
       setVaultLoading(false);
@@ -673,13 +717,14 @@ export default function SettingsScreen() {
                 onFocus={() => setFocusedElement('vault-save')}
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
+                data-testid="vault-save-btn"
               >
                 {vaultLoading ? (
                   <ActivityIndicator size="small" color="#000" />
                 ) : (
                   <>
-                    <Ionicons name="download-outline" size={18} color="#000" />
-                    <Text style={styles.vaultButtonTextPrimary}>Export to File</Text>
+                    <Ionicons name="cloud-upload-outline" size={18} color="#000" />
+                    <Text style={styles.vaultButtonTextPrimary}>Save Backup</Text>
                   </>
                 )}
               </Pressable>
@@ -690,9 +735,10 @@ export default function SettingsScreen() {
                 onFocus={() => setFocusedElement('vault-restore')}
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
+                data-testid="vault-restore-btn"
               >
-                <Ionicons name="folder-open-outline" size={18} color={theme.colors.text} />
-                <Text style={styles.vaultButtonText}>Import from File</Text>
+                <Ionicons name="cloud-download-outline" size={18} color={theme.colors.text} />
+                <Text style={styles.vaultButtonText}>Restore Backup</Text>
               </Pressable>
 
               <Pressable 
@@ -701,9 +747,10 @@ export default function SettingsScreen() {
                 onFocus={() => setFocusedElement('vault-export')}
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
+                data-testid="vault-share-btn"
               >
-                <Ionicons name="share" size={18} color={theme.colors.text} />
-                <Text style={styles.vaultButtonText}>Export</Text>
+                <Ionicons name="share-outline" size={18} color={theme.colors.text} />
+                <Text style={styles.vaultButtonText}>Share/Copy</Text>
               </Pressable>
 
               <Pressable 
@@ -711,9 +758,10 @@ export default function SettingsScreen() {
                 onPress={() => setVaultModalVisible(true)}
                 onFocus={() => setFocusedElement('vault-modal')}
                 onBlur={() => setFocusedElement(null)}
+                data-testid="vault-import-btn"
               >
-                <Ionicons name="settings" size={18} color={theme.colors.text} />
-                <Text style={styles.vaultButtonText}>Import</Text>
+                <Ionicons name="clipboard-outline" size={18} color={theme.colors.text} />
+                <Text style={styles.vaultButtonText}>Paste Import</Text>
               </Pressable>
             </View>
           </View>
@@ -737,6 +785,7 @@ export default function SettingsScreen() {
                   }
                   setParentalModalVisible(true);
                 }}
+                data-testid="parental-enable-btn"
               >
                 <Text style={styles.parentalButtonText}>
                   {parentalSettings?.enabled ? 'Manage' : 'Enable'}

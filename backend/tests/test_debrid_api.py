@@ -8,7 +8,7 @@ import requests
 import os
 
 # Use the public URL for testing
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://providers-load.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://debrid-stream-demo.preview.emergentagent.com').rstrip('/')
 
 
 class TestHealthAndBasicEndpoints:
