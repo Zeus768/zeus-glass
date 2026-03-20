@@ -27,6 +27,7 @@ import { subtitleService, SubtitleSettings } from '../services/subtitleService';
 import { streamFilterService, OneClickPlaySettings } from '../services/streamFilterService';
 import { zeusVaultService, VaultData } from '../services/zeusVaultService';
 import { proxyService, ProxySettings, getAvailableCountries } from '../services/proxyService';
+import { scraperStatusService, ScraperStatus } from '../services/scraperStatusService';
 import { formatDistanceToNow, format } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -110,6 +111,11 @@ export default function SettingsScreen() {
   // VPN/Proxy state
   const [proxySettings, setProxySettings] = useState<ProxySettings | null>(null);
   const [proxyCountries, setProxyCountries] = useState<{ code: string; name: string; flag: string }[]>([]);
+
+  // Scraper status state
+  const [scraperStatuses, setScraperStatuses] = useState<ScraperStatus[]>([]);
+  const [checkingScrapers, setCheckingScrapers] = useState(false);
+  const [scraperCheckProgress, setScraperCheckProgress] = useState({ completed: 0, total: 0 });
 
   useEffect(() => {
     // Initialize services
@@ -265,6 +271,34 @@ export default function SettingsScreen() {
       Alert.alert('Error', 'Failed to import vault');
     } finally {
       setVaultLoading(false);
+    }
+  };
+
+  // Check all scrapers status
+  const handleCheckScrapers = async () => {
+    setCheckingScrapers(true);
+    setScraperStatuses([]);
+    
+    const list = scraperStatusService.getList();
+    setScraperCheckProgress({ completed: 0, total: list.length });
+    
+    try {
+      const results = await scraperStatusService.checkAll((completed, total, result) => {
+        setScraperCheckProgress({ completed, total });
+        setScraperStatuses(prev => [...prev, result]);
+      });
+      
+      // Sort by status (online first) then by name
+      const sorted = results.sort((a, b) => {
+        if (a.status === b.status) return a.name.localeCompare(b.name);
+        return a.status === 'online' ? -1 : 1;
+      });
+      setScraperStatuses(sorted);
+    } catch (error) {
+      console.error('[Settings] Error checking scrapers:', error);
+      Alert.alert('Error', 'Failed to check scraper status');
+    } finally {
+      setCheckingScrapers(false);
     }
   };
 
@@ -869,6 +903,105 @@ export default function SettingsScreen() {
                 Free proxies may be slower than direct connection.
               </Text>
             </View>
+          </View>
+        </AccountSection>
+
+        {/* Scraper Status Section */}
+        <AccountSection title="Scraper Status">
+          <View style={styles.settingsCard}>
+            <View style={styles.scraperHeader}>
+              <View style={styles.scraperTitleRow}>
+                <Ionicons name="cloud-outline" size={24} color={theme.colors.primary} />
+                <View style={styles.scraperTitleContainer}>
+                  <Text style={styles.scraperTitle}>Stream Sources</Text>
+                  <Text style={styles.scraperSubtitle}>
+                    {scraperStatuses.length > 0 
+                      ? `${scraperStatuses.filter(s => s.status === 'online').length}/${scraperStatuses.length} online`
+                      : 'Check which scrapers are available'
+                    }
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                style={[
+                  styles.scraperCheckButton,
+                  checkingScrapers && styles.scraperCheckButtonDisabled,
+                  focusedElement === 'check-scrapers' && styles.scraperCheckButtonFocused,
+                ]}
+                onPress={handleCheckScrapers}
+                onFocus={() => setFocusedElement('check-scrapers')}
+                onBlur={() => setFocusedElement(null)}
+                disabled={checkingScrapers}
+                data-testid="check-scrapers-btn"
+              >
+                {checkingScrapers ? (
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : (
+                  <>
+                    <Ionicons name="refresh" size={18} color={theme.colors.text} />
+                    <Text style={styles.scraperCheckButtonText}>Check All</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+
+            {/* Progress indicator */}
+            {checkingScrapers && scraperCheckProgress.total > 0 && (
+              <View style={styles.scraperProgressContainer}>
+                <View style={styles.scraperProgressBar}>
+                  <View 
+                    style={[
+                      styles.scraperProgressFill, 
+                      { width: `${(scraperCheckProgress.completed / scraperCheckProgress.total) * 100}%` }
+                    ]} 
+                  />
+                </View>
+                <Text style={styles.scraperProgressText}>
+                  {scraperCheckProgress.completed}/{scraperCheckProgress.total}
+                </Text>
+              </View>
+            )}
+
+            {/* Scraper list */}
+            {scraperStatuses.length > 0 && (
+              <View style={styles.scraperList}>
+                {scraperStatuses.map((scraper, index) => (
+                  <View key={scraper.name} style={styles.scraperItem}>
+                    <View style={styles.scraperItemLeft}>
+                      <View style={[
+                        styles.scraperStatusDot,
+                        scraper.status === 'online' && styles.scraperStatusOnline,
+                        scraper.status === 'offline' && styles.scraperStatusOffline,
+                        scraper.status === 'checking' && styles.scraperStatusChecking,
+                      ]} />
+                      <Text style={styles.scraperItemName}>{scraper.name}</Text>
+                    </View>
+                    <View style={styles.scraperItemRight}>
+                      {scraper.latency && scraper.status === 'online' && (
+                        <Text style={styles.scraperLatency}>{scraper.latency}ms</Text>
+                      )}
+                      <Text style={[
+                        styles.scraperStatusText,
+                        scraper.status === 'online' && styles.scraperStatusTextOnline,
+                        scraper.status === 'offline' && styles.scraperStatusTextOffline,
+                      ]}>
+                        {scraper.status === 'online' ? 'Online' : scraper.status === 'offline' ? 'Offline' : 'Checking'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Initial state */}
+            {scraperStatuses.length === 0 && !checkingScrapers && (
+              <View style={styles.scraperEmptyState}>
+                <Ionicons name="search-outline" size={32} color={theme.colors.textMuted} />
+                <Text style={styles.scraperEmptyText}>
+                  Tap "Check All" to test which stream sources are available
+                </Text>
+              </View>
+            )}
           </View>
         </AccountSection>
 
@@ -2110,5 +2243,147 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     flex: 1,
     lineHeight: isTV ? 18 : 16,
+  },
+  // Scraper Status styles
+  scraperHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: isTV ? 16 : 12,
+  },
+  scraperTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: isTV ? 12 : 10,
+    flex: 1,
+  },
+  scraperTitleContainer: {
+    flex: 1,
+  },
+  scraperTitle: {
+    fontSize: isTV ? 18 : 16,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  scraperSubtitle: {
+    fontSize: isTV ? 13 : 12,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  scraperCheckButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: isTV ? 16 : 14,
+    paddingVertical: isTV ? 10 : 8,
+    borderRadius: isTV ? 10 : 8,
+    gap: 8,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+  },
+  scraperCheckButtonDisabled: {
+    opacity: 0.6,
+  },
+  scraperCheckButtonFocused: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary + '20',
+  },
+  scraperCheckButtonText: {
+    fontSize: isTV ? 14 : 13,
+    color: theme.colors.text,
+    fontWeight: '600',
+  },
+  scraperProgressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: isTV ? 16 : 14,
+  },
+  scraperProgressBar: {
+    flex: 1,
+    height: isTV ? 8 : 6,
+    backgroundColor: theme.colors.surfaceLight,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  scraperProgressFill: {
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 4,
+  },
+  scraperProgressText: {
+    fontSize: isTV ? 13 : 12,
+    color: theme.colors.textSecondary,
+    minWidth: 50,
+    textAlign: 'right',
+  },
+  scraperList: {
+    gap: isTV ? 8 : 6,
+  },
+  scraperItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: isTV ? 14 : 12,
+    paddingVertical: isTV ? 12 : 10,
+    borderRadius: isTV ? 10 : 8,
+  },
+  scraperItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: isTV ? 12 : 10,
+  },
+  scraperStatusDot: {
+    width: isTV ? 12 : 10,
+    height: isTV ? 12 : 10,
+    borderRadius: isTV ? 6 : 5,
+    backgroundColor: theme.colors.textMuted,
+  },
+  scraperStatusOnline: {
+    backgroundColor: theme.colors.success,
+  },
+  scraperStatusOffline: {
+    backgroundColor: theme.colors.error,
+  },
+  scraperStatusChecking: {
+    backgroundColor: theme.colors.warning,
+  },
+  scraperItemName: {
+    fontSize: isTV ? 14 : 13,
+    color: theme.colors.text,
+    fontWeight: '500',
+  },
+  scraperItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: isTV ? 12 : 10,
+  },
+  scraperLatency: {
+    fontSize: isTV ? 12 : 11,
+    color: theme.colors.textSecondary,
+  },
+  scraperStatusText: {
+    fontSize: isTV ? 12 : 11,
+    fontWeight: '600',
+    color: theme.colors.textMuted,
+    minWidth: 50,
+    textAlign: 'right',
+  },
+  scraperStatusTextOnline: {
+    color: theme.colors.success,
+  },
+  scraperStatusTextOffline: {
+    color: theme.colors.error,
+  },
+  scraperEmptyState: {
+    alignItems: 'center',
+    paddingVertical: isTV ? 24 : 20,
+    gap: isTV ? 12 : 10,
+  },
+  scraperEmptyText: {
+    fontSize: isTV ? 13 : 12,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
   },
 });

@@ -96,6 +96,14 @@ Build a cross-platform mobile app for Android, Android TV, and Fire TV called "Z
   - Added `memo()` to FocusableCard component
   - Custom comparison function to prevent unnecessary re-renders
   - Better performance on TV devices with large content lists
+- **Scraper Status Checker** (NEW):
+  - New `scraperStatusService.ts` with 20+ scrapers to test
+  - "Scraper Status" section in Settings
+  - "Check All" button to test all scrapers
+  - Progress bar during check
+  - Shows online/offline status with green/red dots
+  - Shows latency in milliseconds for online scrapers
+  - Sorted list (online first)
 
 ### Session 2 Changes (March 15, 2026)
 - **PlayerChoice dialog**: Universal player selector on ALL play actions (Internal, VLC, MX Player, Just Player, System Default) - integrated in movies, TV shows, IPTV Live TV, VOD, TV Guide
