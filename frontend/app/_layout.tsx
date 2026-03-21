@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
 import { playerState } from '../utils/playerState';
 import { initWatchedStore } from '../stores/useWatchedStore';
+import { BackHandler } from 'react-native';
 import { 
   Platform, 
   StatusBar, 
@@ -98,16 +99,16 @@ const tabBarStyles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
   },
   scrollContent: {
-    paddingHorizontal: isTV ? 20 : 12,  // Reduced from 40
-    paddingVertical: isTV ? 6 : 10,      // Reduced from 10
-    gap: isTV ? 4 : 4,                   // Reduced from 8
+    paddingHorizontal: isTV ? 16 : 12,
+    paddingVertical: isTV ? 4 : 10,
+    gap: isTV ? 2 : 4,
   },
   tab: {
-    paddingHorizontal: isTV ? 14 : 16,   // Reduced from 24
-    paddingVertical: isTV ? 8 : 8,       // Reduced from 12
-    borderRadius: isTV ? 8 : 8,          // Reduced from 10
+    paddingHorizontal: isTV ? 10 : 16,
+    paddingVertical: isTV ? 5 : 8,
+    borderRadius: isTV ? 6 : 8,
     position: 'relative',
-    borderWidth: 2,                      // Reduced from 3
+    borderWidth: 2,
     borderColor: 'transparent',
   },
   tabActive: {
@@ -118,14 +119,14 @@ const tabBarStyles = StyleSheet.create({
     backgroundColor: '#00D9FF',
     borderColor: '#FFFFFF',
     borderWidth: 2,
-    transform: [{ scale: 1.08 }],  // Reduced from 1.15
+    transform: [{ scale: 1.05 }],
   },
   tabText: {
-    fontSize: isTV ? 13 : 14,         // Reduced from 18
+    fontSize: isTV ? 11 : 14,
     fontWeight: '700',
     color: theme.colors.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: isTV ? 1 : 0.8,    // Reduced from 1.5
+    letterSpacing: isTV ? 0.8 : 0.8,
   },
   tabTextActive: {
     color: theme.colors.primary,
@@ -393,19 +394,31 @@ export default function TabLayout() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={isPlayerScreen ? '#000' : theme.colors.background} />
       
-      {/* Header with App Name and Donation Button - hidden on player */}
+      {/* Header with App Name, Exit and Donation Buttons - hidden on player */}
       {!isPlayerScreen && (
         <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
           <Text style={styles.appName}>ZEUS GLASS</Text>
-          <FocusableButton 
-            style={styles.donateBtn} 
-            onPress={() => setShowDonation(true)}
-            testID="open-donation-modal"
-            {...(Platform.isTV && { focusable: false, accessible: false })}
-          >
-            <Ionicons name="heart" size={isTV ? 18 : 18} color="#FFDD00" />
-            <Text style={styles.donateBtnText}>Donate</Text>
-          </FocusableButton>
+          <View style={{ flexDirection: 'row', gap: isTV ? 8 : 10 }}>
+            {Platform.isTV && (
+              <FocusableButton 
+                style={styles.exitBtn} 
+                onPress={() => BackHandler.exitApp()}
+                testID="exit-app-btn"
+              >
+                <Ionicons name="power" size={isTV ? 16 : 16} color="#FF4444" />
+                <Text style={styles.exitBtnText}>Exit</Text>
+              </FocusableButton>
+            )}
+            <FocusableButton 
+              style={styles.donateBtn} 
+              onPress={() => setShowDonation(true)}
+              testID="open-donation-modal"
+              {...(Platform.isTV && { focusable: false, accessible: false })}
+            >
+              <Ionicons name="heart" size={isTV ? 16 : 18} color="#FFDD00" />
+              <Text style={styles.donateBtnText}>Donate</Text>
+            </FocusableButton>
+          </View>
         </View>
       )}
       
@@ -452,30 +465,46 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: theme.colors.background,
-    paddingHorizontal: isTV ? 24 : 20,  // Reduced from 50
-    paddingBottom: isTV ? 4 : 12,       // Reduced from 8
-    paddingTop: isTV ? 6 : 0,           // Reduced from 10
+    paddingHorizontal: isTV ? 20 : 20,
+    paddingBottom: isTV ? 2 : 12,
+    paddingTop: isTV ? 4 : 0,
   },
   appName: {
-    fontSize: isTV ? 20 : 24,  // Reduced from 28
+    fontSize: isTV ? 16 : 24,
     fontWeight: 'bold',
     color: theme.colors.primary,
-    letterSpacing: isTV ? 2 : 2,  // Reduced from 3
+    letterSpacing: isTV ? 1.5 : 2,
   },
   donateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 221, 0, 0.15)',
-    paddingVertical: isTV ? 8 : 10,    // Reduced from 12
-    paddingHorizontal: isTV ? 16 : 18, // Reduced from 24
-    borderRadius: isTV ? 20 : 25,
-    borderWidth: isTV ? 2 : 2,
+    paddingVertical: isTV ? 5 : 10,
+    paddingHorizontal: isTV ? 12 : 18,
+    borderRadius: isTV ? 16 : 25,
+    borderWidth: isTV ? 1 : 2,
     borderColor: '#FFDD00',
-    gap: isTV ? 6 : 8,  // Reduced from 8
+    gap: isTV ? 4 : 8,
   },
   donateBtnText: {
-    fontSize: isTV ? 14 : 14,  // Reduced from 18
+    fontSize: isTV ? 12 : 14,
     fontWeight: '700',
     color: '#FFDD00',
+  },
+  exitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 68, 68, 0.15)',
+    paddingVertical: isTV ? 5 : 10,
+    paddingHorizontal: isTV ? 12 : 18,
+    borderRadius: isTV ? 16 : 25,
+    borderWidth: isTV ? 1 : 2,
+    borderColor: '#FF4444',
+    gap: isTV ? 4 : 8,
+  },
+  exitBtnText: {
+    fontSize: isTV ? 12 : 14,
+    fontWeight: '700',
+    color: '#FF4444',
   },
 });

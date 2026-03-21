@@ -28,6 +28,7 @@ import { streamFilterService, OneClickPlaySettings } from '../services/streamFil
 import { zeusVaultService, VaultData } from '../services/zeusVaultService';
 import { proxyService, ProxySettings, getAvailableCountries } from '../services/proxyService';
 import { scraperStatusService, ScraperStatus } from '../services/scraperStatusService';
+import { contentFilterService, ContentFilterSettings } from '../services/contentFilterService';
 import { formatDistanceToNow, format } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -117,6 +118,14 @@ export default function SettingsScreen() {
   const [checkingScrapers, setCheckingScrapers] = useState(false);
   const [scraperCheckProgress, setScraperCheckProgress] = useState({ completed: 0, total: 0 });
 
+  // Content filter state
+  const [contentFilterSettings, setContentFilterSettings] = useState<ContentFilterSettings>({
+    enabled: true,
+    blockAdultStreams: true,
+    blockAdultCategories: true,
+    customBlockedKeywords: [],
+  });
+
   useEffect(() => {
     // Initialize services
     errorLogService.init();
@@ -154,6 +163,11 @@ export default function SettingsScreen() {
       setProxySettings(settings);
     });
     setProxyCountries(getAvailableCountries());
+
+    // Load content filter settings
+    contentFilterService.init().then(() => {
+      setContentFilterSettings(contentFilterService.getSettings());
+    });
   }, []);
 
   // Zeus Vault functions
@@ -643,7 +657,16 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        {...(Platform.isTV && {
+          scrollEnabled: true,
+          keyboardDismissMode: 'none',
+          removeClippedSubviews: false,
+        })}
+      >
         {/* Accounts Section */}
         <AccountSection title="Accounts">
           <AccountCard
@@ -1002,6 +1025,80 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             )}
+          </View>
+        </AccountSection>
+
+
+        {/* Content Filter Section */}
+        <AccountSection title="Content Filter">
+          <View style={styles.settingsCard}>
+            <View style={styles.scraperHeader}>
+              <View style={styles.scraperTitleRow}>
+                <Ionicons name="shield-checkmark" size={24} color="#22C55E" />
+                <View style={styles.scraperTitleContainer}>
+                  <Text style={styles.scraperTitle}>Content Safety</Text>
+                  <Text style={styles.scraperSubtitle}>
+                    {contentFilterSettings.enabled ? 'Adult content blocked' : 'Filter disabled'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Text style={styles.settingLabel}>Block Adult Streams</Text>
+                <Text style={styles.settingDescription}>Filter NSFW links from free scrapers</Text>
+              </View>
+              <Pressable
+                style={[
+                  styles.toggleButton,
+                  contentFilterSettings.blockAdultStreams && styles.toggleButtonActive,
+                ]}
+                onPress={async () => {
+                  const newVal = !contentFilterSettings.blockAdultStreams;
+                  await contentFilterService.saveSettings({ blockAdultStreams: newVal });
+                  setContentFilterSettings(contentFilterService.getSettings());
+                }}
+                data-testid="toggle-block-adult-streams"
+              >
+                <Text style={[styles.toggleText, contentFilterSettings.blockAdultStreams && styles.toggleTextActive]}>
+                  {contentFilterSettings.blockAdultStreams ? 'ON' : 'OFF'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Text style={styles.settingLabel}>Block Adult IPTV Categories</Text>
+                <Text style={styles.settingDescription}>Hide adult categories from IPTV listings</Text>
+              </View>
+              <Pressable
+                style={[
+                  styles.toggleButton,
+                  contentFilterSettings.blockAdultCategories && styles.toggleButtonActive,
+                ]}
+                onPress={async () => {
+                  const newVal = !contentFilterSettings.blockAdultCategories;
+                  await contentFilterService.saveSettings({ blockAdultCategories: newVal });
+                  setContentFilterSettings(contentFilterService.getSettings());
+                }}
+                data-testid="toggle-block-adult-categories"
+              >
+                <Text style={[styles.toggleText, contentFilterSettings.blockAdultCategories && styles.toggleTextActive]}>
+                  {contentFilterSettings.blockAdultCategories ? 'ON' : 'OFF'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Text style={styles.settingLabel}>Link Snooper</Text>
+                <Text style={styles.settingDescription}>Follow redirects to find clean direct video links</Text>
+              </View>
+              <View style={[styles.toggleButton, styles.toggleButtonActive]}>
+                <Text style={[styles.toggleText, styles.toggleTextActive]}>AUTO</Text>
+              </View>
+            </View>
           </View>
         </AccountSection>
 
@@ -1707,6 +1804,32 @@ const styles = StyleSheet.create({
     fontSize: isTV ? 16 : theme.fontSize.sm,
     color: theme.colors.textSecondary,
     marginTop: 2,
+  },
+  settingLabelContainer: {
+    flex: 1,
+    marginRight: isTV ? 16 : 12,
+  },
+  toggleButton: {
+    paddingHorizontal: isTV ? 16 : 12,
+    paddingVertical: isTV ? 8 : 6,
+    borderRadius: isTV ? 8 : 6,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    minWidth: isTV ? 60 : 48,
+    alignItems: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderColor: '#22C55E',
+  },
+  toggleText: {
+    fontSize: isTV ? 13 : 11,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+  },
+  toggleTextActive: {
+    color: '#22C55E',
   },
   configureButton: {
     backgroundColor: theme.colors.surface,

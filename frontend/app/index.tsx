@@ -9,6 +9,7 @@ import { theme, isTV } from '../constants/theme';
 import { Carousel } from '../components/Carousel';
 import { ContinueWatchingCarousel } from '../components/ContinueWatchingCarousel';
 import { NextUpCarousel } from '../components/NextUpCarousel';
+import { RecentlyPlayedCarousel } from '../components/RecentlyPlayedCarousel';
 import { useContentStore } from '../store/contentStore';
 import { tmdbService } from '../services/tmdb';
 import { useWatchedStore } from '../stores/useWatchedStore';
@@ -170,6 +171,9 @@ export default function HomeScreen() {
 
           {/* Next Up - Shows you're watching with next unwatched episode */}
           <NextUpCarousel items={nextUpItems} isLoading={isLoadingNextUp} />
+
+          {/* Recently Played - Watch history with progress bars */}
+          <RecentlyPlayedCarousel items={localRecentlyWatched} />
           
           {/* My Watchlist - Movies - Trakt */}
           {watchlistMovies.length > 0 && (

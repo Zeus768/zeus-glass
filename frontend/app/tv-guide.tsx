@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { format, addMinutes } from 'date-fns';
 import { theme, isTV } from '../constants/theme';
 import { iptvService } from '../services/iptv';
 import { recordingService, RecordingCategory } from '../services/recordingService';
+import { contentFilterService } from '../services/contentFilterService';
 import { IPTVChannel, EPGProgram } from '../types';
 import { PlayerChoice } from '../components/PlayerChoice';
 import { IPTVPipPlayer } from '../components/IPTVPipPlayer';
@@ -84,9 +85,11 @@ export default function TVGuideScreen() {
       }));
       
       setChannels(channels || []);
-      setCategories([{ category_id: 'all', category_name: 'All' }, ...(categories || [])]);
+      // Filter adult categories
+      const safeCategories = contentFilterService.filterCategories(categories || []);
+      setCategories([{ category_id: 'all', category_name: 'All' }, ...safeCategories]);
       
-      // Load EPG for first 10 channels only
+      // Load EPG for first 10 channels only (limit to prevent crash)
       if (channels && channels.length > 0) {
         setLoadProgress(prev => ({ ...prev, status: 'Loading TV Guide data...' }));
         const first10 = channels.slice(0, 10);
@@ -124,25 +127,38 @@ export default function TVGuideScreen() {
 
   // Get currently airing and next program
   const getCurrentAndNextProgram = (epg: EPGProgram[]) => {
+    if (!epg || !Array.isArray(epg) || epg.length === 0) {
+      return { current: null, next: null };
+    }
+    
     const now = new Date();
     let current: EPGProgram | null = null;
     let next: EPGProgram | null = null;
     
-    for (let i = 0; i < epg.length; i++) {
-      const program = epg[i];
-      const start = new Date(program.start);
-      const end = new Date(program.end);
-      
-      if (start <= now && end > now) {
-        current = program;
-        if (i + 1 < epg.length) {
-          next = epg[i + 1];
+    try {
+      for (let i = 0; i < epg.length; i++) {
+        const program = epg[i];
+        if (!program || !program.start || !program.end) continue;
+        
+        const start = new Date(program.start);
+        const end = new Date(program.end);
+        
+        // Skip invalid dates
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) continue;
+        
+        if (start <= now && end > now) {
+          current = program;
+          if (i + 1 < epg.length) {
+            next = epg[i + 1];
+          }
+          break;
+        } else if (start > now && !next) {
+          next = program;
+          break;
         }
-        break;
-      } else if (start > now && !next) {
-        next = program;
-        break;
       }
+    } catch (error) {
+      console.warn('[TVGuide] Error parsing EPG data:', error);
     }
     
     return { current, next };
@@ -265,11 +281,17 @@ export default function TVGuideScreen() {
     }
   };
 
-  const filteredChannels =
-    selectedCategory === 'all'
-      ? channels
-      : channels.filter((c) => c.category_id === selectedCategory || 
-          categories.find(cat => cat.category_id === selectedCategory)?.category_name === c.category);
+  const filteredChannels = useMemo(() => {
+    try {
+      const base = selectedCategory === 'all'
+        ? channels
+        : channels.filter((c) => c.category_id === selectedCategory || 
+            categories.find(cat => cat.category_id === selectedCategory)?.category_name === c.category);
+      return base || [];
+    } catch {
+      return [];
+    }
+  }, [selectedCategory, channels, categories]);
 
   if (loading) {
     return (

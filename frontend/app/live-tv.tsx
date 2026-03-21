@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { theme, isTV } from '../constants/theme';
 import { iptvService, IPTVCategory } from '../services/iptv';
 import { IPTVChannel } from '../types';
+import { contentFilterService } from '../services/contentFilterService';
 import { PlayerChoice } from '../components/PlayerChoice';
 import { IPTVPipPlayer } from '../components/IPTVPipPlayer';
 
@@ -79,8 +80,10 @@ export default function LiveTVScreen() {
 
       setLoadProgress(prev => ({ ...prev, status: 'Loading categories...' }));
       const categoriesData = await iptvService.getLiveCategories();
-      setCategories(categoriesData || []);
-      setLoadProgress(prev => ({ ...prev, categories: categoriesData?.length || 0, status: 'Loading channels...' }));
+      // Filter adult categories
+      const filteredCategories = contentFilterService.filterCategories(categoriesData || []);
+      setCategories(filteredCategories);
+      setLoadProgress(prev => ({ ...prev, categories: filteredCategories?.length || 0, status: 'Loading channels...' }));
       
       const channelsData = await iptvService.getLiveChannels();
       setChannels(channelsData || []);

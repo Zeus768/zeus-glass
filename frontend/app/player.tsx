@@ -373,11 +373,16 @@ export default function PlayerScreen() {
         } catch (e) {}
       }
       
+      // On TV devices, don't change orientation (TVs are always landscape)
+      if (isTV) {
+        return;
+      }
+      
       // Unlock orientation
       await ScreenOrientation.unlockAsync();
       
       // Force back to portrait on mobile (not TV)
-      if (!isTV && Platform.OS !== 'web') {
+      if (Platform.OS !== 'web') {
         await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
         // Unlock after a short delay to allow normal rotation
         setTimeout(async () => {
@@ -394,14 +399,14 @@ export default function PlayerScreen() {
   };
 
   useEffect(() => {
-    // Auto-hide controls after 5 seconds
+    // Auto-hide controls after 3 seconds (reduced from 5 for better TV UX)
     if (showControls && status && 'isPlaying' in status && status.isPlaying) {
       if (controlsTimeout.current) {
         clearTimeout(controlsTimeout.current);
       }
       controlsTimeout.current = setTimeout(() => {
         setShowControls(false);
-      }, 5000);
+      }, 3000);
     }
 
     return () => {
@@ -410,6 +415,18 @@ export default function PlayerScreen() {
       }
     };
   }, [showControls, status]);
+
+  // On TV, reset controls auto-hide timer when a button gets focus
+  useEffect(() => {
+    if (Platform.isTV && showControls && focusedButton) {
+      if (controlsTimeout.current) {
+        clearTimeout(controlsTimeout.current);
+      }
+      controlsTimeout.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
+  }, [focusedButton]);
 
   const handleClose = useCallback(async () => {
     // Save final watch position and stop scrobbling
