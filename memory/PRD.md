@@ -14,64 +14,83 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 /app
 ├── backend/
 │   ├── server.py          # FastAPI with proxy, debrid, torrentio, trakt endpoints
-│   └── tests/             # pytest tests
+│   └── tests/
 └── frontend/
     ├── app/               # Expo Router pages
-    │   ├── _layout.tsx    # Main tab layout, header (Exit/Donate), smaller tab sizes
-    │   ├── index.tsx      # Home: hero + Next Up + Recently Played + carousels
-    │   ├── settings.tsx   # Accounts, VPN, scrapers, content filter, vault
-    │   ├── player.tsx     # Internal player with auto-hide controls (3s on TV)
-    │   ├── movie/[id].tsx # Movie detail + stream selection
-    │   ├── tv/[id].tsx    # TV show detail
-    │   ├── live-tv.tsx    # IPTV channels (content-filtered)
-    │   └── tv-guide.tsx   # EPG guide (null-safe, content-filtered)
+    │   ├── _layout.tsx    # Tab layout, header (Exit/Donate), smaller tabs
+    │   ├── index.tsx      # Home: hero + Next Up + Recently Played + Recommendations + carousels
+    │   ├── settings.tsx   # Accounts, VPN + Speed Test, Content Filter, Scraper Status, Vault
+    │   ├── player.tsx     # Internal player: persistent back btn, 3s auto-hide, VLC intent fix
+    │   ├── movie/[id].tsx
+    │   ├── tv/[id].tsx
+    │   ├── live-tv.tsx    # Content-filtered IPTV
+    │   └── tv-guide.tsx   # Null-safe EPG, content-filtered
     ├── components/
     │   ├── Carousel.tsx             # Watched badge support
-    │   ├── NextUpCarousel.tsx       # Next Up episodes from Trakt
-    │   ├── RecentlyPlayedCarousel.tsx  # Watch history with progress bars
+    │   ├── NextUpCarousel.tsx       # Next unwatched episodes
+    │   ├── RecentlyPlayedCarousel.tsx  # Watch history + progress bars
     │   ├── DebridDownloadDialog.tsx
     │   ├── IPTVPipPlayer.tsx
     │   ├── SourcesSearchDialog.tsx
     │   └── FocusableCard.tsx
     ├── services/
-    │   ├── contentFilterService.ts  # NSFW filter, link snooper
-    │   ├── proxiedFetch.ts          # Centralized proxy routing
-    │   ├── proxyService.ts          # Proxy settings & real testing
+    │   ├── contentFilterService.ts  # NSFW filter + link snooper
+    │   ├── proxiedFetch.ts
+    │   ├── proxyService.ts
     │   ├── debrid.ts, tmdb.ts, trakt.ts, iptv.ts
-    │   ├── streamScrapers.ts        # Uses proxiedFetch
+    │   ├── streamScrapers.ts
     │   └── scraperStatusService.ts
     └── stores/
-        └── useWatchedStore.ts       # Watched status + Next Up from Trakt
+        └── useWatchedStore.ts   # Watched + Next Up + Recommendations
 ```
 
-## Completed Features (All Sessions)
+## Completed Features
+
+### Trakt Recommendations (2026-03-21)
+- Personalized movie and TV show recommendations from Trakt
+- `getRecommendedMovies()` and `getRecommendedShows()` API methods
+- Resolved to full TMDB objects via `getMoviesByIds()` / `getTVShowsByIds()`
+- Displayed in sparkles-icon carousels on home page
+- Hidden gracefully when Trakt not connected
+
+### Player Fixes (2026-03-21)
+- **Persistent back button** - Always visible on player (not just in controls overlay)
+- **VLC fix** - Changed from `vlc://` to `intent://...#Intent;package=org.videolan.vlc;type=video/*;end` for proper video (not audio-only) playback
+- **Controls auto-hide** - 3 seconds on TV, resets timer on D-pad focus change
+- **Orientation fix** - `resetOrientation` skips on TV (always landscape)
+
+### VPN Speed Test (2026-03-21)
+- Speed test button in VPN/Proxy settings section
+- Calls `/api/proxy/test` with current proxy config
+- Shows latency, IP, and quality assessment in alert
+
+### Content Filter (2026-03-21)
+- Blocks adult content from stream links and IPTV categories
+- Keyword/domain-based filtering with customizable blocklist
+- Link Snooper follows redirects to find clean URLs
+- Toggles in Settings: Block Adult Streams, Block Adult Categories
+- Integrated into live-tv and tv-guide
+
+### Recently Played (2026-03-21)
+- Carousel on home page from watch history
+- Shows progress bars, episode labels, time-ago text
+- Orange-themed cards with backdrop images
 
 ### TV Device Fixes (2026-03-21)
-1. **Settings scroll past Real-Debrid** - Added `nestedScrollEnabled` + TV-specific ScrollView props
-2. **Player controls auto-hide** - Reduced to 3s, resets on TV D-pad focus change
-3. **Sizing after back from player** - `resetOrientation` skips on TV devices (always landscape)
-4. **Exit App button** - Red "Exit" button in header on TV (BackHandler.exitApp)
-5. **Live TV not populating** - Better error handling, content filter integration
-6. **TV Guide crash fix** - Null-safe EPG parsing, useMemo for filtered channels
-7. **VOD sizing on back** - Same fix as #3
-8. **Menu tab sizing** - Further reduced tab padding/font/spacing by ~20%
-9. **Content Filter** - Blocks adult content from streams/IPTV categories, link snooper
-
-### New Features (2026-03-21)
-- **Recently Played Carousel** - Shows watch history with progress bars, episode labels, time-ago
-- **Content Filter Service** - NSFW keyword/domain blocking, category filtering, link snooping
-- **Content Filter Settings UI** - Toggles for adult streams, adult IPTV categories, link snooper
+- Settings scroll past Real-Debrid (nestedScrollEnabled)
+- Exit App button on TV (BackHandler.exitApp)
+- Menu tab sizing reduced ~20%
+- TV Guide crash fix (null-safe EPG)
+- Donation modal fix (focusable={false} on TV)
 
 ### Previous Session Features
-- Next Up Carousel, Watched Tick Marks, Donation Modal Fix
+- Next Up Carousel, Watched Tick Marks
 - VPN/Proxy Integration, Backend Proxy Endpoints
 - Debrid Download Dialog, PiP, Scene Scrapers, Source Search
 - TV UI Scaling, App Branding v1.5.0
 
 ## Pending Tasks
-- P2: Performance optimization for Shield/Fire TV (FlashList, re-render profiling)
-- P2: VPN speed test feature
-- P3: Settings page scrolling fix (web-only issue)
+- P3: Settings page scrolling fix (web-only)
 - P3: IMDB Login integration
 - P3: GitLab CI/CD setup
 
