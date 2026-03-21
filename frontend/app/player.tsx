@@ -15,6 +15,7 @@ import { watchHistoryService } from '../services/watchHistoryService';
 import { useContentStore } from '../store/contentStore';
 import { playerState } from '../utils/playerState';
 import * as Clipboard from 'expo-clipboard';
+import { CastDialog } from '../components/CastDialog';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -59,6 +60,7 @@ export default function PlayerScreen() {
   
   // External player modal
   const [showExternalPlayerModal, setShowExternalPlayerModal] = useState(false);
+  const [showCastDialog, setShowCastDialog] = useState(false);
   
   // Subtitle language picker
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
@@ -654,6 +656,19 @@ export default function PlayerScreen() {
       >
         <Ionicons name="arrow-back" size={isTV ? 28 : 24} color="#fff" />
       </Pressable>
+
+      {/* Persistent Cast Button - always visible (mobile only) */}
+      {!isTV && (
+        <Pressable
+          onPress={() => setShowCastDialog(true)}
+          style={[styles.persistentCastBtn, focusedButton === 'persistent-cast' && styles.buttonFocused]}
+          onFocus={() => setFocusedButton('persistent-cast')}
+          onBlur={() => setFocusedButton(null)}
+          data-testid="player-cast-btn"
+        >
+          <Ionicons name="tv-outline" size={isTV ? 28 : 24} color="#fff" />
+        </Pressable>
+      )}
       
       {/* Video Player - Full Screen */}
       <Pressable 
@@ -913,6 +928,14 @@ export default function PlayerScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Cast Dialog */}
+      <CastDialog
+        visible={showCastDialog}
+        onClose={() => setShowCastDialog(false)}
+        videoUrl={url || ''}
+        title={title || 'Video'}
+      />
     </View>
     </Modal>
   );
@@ -976,6 +999,17 @@ const styles = StyleSheet.create({
     padding: isTV ? 10 : 8,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  persistentCastBtn: {
+    position: 'absolute',
+    top: isTV ? 16 : 40,
+    right: isTV ? 16 : 16,
+    zIndex: 200,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: isTV ? 24 : 20,
+    padding: isTV ? 10 : 8,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 217, 255, 0.5)',
   },
   embedTitleBar: {
     position: 'absolute',

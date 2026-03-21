@@ -19,6 +19,7 @@ import { errorLogService } from '../../services/errorLogService';
 import { PlayerChoice } from '../../components/PlayerChoice';
 import { SourcesSearchDialog } from '../../components/SourcesSearchDialog';
 import { DebridDownloadDialog } from '../../components/DebridDownloadDialog';
+import { CastDialog } from '../../components/CastDialog';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -72,6 +73,9 @@ export default function MovieDetailScreen() {
   
   // Debrid download dialog state
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [showCastDialog, setShowCastDialog] = useState(false);
+  const [castUrl, setCastUrl] = useState('');
+  const [lastResolvedUrl, setLastResolvedUrl] = useState('');
   const [downloadingTorrent, setDownloadingTorrent] = useState<CachedTorrent | null>(null);
 
   // Check for resume position on load
@@ -248,6 +252,8 @@ export default function MovieDetailScreen() {
 
   // Navigate to player with all metadata for tracking
   const navigateToPlayer = (streamUrl: string, streamType: 'video' | 'embed' = 'video', resumePosition?: number) => {
+    // Track the last resolved URL for cast feature
+    setLastResolvedUrl(streamUrl);
     // Show player choice dialog
     setPendingPlayerStream({ url: streamUrl, title: movie?.title || 'Movie' });
     setPlayerChoiceVisible(true);
@@ -454,6 +460,20 @@ export default function MovieDetailScreen() {
             <Pressable style={styles.shareButton}>
               <Ionicons name="share-outline" size={24} color={theme.colors.text} />
             </Pressable>
+            {!isTV && (
+              <Pressable 
+                style={styles.castButton}
+                onPress={() => {
+                  if (lastResolvedUrl) {
+                    setCastUrl(lastResolvedUrl);
+                  }
+                  setShowCastDialog(true);
+                }}
+                data-testid="movie-cast-btn"
+              >
+                <Ionicons name="tv-outline" size={24} color={theme.colors.primary} />
+              </Pressable>
+            )}
           </View>
 
           {/* Genres */}
@@ -918,6 +938,14 @@ export default function MovieDetailScreen() {
         }}
         onStreamReady={handleStreamReady}
       />
+
+      {/* Cast Dialog */}
+      <CastDialog
+        visible={showCastDialog}
+        onClose={() => setShowCastDialog(false)}
+        videoUrl={castUrl}
+        title={movie?.title || 'Movie'}
+      />
     </View>
   );
 }
@@ -1065,6 +1093,13 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  castButton: {
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.3)',
   },
   section: {
     marginBottom: theme.spacing.xl,
