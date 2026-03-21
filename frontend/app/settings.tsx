@@ -926,6 +926,58 @@ export default function SettingsScreen() {
                 Free proxies may be slower than direct connection.
               </Text>
             </View>
+
+            {/* Speed Test */}
+            <Pressable
+              style={[
+                styles.speedTestBtn,
+                focusedElement === 'speed-test' && styles.vpnCountryButtonFocused,
+              ]}
+              onPress={async () => {
+                if (!proxySettings?.enabled || !proxySettings?.selectedCountry) {
+                  Alert.alert('Enable Proxy', 'Please enable proxy and select a country first');
+                  return;
+                }
+                setFocusedElement('speed-testing');
+                try {
+                  const proxyUrl = await proxyService.getProxyUrl();
+                  if (!proxyUrl) {
+                    Alert.alert('No Proxy', 'No proxy server configured');
+                    setFocusedElement(null);
+                    return;
+                  }
+                  const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+                  const response = await fetch(`${backendUrl}/api/proxy/test?proxy_url=${encodeURIComponent(proxyUrl)}`, {
+                    signal: AbortSignal.timeout(15000),
+                  });
+                  const data = await response.json();
+                  if (data.success) {
+                    Alert.alert(
+                      'Speed Test Result',
+                      `Proxy is online!\n\nLatency: ${data.latency_ms}ms\nIP: ${data.ip}\n\n${data.latency_ms < 500 ? 'Good speed for streaming.' : data.latency_ms < 1500 ? 'Average speed, may buffer on HD.' : 'Slow connection, may not work well for streaming.'}`
+                    );
+                  } else {
+                    Alert.alert('Speed Test Failed', `Proxy is offline or unreachable.\n\n${data.error || 'Connection timed out'}`);
+                  }
+                } catch (error: any) {
+                  Alert.alert('Speed Test Error', error.message || 'Test failed');
+                } finally {
+                  setFocusedElement(null);
+                }
+              }}
+              onFocus={() => setFocusedElement('speed-test')}
+              onBlur={() => setFocusedElement(null)}
+              data-testid="proxy-speed-test-btn"
+            >
+              <Ionicons 
+                name={focusedElement === 'speed-testing' ? 'hourglass' : 'speedometer'} 
+                size={20} 
+                color={theme.colors.primary} 
+              />
+              <Text style={styles.speedTestText}>
+                {focusedElement === 'speed-testing' ? 'Testing...' : 'Run Speed Test'}
+              </Text>
+            </Pressable>
           </View>
         </AccountSection>
 
@@ -2366,6 +2418,23 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     flex: 1,
     lineHeight: isTV ? 18 : 16,
+  },
+  speedTestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: isTV ? 10 : 8,
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: isTV ? 10 : 8,
+    padding: isTV ? 14 : 12,
+    marginTop: isTV ? 16 : 12,
+  },
+  speedTestText: {
+    fontSize: isTV ? 14 : 13,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   // Scraper Status styles
   scraperHeader: {

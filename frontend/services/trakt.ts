@@ -437,4 +437,34 @@ export const traktService = {
       console.warn('[Trakt] Scrobble stop failed:', e);
     }
   },
+
+  // Get personalized movie recommendations
+  getRecommendedMovies: async (): Promise<number[]> => {
+    try {
+      const response = await traktApi.get('/recommendations/movies', {
+        params: { limit: 20, ignore_collected: true },
+      });
+      return (response.data || [])
+        .filter((item: any) => item.ids?.tmdb)
+        .map((item: any) => item.ids.tmdb as number);
+    } catch (e) {
+      console.warn('[Trakt] Failed to get movie recommendations:', e);
+      return [];
+    }
+  },
+
+  // Get personalized show recommendations
+  getRecommendedShows: async (): Promise<number[]> => {
+    try {
+      const response = await traktApi.get('/recommendations/shows', {
+        params: { limit: 20, ignore_collected: true },
+      });
+      return (response.data || [])
+        .filter((item: any) => item.ids?.tmdb)
+        .map((item: any) => item.ids.tmdb as number);
+    } catch (e) {
+      console.warn('[Trakt] Failed to get show recommendations:', e);
+      return [];
+    }
+  },
 };

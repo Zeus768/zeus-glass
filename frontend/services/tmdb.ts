@@ -131,6 +131,32 @@ export const tmdbService = {
     }
   },
 
+  // Get multiple movies by their TMDB IDs (for recommendations)
+  getMoviesByIds: async (ids: number[]): Promise<any[]> => {
+    const results = await Promise.allSettled(
+      ids.map(async (id) => {
+        const response = await tmdbApi.get(`/movie/${id}`);
+        return response.data;
+      })
+    );
+    return results
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value)
+      .map(r => r.value);
+  },
+
+  // Get multiple TV shows by their TMDB IDs (for recommendations)
+  getTVShowsByIds: async (ids: number[]): Promise<any[]> => {
+    const results = await Promise.allSettled(
+      ids.map(async (id) => {
+        const response = await tmdbApi.get(`/tv/${id}`);
+        return response.data;
+      })
+    );
+    return results
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value)
+      .map(r => r.value);
+  },
+
   // Search
   searchMulti: async (query: string): Promise<(Movie | TVShow)[]> => {
     const response = await tmdbApi.get('/search/multi', {

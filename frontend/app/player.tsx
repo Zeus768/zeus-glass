@@ -218,10 +218,10 @@ export default function PlayerScreen() {
 
   // External player options
   const externalPlayers = [
-    { name: 'VLC', scheme: 'vlc://', icon: 'play-circle' },
-    { name: 'MX Player', scheme: 'intent://play?url=', intentExtra: '#Intent;package=com.mxtech.videoplayer.ad;end', icon: 'film' },
+    { name: 'VLC', scheme: 'intent', intentPackage: 'org.videolan.vlc', icon: 'play-circle' },
+    { name: 'MX Player', scheme: 'intent', intentPackage: 'com.mxtech.videoplayer.ad', icon: 'film' },
     { name: 'nPlayer', scheme: 'nplayer-', icon: 'videocam' },
-    { name: 'Just Player', scheme: 'intent://play?url=', intentExtra: '#Intent;package=com.brouken.player;end', icon: 'play' },
+    { name: 'Just Player', scheme: 'intent', intentPackage: 'com.brouken.player', icon: 'play' },
     { name: 'Copy URL', scheme: 'copy', icon: 'copy' },
   ];
 
@@ -238,10 +238,10 @@ export default function PlayerScreen() {
       
       let playerUrl = '';
       
-      if (player.name === 'VLC') {
-        playerUrl = `vlc://${url}`;
-      } else if (player.name === 'MX Player' || player.name === 'Just Player') {
-        playerUrl = `intent:${url}${player.intentExtra}`;
+      if (player.scheme === 'intent' && player.intentPackage) {
+        // Use Android intent with explicit video MIME type
+        // This ensures VLC, MX Player, Just Player open as video (not audio)
+        playerUrl = `intent:${url}#Intent;package=${player.intentPackage};type=video/*;end`;
       } else if (player.name === 'nPlayer') {
         playerUrl = `nplayer-${url}`;
       }
@@ -643,6 +643,17 @@ export default function PlayerScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar hidden />
+
+      {/* Persistent Back Button - always visible */}
+      <Pressable
+        onPress={handleClose}
+        style={[styles.persistentBackBtn, focusedButton === 'persistent-back' && styles.buttonFocused]}
+        onFocus={() => setFocusedButton('persistent-back')}
+        onBlur={() => setFocusedButton(null)}
+        data-testid="player-back-btn"
+      >
+        <Ionicons name="arrow-back" size={isTV ? 28 : 24} color="#fff" />
+      </Pressable>
       
       {/* Video Player - Full Screen */}
       <Pressable 
@@ -954,6 +965,17 @@ const styles = StyleSheet.create({
     padding: 10,
     borderWidth: 3,
     borderColor: 'transparent',
+  },
+  persistentBackBtn: {
+    position: 'absolute',
+    top: isTV ? 16 : 40,
+    left: isTV ? 16 : 16,
+    zIndex: 200,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: isTV ? 24 : 20,
+    padding: isTV ? 10 : 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   embedTitleBar: {
     position: 'absolute',

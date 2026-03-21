@@ -23,14 +23,18 @@ interface WatchedStore {
   watchedMovies: Set<number>;
   watchedShows: Set<number>;
   nextUpItems: NextUpItem[];
+  recommendedMovieIds: number[];
+  recommendedShowIds: number[];
   isLoading: boolean;
   isLoadingNextUp: boolean;
+  isLoadingRecommendations: boolean;
   lastSynced: Date | null;
   isTraktConnected: boolean;
   
   // Actions
   syncFromTrakt: () => Promise<void>;
   fetchNextUp: () => Promise<void>;
+  fetchRecommendations: () => Promise<void>;
   isMovieWatched: (tmdbId: number) => boolean;
   isShowWatched: (tmdbId: number) => boolean;
   markMovieWatched: (tmdbId: number) => void;
@@ -43,8 +47,11 @@ export const useWatchedStore = create<WatchedStore>((set, get) => ({
   watchedMovies: new Set(),
   watchedShows: new Set(),
   nextUpItems: [],
+  recommendedMovieIds: [],
+  recommendedShowIds: [],
   isLoading: false,
   isLoadingNextUp: false,
+  isLoadingRecommendations: false,
   lastSynced: null,
   isTraktConnected: false,
 
@@ -53,6 +60,7 @@ export const useWatchedStore = create<WatchedStore>((set, get) => ({
     if (connected) {
       get().syncFromTrakt();
       get().fetchNextUp();
+      get().fetchRecommendations();
     }
   },
 
@@ -197,6 +205,39 @@ export const useWatchedStore = create<WatchedStore>((set, get) => ({
     } catch (error) {
       console.warn('[WatchedStore] Failed to fetch next up:', error);
       set({ isLoadingNextUp: false });
+    }
+  },
+
+  fetchRecommendations: async () => {
+    const { isTraktConnected, isLoadingRecommendations } = get();
+    
+    if (!isTraktConnected || isLoadingRecommendations) return;
+
+    set({ isLoadingRecommendations: true });
+
+    try {
+      const isLoggedIn = await traktService.isLoggedIn();
+      if (!isLoggedIn) {
+        set({ isLoadingRecommendations: false });
+        return;
+      }
+
+      // Fetch movie and show recommendations in parallel
+      const [movieIds, showIds] = await Promise.all([
+        traktService.getRecommendedMovies(),
+        traktService.getRecommendedShows(),
+      ]);
+
+      set({
+        recommendedMovieIds: movieIds,
+        recommendedShowIds: showIds,
+        isLoadingRecommendations: false,
+      });
+
+      console.log(`[WatchedStore] Fetched ${movieIds.length} movie + ${showIds.length} show recommendations`);
+    } catch (error) {
+      console.warn('[WatchedStore] Failed to fetch recommendations:', error);
+      set({ isLoadingRecommendations: false });
     }
   },
 

@@ -48,6 +48,12 @@ export default function HomeScreen() {
   const watchedShows = useWatchedStore((s) => s.watchedShows);
   const nextUpItems = useWatchedStore((s) => s.nextUpItems);
   const isLoadingNextUp = useWatchedStore((s) => s.isLoadingNextUp);
+  const recommendedMovieIds = useWatchedStore((s) => s.recommendedMovieIds);
+  const recommendedShowIds = useWatchedStore((s) => s.recommendedShowIds);
+
+  // Recommended content (resolved from TMDB)
+  const [recommendedMovies, setRecommendedMovies] = useState<any[]>([]);
+  const [recommendedShows, setRecommendedShows] = useState<any[]>([]);
 
   useEffect(() => {
     if (trendingMovies.length > 0 && !heroMovie) {
@@ -60,6 +66,26 @@ export default function HomeScreen() {
     loadTraktLists();
     loadLocalWatchHistory();
   }, []);
+
+  // Resolve recommendation IDs to full TMDB objects
+  useEffect(() => {
+    const loadRecommendedMovies = async () => {
+      if (recommendedMovieIds.length === 0) return;
+      try {
+        const results = await tmdbService.getMoviesByIds(recommendedMovieIds.slice(0, 15));
+        setRecommendedMovies(results);
+      } catch {}
+    };
+    const loadRecommendedShows = async () => {
+      if (recommendedShowIds.length === 0) return;
+      try {
+        const results = await tmdbService.getTVShowsByIds(recommendedShowIds.slice(0, 15));
+        setRecommendedShows(results);
+      } catch {}
+    };
+    loadRecommendedMovies();
+    loadRecommendedShows();
+  }, [recommendedMovieIds, recommendedShowIds]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -199,6 +225,26 @@ export default function HomeScreen() {
               title="My Favorites" 
               data={favorites}
               icon="heart"
+            />
+          )}
+
+          {/* Trakt Recommended Movies */}
+          {recommendedMovies.length > 0 && (
+            <Carousel 
+              title="Recommended Movies" 
+              data={recommendedMovies}
+              icon="sparkles"
+              watchedIds={watchedMovies}
+            />
+          )}
+
+          {/* Trakt Recommended Shows */}
+          {recommendedShows.length > 0 && (
+            <Carousel 
+              title="Recommended Shows" 
+              data={recommendedShows}
+              icon="sparkles"
+              watchedIds={watchedShows}
             />
           )}
 
