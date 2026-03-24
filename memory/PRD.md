@@ -83,6 +83,11 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - TV Guide crash fix (null-safe EPG)
 - Donation modal fix (focusable={false} on TV)
 
+### Bug Fixes (2026-03-24)
+- **Settings crash fix** - Added missing `Platform` import from react-native in settings.tsx (was causing ReferenceError crash)
+- **Stream source fallbacks** - Backend proxy now tries Torrentio → Knightcrawler → MediaFusion as fallback Stremio addons
+- **Frontend addon resilience** - Frontend `searchTorrentio` now tries multiple addon endpoints (Torrentio, Knightcrawler, MediaFusion) before falling back to backend proxy
+
 ### Previous Session Features
 - Next Up Carousel, Watched Tick Marks
 - VPN/Proxy Integration, Backend Proxy Endpoints
@@ -90,9 +95,16 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - TV UI Scaling, App Branding v1.5.0
 
 ## Pending Tasks
+- P2: TV performance optimization (replace ScrollView with @shopify/flash-list)
 - P3: Settings page scrolling fix (web-only)
 - P3: IMDB Login integration
-- P3: GitLab CI/CD setup
+- P1: GitLab CI/CD setup
+
+## Known Limitations
+- Torrentio/Stremio addon APIs are blocked by Cloudflare from datacenter IPs (preview environment). Works on real Android devices with residential IPs.
+- Cast button rendering issue on web (deprioritized per user request)
+- Casting service (castService.ts) is MOCKED - packages not installed/configured
+- VLC no-video fix needs user verification on real Android device
 
 ## Test Accounts
 - Xtreme Codes: trex-iptv.com:8080
