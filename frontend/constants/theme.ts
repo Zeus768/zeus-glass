@@ -86,12 +86,12 @@ export const theme = {
     bold: '700' as const,
   },
   tv: {
-    // Reduced TV sizes by ~30% for better screen fit
-    focusBorderWidth: 3,
-    focusScale: 1.05,
-    cardWidth: 160,
-    cardHeight: 240,
-    carouselItemSpacing: 14,
+    // Compact TV sizes for better screen fit on Shield/Fire TV
+    focusBorderWidth: 2,
+    focusScale: 1.04,
+    cardWidth: 130,
+    cardHeight: 195,
+    carouselItemSpacing: 10,
   },
   mobile: {
     cardWidth: 140,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, FlatList, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, FlatList, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,8 +8,8 @@ import { tmdbService } from '../services/tmdb';
 import { Movie } from '../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const FRANCHISE_CARD_WIDTH = isTV ? 220 : 160;
-const FRANCHISE_CARD_HEIGHT = isTV ? 330 : 240;
+const FRANCHISE_CARD_WIDTH = isTV ? 180 : 160;
+const PAGE_SIZE = 30;
 
 interface Franchise {
   id: number;
@@ -25,25 +25,50 @@ export default function FranchisesScreen() {
   const router = useRouter();
   const [franchises, setFranchises] = useState<Franchise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [selectedFranchise, setSelectedFranchise] = useState<Franchise | null>(null);
   const [focusedFranchise, setFocusedFranchise] = useState<number | null>(null);
   const [focusedMovie, setFocusedMovie] = useState<number | null>(null);
 
   useEffect(() => {
-    loadFranchises();
+    loadFranchises(1, false);
   }, []);
 
-  const loadFranchises = async () => {
-    setLoading(true);
+  const loadFranchises = async (pageNum: number, append: boolean) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
-      const data = await tmdbService.getPopularFranchises();
-      setFranchises(data);
+      const data = await tmdbService.getPopularFranchises(pageNum, PAGE_SIZE);
+      if (append) {
+        setFranchises(prev => {
+          const existingIds = new Set(prev.map(f => f.id));
+          const newItems = data.franchises.filter((f: Franchise) => !existingIds.has(f.id));
+          return [...prev, ...newItems];
+        });
+      } else {
+        setFranchises(data.franchises);
+      }
+      setHasMore(data.hasMore);
     } catch (error) {
       console.error('Error loading franchises:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
+
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      loadFranchises(nextPage, true);
+    }
+  }, [loadingMore, hasMore, page]);
 
   const handleFranchisePress = (franchise: Franchise) => {
     setSelectedFranchise(franchise);
@@ -125,6 +150,16 @@ export default function FranchisesScreen() {
     );
   };
 
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoading}>
+        <ActivityIndicator size="small" color={theme.colors.primary} />
+        <Text style={styles.footerText}>Loading more franchises...</Text>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -145,7 +180,6 @@ export default function FranchisesScreen() {
 
     return (
       <View style={styles.container}>
-        {/* Header with backdrop */}
         <View style={styles.detailHeader}>
           {backdropUrl && (
             <Image source={{ uri: backdropUrl }} style={styles.backdrop} contentFit="cover" />
@@ -162,7 +196,6 @@ export default function FranchisesScreen() {
           </View>
         </View>
 
-        {/* Overview */}
         {selectedFranchise.overview && (
           <View style={styles.overviewContainer}>
             <Text style={styles.overviewText} numberOfLines={3}>
@@ -171,7 +204,6 @@ export default function FranchisesScreen() {
           </View>
         )}
 
-        {/* Movies in franchise */}
         <FlatList
           data={sortedMovies}
           renderItem={renderMovieCard}
@@ -184,7 +216,7 @@ export default function FranchisesScreen() {
     );
   }
 
-  // Show franchises list
+  // Show franchises list with infinite scroll
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -198,10 +230,14 @@ export default function FranchisesScreen() {
       <FlatList
         data={franchises}
         renderItem={renderFranchiseCard}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         numColumns={isTV ? 6 : 3}
         contentContainerStyle={styles.franchisesGrid}
         showsVerticalScrollIndicator={false}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        data-testid="franchise-list"
       />
     </View>
   );
@@ -236,12 +272,12 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: isTV ? 32 : 24,
+    fontSize: isTV ? 24 : 24,
     fontWeight: 'bold',
     color: theme.colors.text,
   },
   subtitle: {
-    fontSize: isTV ? 16 : 14,
+    fontSize: isTV ? 14 : 14,
     color: theme.colors.textSecondary,
   },
   franchisesGrid: {
@@ -250,7 +286,7 @@ const styles = StyleSheet.create({
   },
   franchiseCard: {
     flex: 1,
-    margin: isTV ? 10 : 6,
+    margin: isTV ? 8 : 6,
     maxWidth: FRANCHISE_CARD_WIDTH + 20,
     borderRadius: 12,
     overflow: 'hidden',
@@ -297,15 +333,26 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   franchiseName: {
-    fontSize: isTV ? 14 : 12,
+    fontSize: isTV ? 13 : 12,
     fontWeight: '600',
     color: theme.colors.text,
     marginTop: 8,
     paddingHorizontal: 4,
   },
+  footerLoading: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 10,
+  },
+  footerText: {
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+  },
   // Detail view styles
   detailHeader: {
-    height: isTV ? 300 : 220,
+    height: isTV ? 250 : 220,
     position: 'relative',
   },
   backdrop: {
@@ -337,13 +384,13 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   detailTitle: {
-    fontSize: isTV ? 36 : 28,
+    fontSize: isTV ? 28 : 28,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 8,
   },
   detailCount: {
-    fontSize: isTV ? 18 : 16,
+    fontSize: isTV ? 16 : 16,
     color: theme.colors.primary,
     fontWeight: '600',
   },
@@ -352,9 +399,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   overviewText: {
-    fontSize: isTV ? 16 : 14,
+    fontSize: isTV ? 14 : 14,
     color: theme.colors.textSecondary,
-    lineHeight: isTV ? 24 : 20,
+    lineHeight: isTV ? 20 : 20,
   },
   moviesGrid: {
     paddingHorizontal: isTV ? 40 : 16,
@@ -362,7 +409,7 @@ const styles = StyleSheet.create({
   },
   movieCard: {
     flex: 1,
-    margin: isTV ? 10 : 6,
+    margin: isTV ? 8 : 6,
     maxWidth: FRANCHISE_CARD_WIDTH + 20,
     borderRadius: 12,
     overflow: 'hidden',
@@ -404,14 +451,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   movieTitle: {
-    fontSize: isTV ? 14 : 12,
+    fontSize: isTV ? 13 : 12,
     fontWeight: '600',
     color: theme.colors.text,
     marginTop: 8,
     paddingHorizontal: 4,
   },
   movieYear: {
-    fontSize: isTV ? 12 : 10,
+    fontSize: isTV ? 11 : 10,
     color: theme.colors.textMuted,
     paddingHorizontal: 4,
     marginTop: 2,
