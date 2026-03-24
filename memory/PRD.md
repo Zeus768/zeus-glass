@@ -85,8 +85,29 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 
 ### Bug Fixes (2026-03-24)
 - **Settings crash fix** - Added missing `Platform` import from react-native in settings.tsx (was causing ReferenceError crash)
-- **Stream source fallbacks** - Backend proxy now tries Torrentio → Knightcrawler → MediaFusion as fallback Stremio addons
-- **Frontend addon resilience** - Frontend `searchTorrentio` now tries multiple addon endpoints (Torrentio, Knightcrawler, MediaFusion) before falling back to backend proxy
+- **Stream source fallbacks** - Backend proxy now tries Torrentio -> Knightcrawler -> MediaFusion as fallback Stremio addons
+- **Frontend addon resilience** - Frontend `searchTorrentio` now tries multiple addon endpoints before falling back to backend proxy
+
+### Franchises Expansion (2026-03-24)
+- Expanded from 20 to 80+ unique franchise collections (Spider-Man, Avengers, Star Wars, Harry Potter, etc.)
+- Infinite scroll pagination (loads 30 at a time via FlatList onEndReached)
+- Franchise detail view shows movies sorted by release date
+- Deduplication logic to prevent repeated collections
+
+### Providers Redesign (2026-03-24)
+- Complete redesign with provider logo grid: Netflix, Disney+, Hulu, HBO Max, Apple TV+, Paramount+, Peacock, Starz, Crunchyroll, MUBI, Curiosity Stream, BritBox, Tubi, Pluto TV, Freevee, Plex
+- Per-provider content browsing with unlimited scroll (FlashList onEndReached)
+- Provider brand colors and badges on content cards
+- Sort options: Popular, Top Rated, Newest
+- Movies/TV Shows toggle for each provider
+- Fixed HBO Max provider ID (384 -> 1899) and updated Starz logo
+- Removed deprecated/unavailable providers (Showtime, Stan, Now TV, Sky Go)
+
+### Home Screen TV Zoom Fix (2026-03-24)
+- Reduced TV hero height from 75% to 42% of screen
+- Reduced all TV element sizes by 40-50% (fonts, padding, buttons, spacing)
+- Theme card sizes reduced: width 160->130, height 240->195
+- Now fits Shield/Fire TV screens properly with scrollable content below hero
 
 ### Previous Session Features
 - Next Up Carousel, Watched Tick Marks
@@ -95,7 +116,7 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - TV UI Scaling, App Branding v1.5.0
 
 ## Pending Tasks
-- P2: TV performance optimization (replace ScrollView with @shopify/flash-list)
+- P2: TV performance optimization (replace ScrollView with @shopify/flash-list in remaining areas)
 - P3: Settings page scrolling fix (web-only)
 - P3: IMDB Login integration
 - P1: GitLab CI/CD setup
