@@ -924,7 +924,7 @@ export const debridCacheService = {
     }
   },
 
-  // Torrentio API call - tries direct first (native), falls back to backend proxy (web)
+  // Stremio addon search - tries multiple sources with fallbacks
   searchTorrentio: async (imdbId: string, type: 'movie' | 'series', season?: number, episode?: number): Promise<CachedTorrent[]> => {
     try {
       // Build the URL path
@@ -935,33 +935,44 @@ export const debridCacheService = {
 
       let streams: any[] = [];
 
-      // Try direct Torrentio first (works on native/mobile, may fail on web due to CORS)
-      try {
-        const directUrl = `https://torrentio.strem.fun/stream/${contentPath}.json`;
-        errorLogService.info(`Trying Torrentio directly: ${directUrl}`, 'Torrentio');
-        
-        const response = await axios.get(directUrl, { 
-          timeout: 15000,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
-          }
-        });
-        streams = response.data?.streams || [];
-        errorLogService.info(`Torrentio direct: ${streams.length} streams`, 'Torrentio');
-      } catch (directError: any) {
-        errorLogService.warn(`Torrentio direct failed: ${directError.message}, trying proxy`, 'Torrentio');
-        
-        // Fallback to backend proxy (for web environments)
+      // Define addon sources to try in order
+      const addonSources = [
+        { name: 'Torrentio', url: `https://torrentio.strem.fun/stream/${contentPath}.json` },
+        { name: 'Knightcrawler', url: `https://knightcrawler.elfhosted.com/stream/${contentPath}.json` },
+        { name: 'MediaFusion', url: `https://mediafusion.elfhosted.com/stream/${contentPath}.json` },
+      ];
+
+      // Try direct calls first (works on native/mobile, fails on web due to CORS)
+      for (const source of addonSources) {
+        if (streams.length > 0) break;
+        try {
+          errorLogService.info(`Trying ${source.name} directly: ${source.url}`, 'Torrentio');
+          const response = await axios.get(source.url, { 
+            timeout: 12000,
+            headers: {
+              'Accept': 'application/json',
+            }
+          });
+          streams = response.data?.streams || [];
+          errorLogService.info(`${source.name} direct: ${streams.length} streams`, 'Torrentio');
+        } catch (directError: any) {
+          errorLogService.warn(`${source.name} direct failed: ${directError.message}`, 'Torrentio');
+        }
+      }
+
+      // Fallback to backend proxy (for web environments where CORS blocks direct calls)
+      if (streams.length === 0) {
         try {
           const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
           if (backendUrl) {
+            errorLogService.info('Trying backend proxy for addon streams', 'Torrentio');
             const proxyUrl = `${backendUrl}/api/torrentio/stream/${contentPath}.json`;
-            const proxyResponse = await axios.get(proxyUrl, { timeout: 20000 });
+            const proxyResponse = await axios.get(proxyUrl, { timeout: 25000 });
             streams = proxyResponse.data?.streams || [];
-            errorLogService.info(`Torrentio proxy: ${streams.length} streams`, 'Torrentio');
+            errorLogService.info(`Backend proxy: ${streams.length} streams`, 'Torrentio');
           }
         } catch (proxyError: any) {
-          errorLogService.warn(`Torrentio proxy also failed: ${proxyError.message}`, 'Torrentio');
+          errorLogService.warn(`Backend proxy failed: ${proxyError.message}`, 'Torrentio');
         }
       }
       

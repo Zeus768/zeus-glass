@@ -430,33 +430,58 @@ async def get_premiumize_account_info(apikey: str):
 
 @api_router.get("/torrentio/stream/{content_type}/{content_id:path}")
 async def proxy_torrentio_stream(content_type: str, content_id: str):
-    """Proxy Torrentio stream requests to bypass CORS"""
-    try:
-        url = f"https://torrentio.strem.fun/stream/{content_type}/{content_id}"
-        if not url.endswith('.json'):
-            url += '.json'
-        
-        logger.info(f"Proxying Torrentio request: {url}")
-        
-        async with httpx.AsyncClient() as http_client:
-            response = await http_client.get(
-                url,
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
-                },
-                timeout=20.0
-            )
-            response.raise_for_status()
-            data = response.json()
-            streams = data.get('streams', [])
-            logger.info(f"Torrentio returned {len(streams)} streams")
-            return {"streams": streams}
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Torrentio proxy HTTP error: {e.response.status_code}")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        logger.error(f"Torrentio proxy error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    """Proxy Stremio addon stream requests with fallbacks to bypass CORS"""
+    # Try multiple Stremio addon endpoints in order
+    addon_sources = [
+        ("Torrentio", "https://torrentio.strem.fun"),
+        ("Knightcrawler", "https://knightcrawler.elfhosted.com"),
+        ("MediaFusion", "https://mediafusion.elfhosted.com"),
+    ]
+    
+    content_path = content_id if content_id.endswith('.json') else f"{content_id}.json"
+    all_streams = []
+    
+    async with httpx.AsyncClient() as http_client:
+        for source_name, base_url in addon_sources:
+            try:
+                url = f"{base_url}/stream/{content_type}/{content_path}"
+                logger.info(f"Trying {source_name}: {url}")
+                
+                response = await http_client.get(
+                    url,
+                    headers={
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'application/json',
+                    },
+                    timeout=15.0,
+                    follow_redirects=True,
+                )
+                response.raise_for_status()
+                data = response.json()
+                streams = data.get('streams', [])
+                logger.info(f"{source_name} returned {len(streams)} streams")
+                
+                # Tag streams with source
+                for s in streams:
+                    if 'title' in s and source_name != 'Torrentio':
+                        if not s['title'].startswith(f'[{source_name}]'):
+                            s['title'] = f"[{source_name}] {s['title']}"
+                
+                all_streams.extend(streams)
+                
+                if len(all_streams) > 0:
+                    break  # Got results, no need for more fallbacks
+                    
+            except Exception as e:
+                logger.warning(f"{source_name} failed: {e}")
+                continue
+    
+    if all_streams:
+        logger.info(f"Total streams from addons: {len(all_streams)}")
+        return {"streams": all_streams}
+    
+    logger.warning("All addon sources failed or returned 0 streams")
+    return {"streams": []}
 
 
 @api_router.get("/torrentio/catalog/{catalog_type}/{catalog_id}")
