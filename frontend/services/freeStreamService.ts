@@ -42,7 +42,7 @@ export const freeStreamService = {
     try {
       const params = new URLSearchParams({ tmdb_id: tmdbId, type: 'movie' });
       if (imdbId) params.append('imdb_id', imdbId);
-      const resp = await axios.get(`${API_URL}/api/extract/video?${params}`, { timeout: 20000 });
+      const resp = await axios.get(`${API_URL}/api/extract/video?${params}`, { timeout: 45000 });
       if (resp.data?.success && resp.data.streams?.length > 0) {
         for (const stream of resp.data.streams) {
           servers.push({
@@ -83,7 +83,7 @@ export const freeStreamService = {
       if (imdbId) params.append('imdb_id', imdbId);
       if (season) params.append('season', season.toString());
       if (episode) params.append('episode', episode.toString());
-      const resp = await axios.get(`${API_URL}/api/extract/video?${params}`, { timeout: 20000 });
+      const resp = await axios.get(`${API_URL}/api/extract/video?${params}`, { timeout: 45000 });
       if (resp.data?.success && resp.data.streams?.length > 0) {
         for (const stream of resp.data.streams) {
           servers.push({
