@@ -23,6 +23,8 @@ import { QRAuthModal } from '../components/QRAuthModal';
 import { useAuthStore } from '../store/authStore';
 import { iptvService } from '../services/iptv';
 import { errorLogService, LogEntry } from '../services/errorLogService';
+import { updateService, UpdateInfo } from '../services/updateService';
+import { UpdateDialog } from '../components/UpdateDialog';
 import { parentalControlService, ParentalControlSettings } from '../services/parentalControlService';
 import { subtitleService, SubtitleSettings } from '../services/subtitleService';
 import { streamFilterService, OneClickPlaySettings } from '../services/streamFilterService';
@@ -511,6 +513,26 @@ export default function SettingsScreen() {
   // Focus state for account cards
   const [focusedCard, setFocusedCard] = useState<string | null>(null);
   const [focusedButton, setFocusedButton] = useState<string | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const handleCheckForUpdates = async () => {
+    setCheckingUpdate(true);
+    try {
+      const update = await updateService.checkForUpdate();
+      if (update) {
+        setUpdateInfo(update);
+        setShowUpdateDialog(true);
+      } else {
+        Alert.alert('Up to Date', `Zeus Glass v${updateService.getCurrentVersion()} is the latest version.`);
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to check for updates. Please try again.');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
 
   const AccountCard = ({
     title,
@@ -1309,9 +1331,24 @@ export default function SettingsScreen() {
         {/* App Info */}
         <AccountSection title="About">
           <View style={styles.infoCard}>
-            <Text style={styles.infoText}>Zeus Glass v1.5.0</Text>
+            <Text style={styles.infoText}>Zeus Glass v{updateService.getCurrentVersion()}</Text>
             <Text style={styles.infoSubtext}>Premium Streaming Platform</Text>
           </View>
+          <Pressable 
+            style={[styles.settingButton, { marginTop: 12 }]} 
+            onPress={handleCheckForUpdates}
+            disabled={checkingUpdate}
+            data-testid="check-updates-btn"
+          >
+            {checkingUpdate ? (
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+            ) : (
+              <Ionicons name="cloud-download-outline" size={20} color={theme.colors.primary} />
+            )}
+            <Text style={styles.settingButtonText}>
+              {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+            </Text>
+          </Pressable>
         </AccountSection>
 
         <View style={{ height: 100 }} />
@@ -1626,6 +1663,15 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Update Dialog */}
+      {updateInfo && (
+        <UpdateDialog
+          visible={showUpdateDialog}
+          updateInfo={updateInfo}
+          onDismiss={() => setShowUpdateDialog(false)}
+        />
+      )}
     </View>
   );
 }
@@ -2013,6 +2059,23 @@ const styles = StyleSheet.create({
   infoSubtext: {
     fontSize: theme.fontSize.md,
     color: theme.colors.textSecondary,
+  },
+  settingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingVertical: isTV ? 10 : 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  settingButtonText: {
+    fontSize: isTV ? 13 : 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   modalOverlay: {
     flex: 1,

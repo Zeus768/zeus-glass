@@ -6,6 +6,8 @@ import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
 import { playerState } from '../utils/playerState';
 import { initWatchedStore } from '../stores/useWatchedStore';
+import { updateService, UpdateInfo } from '../services/updateService';
+import { UpdateDialog } from '../components/UpdateDialog';
 import { BackHandler } from 'react-native';
 import { 
   Platform, 
@@ -356,6 +358,8 @@ export default function TabLayout() {
   const loadHomeContent = useContentStore((state) => state.loadHomeContent);
   const loadFavorites = useContentStore((state) => state.loadFavorites);
   const [showDonation, setShowDonation] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdate, setShowUpdate] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -371,6 +375,14 @@ export default function TabLayout() {
       // Initialize watched store (loads cache + syncs from Trakt if connected)
       try {
         await initWatchedStore();
+      } catch {}
+      // Check for app updates (Android only)
+      try {
+        const update = await updateService.checkForUpdate();
+        if (update) {
+          setUpdateInfo(update);
+          setShowUpdate(true);
+        }
       } catch {}
     };
     init();
@@ -451,6 +463,15 @@ export default function TabLayout() {
       
       {/* Donation Modal */}
       <DonationModal visible={showDonation} onClose={() => setShowDonation(false)} />
+      
+      {/* Auto-Update Dialog */}
+      {updateInfo && (
+        <UpdateDialog 
+          visible={showUpdate} 
+          updateInfo={updateInfo} 
+          onDismiss={() => setShowUpdate(false)} 
+        />
+      )}
     </View>
   );
 }

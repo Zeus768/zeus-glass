@@ -27,7 +27,8 @@
       "package": "com.zeusglass.app",
       "permissions": [
         "INTERNET",
-        "CAMERA"
+        "CAMERA",
+        "REQUEST_INSTALL_PACKAGES"
       ],
       "edgeToEdgeEnabled": true,
       "fullscreen": true

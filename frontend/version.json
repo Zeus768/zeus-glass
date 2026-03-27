@@ -1,0 +1,8 @@
+{
+  "version": "1.6.0",
+  "versionCode": 16,
+  "apkFilename": "zeus-glass-release.apk",
+  "changelog": "- Fixed settings crash bug\n- Expanded Franchises to 80+ collections with infinite scroll\n- Redesigned Providers page with actual service logos\n- Fixed home screen zoom on Shield/Fire TV\n- Added auto-update from Nextcloud",
+  "forceUpdate": false,
+  "minVersion": "1.0.0"
+}
