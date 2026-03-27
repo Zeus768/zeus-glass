@@ -621,6 +621,96 @@ export default function PlayerScreen() {
           startInLoadingState={true}
           onLoadStart={() => setLoading(true)}
           onLoadEnd={() => setLoading(false)}
+          onShouldStartLoadWithRequest={(request) => {
+            // Block known ad/popup domains
+            const blockedPatterns = [
+              'popads', 'popunder', 'doubleclick', 'googlesyndication',
+              'adserve', 'pagead2', 'clickease', 'adsterra', 'pushance',
+              'juicyads', 'exoclick', 'trafficjunky', 'tsyndicate',
+              'propellerads', 'revenuehits', 'hilltopads', 'clickadu',
+              'admaven', 'richpush', 'evadav', 'galaksion', 'monetag',
+              'profitablecpm', 'bidvertiser', 'popcash', 'clickaine',
+              'acscdn.com/script/aclib', 'disable-devtool',
+              'ads.', '/ads/', 'banner', 'tracker.', 'analytics.',
+            ];
+            const urlLower = request.url.toLowerCase();
+            const isBlocked = blockedPatterns.some(p => urlLower.includes(p));
+            if (isBlocked) {
+              console.log('[Player] Blocked ad URL:', request.url.substring(0, 60));
+              return false;
+            }
+            // Block popup windows (new tabs)
+            if (request.navigationType === 'other' && !request.isTopFrame) {
+              // Allow iframe loads (video players) but block popups
+              const isVideo = urlLower.includes('embed') || urlLower.includes('player') || 
+                             urlLower.includes('.m3u8') || urlLower.includes('.mp4') ||
+                             urlLower.includes('vidsrc') || urlLower.includes('vidplay');
+              if (!isVideo) {
+                console.log('[Player] Blocked popup:', request.url.substring(0, 60));
+                return false;
+              }
+            }
+            return true;
+          }}
+          injectedJavaScript={`
+            // Ad-blocking CSS injection
+            (function() {
+              var style = document.createElement('style');
+              style.textContent = \`
+                [class*="ad-"], [class*="popup"], [class*="overlay"]:not(video):not([class*="player"]),
+                [id*="ad-"], [id*="popup"], [id*="overlay"]:not(video):not([id*="player"]),
+                iframe[src*="ads"], iframe[src*="pop"], iframe[src*="banner"],
+                div[onclick], a[target="_blank"]:not([href*="embed"]):not([href*="player"]),
+                .ad, .ads, .adsbygoogle, .ad-container, .ad-wrapper,
+                [class*="banner"], [class*="sponsor"], [class*="promo"] {
+                  display: none !important;
+                  visibility: hidden !important;
+                  pointer-events: none !important;
+                  height: 0 !important;
+                  width: 0 !important;
+                  overflow: hidden !important;
+                }
+                video {
+                  z-index: 999999 !important;
+                }
+              \`;
+              document.head.appendChild(style);
+              
+              // Block popup windows
+              window.open = function() { return null; };
+              
+              // Remove onclick handlers that open popups
+              document.addEventListener('click', function(e) {
+                var el = e.target;
+                while (el) {
+                  if (el.tagName === 'A' && el.target === '_blank' && 
+                      !el.href.includes('embed') && !el.href.includes('player')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                  }
+                  el = el.parentElement;
+                }
+              }, true);
+              
+              // Periodically remove ad elements
+              setInterval(function() {
+                var adSelectors = [
+                  '[class*="ad-"]', '[class*="popup"]', '.ad', '.ads',
+                  'iframe[src*="ads"]', '[class*="banner"]', '[class*="sponsor"]'
+                ];
+                adSelectors.forEach(function(sel) {
+                  document.querySelectorAll(sel).forEach(function(el) {
+                    if (!el.closest('video') && !el.classList.contains('jw-wrapper') && 
+                        !el.classList.contains('plyr') && el.tagName !== 'VIDEO') {
+                      el.style.display = 'none';
+                    }
+                  });
+                });
+              }, 2000);
+            })();
+            true;
+          `}
           renderLoading={() => (
             <View style={styles.loadingOverlay}>
               <ActivityIndicator size="large" color={theme.colors.primary} />

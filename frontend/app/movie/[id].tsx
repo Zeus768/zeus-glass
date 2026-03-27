@@ -376,7 +376,8 @@ export default function MovieDetailScreen() {
 
   const handlePlayFreeServer = (server: FreeServer) => {
     setShowFreeModal(false);
-    navigateToPlayer(server.url, 'embed');
+    // Direct streams (extracted m3u8/mp4) play in native player, embeds play in WebView with ad-blocking
+    navigateToPlayer(server.url, server.type === 'direct' ? 'video' : 'embed');
   };
 
   const groupTorrentsByQuality = (torrents: CachedTorrent[]) => {
@@ -1022,6 +1023,12 @@ export default function MovieDetailScreen() {
                         <View style={styles.bestServerBadge}>
                           <Ionicons name="star" size={10} color="#000" />
                           <Text style={styles.bestServerText}>BEST</Text>
+                        </View>
+                      )}
+                      {server.type === 'direct' && (
+                        <View style={[styles.bestServerBadge, { backgroundColor: '#2196F3' }]}>
+                          <Ionicons name="shield-checkmark" size={10} color="#fff" />
+                          <Text style={[styles.bestServerText, { color: '#fff' }]}>AD-FREE</Text>
                         </View>
                       )}
                       <View style={styles.freeServerBadge}>

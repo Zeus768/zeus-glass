@@ -16,7 +16,7 @@ import { streamScraperService, StreamSource } from '../services/streamScrapers';
 import { debridCacheService } from '../services/debrid';
 import { CachedTorrent } from '../types';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface SourceProgress {
   name: string;
@@ -325,18 +325,19 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: isTV ? 40 : 20,
+    justifyContent: 'flex-end',
+    padding: 0,
   },
   dialog: {
-    width: isTV ? Math.min(SCREEN_WIDTH * 0.7, 800) : SCREEN_WIDTH - 40,
-    maxHeight: isTV ? '85%' : '90%',
+    width: '100%',
+    height: isTV ? SCREEN_HEIGHT * 0.85 : SCREEN_HEIGHT * 0.80,
     backgroundColor: theme.colors.card,
-    borderRadius: isTV ? 16 : 12,
+    borderTopLeftRadius: isTV ? 16 : 14,
+    borderTopRightRadius: isTV ? 16 : 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: theme.colors.border,
+    borderBottomWidth: 0,
   },
   header: {
     backgroundColor: theme.colors.surface,

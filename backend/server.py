@@ -12,6 +12,7 @@ from datetime import datetime
 from torrent_scraper import TorrentScraper
 from torrentio_indexer import TorrentioIndexer, RealDebridIntegration
 from smart_scraper import SmartScraper
+from video_extractor import extract_all, extract_best
 import httpx
 
 # Constants for Debrid services
@@ -612,6 +613,49 @@ async def proxy_test(proxy_url: str):
             }
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+# --- Video Extraction Endpoints (Mobiflix-style ad-free playback) ---
+
+@api_router.get("/extract/video")
+async def extract_video(
+    tmdb_id: str,
+    type: str = "movie",
+    imdb_id: Optional[str] = None,
+    season: Optional[int] = None,
+    episode: Optional[int] = None,
+):
+    """Extract all available direct video URLs (m3u8/mp4) from embed sources.
+    Returns clean URLs that play without ads — like Mobiflix."""
+    try:
+        results = await extract_all(tmdb_id, type, imdb_id, season, episode)
+        return {
+            "success": True,
+            "count": len(results),
+            "streams": results,
+        }
+    except Exception as e:
+        logger.error(f"[Extract] Error: {e}")
+        return {"success": False, "count": 0, "streams": [], "error": str(e)}
+
+
+@api_router.get("/extract/best")
+async def extract_best_video(
+    tmdb_id: str,
+    type: str = "movie",
+    imdb_id: Optional[str] = None,
+    season: Optional[int] = None,
+    episode: Optional[int] = None,
+):
+    """Extract the BEST (first available) direct video URL — for instant play."""
+    try:
+        result = await extract_best(tmdb_id, type, imdb_id, season, episode)
+        if result:
+            return {"success": True, "stream": result}
+        return {"success": False, "stream": None, "error": "No direct streams found"}
+    except Exception as e:
+        logger.error(f"[Extract] Error: {e}")
+        return {"success": False, "stream": None, "error": str(e)}
 
 # Include the router in the main app
 app.include_router(api_router)

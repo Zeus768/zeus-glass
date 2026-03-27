@@ -250,6 +250,7 @@ export default function TVShowDetailScreen() {
   const handlePlayFreeServer = (server: FreeServer) => {
     setShowFreeModal(false);
     const title = `${tvShow?.name} S${freeEpisode?.season_number}E${freeEpisode?.episode_number}`;
+    const playerType = server.type === 'direct' ? 'video' : 'embed';
     setTimeout(() => {
       setPendingPlayerStream({ url: server.url, title });
       setPlayerChoiceVisible(true);
