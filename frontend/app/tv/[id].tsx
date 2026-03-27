@@ -14,6 +14,7 @@ import { errorLogService } from '../../services/errorLogService';
 import { traktService } from '../../services/trakt';
 import { PlayerChoice } from '../../components/PlayerChoice';
 import { DebridDownloadDialog } from '../../components/DebridDownloadDialog';
+import { freeStreamService, FreeServer } from '../../services/freeStreamService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -51,6 +52,12 @@ export default function TVShowDetailScreen() {
   const [showProgress, setShowProgress] = useState<{ completed: number; aired: number } | null>(null);
   const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
   const [pendingPlayerStream, setPendingPlayerStream] = useState<{ url: string; title: string } | null>(null);
+  
+  // Free streams state
+  const [freeServers, setFreeServers] = useState<FreeServer[]>([]);
+  const [showFreeModal, setShowFreeModal] = useState(false);
+  const [loadingFree, setLoadingFree] = useState(false);
+  const [freeEpisode, setFreeEpisode] = useState<Episode | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -213,9 +220,38 @@ export default function TVShowDetailScreen() {
   const handlePlayDirectStream = async (stream: StreamSource) => {
     setShowLinksModal(false);
     const title = `${tvShow?.name} S${selectedEpisode?.season_number}E${selectedEpisode?.episode_number}`;
-    // Delay to let links modal close before opening player choice
     setTimeout(() => {
       setPendingPlayerStream({ url: stream.url, title });
+      setPlayerChoiceVisible(true);
+    }, 350);
+  };
+
+  // Free stream handlers
+  const handleWatchFreeEpisode = async (episode: Episode) => {
+    if (!tvShow) return;
+    setFreeEpisode(episode);
+    setLoadingFree(true);
+    setShowFreeModal(true);
+    try {
+      const servers = await freeStreamService.getTVServers(
+        id,
+        tvShow.imdb_id || undefined,
+        episode.season_number,
+        episode.episode_number
+      );
+      setFreeServers(servers);
+    } catch (error) {
+      console.error('Error fetching free streams:', error);
+    } finally {
+      setLoadingFree(false);
+    }
+  };
+
+  const handlePlayFreeServer = (server: FreeServer) => {
+    setShowFreeModal(false);
+    const title = `${tvShow?.name} S${freeEpisode?.season_number}E${freeEpisode?.episode_number}`;
+    setTimeout(() => {
+      setPendingPlayerStream({ url: server.url, title });
       setPlayerChoiceVisible(true);
     }, 350);
   };
@@ -466,7 +502,17 @@ export default function TVShowDetailScreen() {
                         ) : null}
                       </View>
                     </View>
-                    <Ionicons name="play" size={24} color={theme.colors.primary} />
+                    <View style={styles.episodeActions}>
+                      <Pressable
+                        onPress={(e) => { e.stopPropagation && e.stopPropagation(); handleWatchFreeEpisode(episode); }}
+                        style={styles.episodeFreeBtn}
+                        data-testid={`free-ep-${episode.episode_number}`}
+                      >
+                        <Ionicons name="videocam" size={isTV ? 16 : 14} color="#000" />
+                        <Text style={styles.episodeFreeBtnText}>Free</Text>
+                      </Pressable>
+                      <Ionicons name="play" size={24} color={theme.colors.primary} />
+                    </View>
                   </Pressable>
                 );
               })}
@@ -635,6 +681,75 @@ export default function TVShowDetailScreen() {
         }}
         onStreamReady={handleStreamReady}
       />
+
+      {/* Free Servers Modal */}
+      <Modal
+        visible={showFreeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFreeModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.freeModalContent}>
+            <View style={styles.freeModalHeader}>
+              <View style={styles.freeModalTitleRow}>
+                <Ionicons name="videocam" size={22} color="#00E676" />
+                <Text style={styles.modalTitle}>Free Servers</Text>
+                {freeEpisode && (
+                  <Text style={styles.freeEpisodeLabel}>
+                    S{freeEpisode.season_number}E{freeEpisode.episode_number}
+                  </Text>
+                )}
+              </View>
+              <Pressable onPress={() => setShowFreeModal(false)} data-testid="close-free-modal">
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </Pressable>
+            </View>
+            
+            {loadingFree ? (
+              <View style={styles.freeModalLoading}>
+                <ActivityIndicator size="large" color="#00E676" />
+                <Text style={styles.loadingText}>Finding free servers...</Text>
+              </View>
+            ) : freeServers.length === 0 ? (
+              <View style={styles.freeModalLoading}>
+                <Ionicons name="cloud-offline" size={48} color={theme.colors.textSecondary} />
+                <Text style={styles.loadingText}>No free servers found</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.freeModalScroll}>
+                <Text style={styles.freeServerNote}>
+                  Tap any server to play instantly
+                </Text>
+                {freeServers.map((server, index) => (
+                  <Pressable
+                    key={`${server.name}-${index}`}
+                    style={[styles.freeServerCard, index === 0 && styles.freeServerCardBest]}
+                    onPress={() => handlePlayFreeServer(server)}
+                    data-testid={`free-server-${server.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <View style={styles.freeServerInfo}>
+                      {index === 0 && (
+                        <View style={styles.bestServerBadge}>
+                          <Ionicons name="star" size={10} color="#000" />
+                          <Text style={styles.bestServerText}>BEST</Text>
+                        </View>
+                      )}
+                      <View style={styles.freeServerBadge}>
+                        <Ionicons name="server" size={12} color="#00E676" />
+                        <Text style={styles.freeServerBadgeText}>SERVER {index + 1}</Text>
+                      </View>
+                      <Text style={styles.freeServerName}>{server.name}</Text>
+                      <Text style={styles.freeServerQuality}>{server.quality}</Text>
+                    </View>
+                    <Ionicons name="play-circle" size={32} color={index === 0 ? '#00E676' : theme.colors.primary} />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1172,5 +1287,135 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: theme.fontWeight.bold,
     color: '#fff',
+  },
+  // Episode Free button
+  episodeActions: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 6,
+  },
+  episodeFreeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00E676',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.sm,
+    gap: 4,
+  },
+  episodeFreeBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#000',
+  },
+  // Free Servers Modal
+  freeModalContent: {
+    backgroundColor: theme.colors.card,
+    borderTopLeftRadius: theme.borderRadius.xl,
+    borderTopRightRadius: theme.borderRadius.xl,
+    maxHeight: SCREEN_HEIGHT * 0.75,
+    borderWidth: 1,
+    borderColor: '#00E676',
+  },
+  freeModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  freeModalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  freeEpisodeLabel: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.bold,
+    color: '#00E676',
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+  },
+  freeModalLoading: {
+    padding: theme.spacing.xl * 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.md,
+  },
+  freeModalScroll: {
+    padding: theme.spacing.lg,
+    maxHeight: SCREEN_HEIGHT * 0.55,
+  },
+  freeServerNote: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  freeServerCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    padding: isTV ? theme.spacing.lg : theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  freeServerCardBest: {
+    borderColor: '#00E676',
+    borderWidth: 2,
+    backgroundColor: 'rgba(0, 230, 118, 0.08)',
+  },
+  freeServerInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  freeServerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: theme.borderRadius.sm,
+    gap: 4,
+  },
+  freeServerBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#00E676',
+    letterSpacing: 0.5,
+  },
+  bestServerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00E676',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    gap: 2,
+  },
+  bestServerText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#000',
+  },
+  freeServerName: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  freeServerQuality: {
+    fontSize: theme.fontSize.sm,
+    color: '#00E676',
+    fontWeight: theme.fontWeight.medium,
   },
 });

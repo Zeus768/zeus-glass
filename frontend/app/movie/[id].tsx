@@ -20,6 +20,7 @@ import { PlayerChoice } from '../../components/PlayerChoice';
 import { SourcesSearchDialog } from '../../components/SourcesSearchDialog';
 import { DebridDownloadDialog } from '../../components/DebridDownloadDialog';
 import { CastDialog } from '../../components/CastDialog';
+import { freeStreamService, FreeServer } from '../../services/freeStreamService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -77,6 +78,11 @@ export default function MovieDetailScreen() {
   const [castUrl, setCastUrl] = useState('');
   const [lastResolvedUrl, setLastResolvedUrl] = useState('');
   const [downloadingTorrent, setDownloadingTorrent] = useState<CachedTorrent | null>(null);
+
+  // Free streams state
+  const [freeServers, setFreeServers] = useState<FreeServer[]>([]);
+  const [showFreeModal, setShowFreeModal] = useState(false);
+  const [loadingFree, setLoadingFree] = useState(false);
 
   // Check for resume position on load
   useEffect(() => {
@@ -349,6 +355,30 @@ export default function MovieDetailScreen() {
     }
   };
 
+  // Free stream handlers
+  const handleWatchFree = async () => {
+    if (!movie) return;
+    setLoadingFree(true);
+    setShowFreeModal(true);
+    try {
+      const servers = await freeStreamService.getMovieServers(id, movie.imdb_id || undefined);
+      setFreeServers(servers);
+      // Auto-play the best server immediately
+      if (servers.length > 0) {
+        setShowFreeModal(true); // Keep modal open to show all servers
+      }
+    } catch (error) {
+      console.error('Error fetching free streams:', error);
+    } finally {
+      setLoadingFree(false);
+    }
+  };
+
+  const handlePlayFreeServer = (server: FreeServer) => {
+    setShowFreeModal(false);
+    navigateToPlayer(server.url, 'embed');
+  };
+
   const groupTorrentsByQuality = (torrents: CachedTorrent[]) => {
     const grouped: { [key: string]: CachedTorrent[] } = {
       '4K': [],
@@ -438,9 +468,21 @@ export default function MovieDetailScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actions}>
-            <Pressable style={styles.playButton} onPress={loadStreamLinks}>
+            <Pressable style={styles.playButton} onPress={loadStreamLinks} data-testid="play-btn">
               <Ionicons name="play" size={24} color={theme.colors.text} />
               <Text style={styles.playButtonText}>Play</Text>
+            </Pressable>
+            <Pressable 
+              style={styles.freePlayButton} 
+              onPress={handleWatchFree}
+              data-testid="watch-free-btn"
+            >
+              {loadingFree ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <Ionicons name="videocam" size={20} color="#000" />
+              )}
+              <Text style={styles.freePlayButtonText}>Watch Free</Text>
             </Pressable>
             <Pressable 
               style={styles.searchAllButton} 
@@ -453,6 +495,7 @@ export default function MovieDetailScreen() {
             <Pressable
               style={styles.favoriteButton}
               onPress={handleFavoriteToggle}
+              data-testid="favorite-btn"
             >
               <Ionicons
                 name={isFavorite(movie.id) ? 'heart' : 'heart-outline'}
@@ -460,23 +503,6 @@ export default function MovieDetailScreen() {
                 color={isFavorite(movie.id) ? theme.colors.error : theme.colors.text}
               />
             </Pressable>
-            <Pressable style={styles.shareButton}>
-              <Ionicons name="share-outline" size={24} color={theme.colors.text} />
-            </Pressable>
-            {!isTV && (
-              <Pressable 
-                style={styles.castButton}
-                onPress={() => {
-                  if (lastResolvedUrl) {
-                    setCastUrl(lastResolvedUrl);
-                  }
-                  setShowCastDialog(true);
-                }}
-                data-testid="movie-cast-btn"
-              >
-                <Ionicons name="tv-outline" size={24} color={theme.colors.primary} />
-              </Pressable>
-            )}
           </View>
 
           {/* Genres */}
@@ -949,6 +975,70 @@ export default function MovieDetailScreen() {
         videoUrl={castUrl}
         title={movie?.title || 'Movie'}
       />
+
+      {/* Free Servers Modal */}
+      <Modal
+        visible={showFreeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFreeModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.freeModalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.freeModalTitleRow}>
+                <Ionicons name="videocam" size={22} color="#00E676" />
+                <Text style={styles.modalTitle}>Free Servers</Text>
+              </View>
+              <Pressable onPress={() => setShowFreeModal(false)} data-testid="close-free-modal">
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </Pressable>
+            </View>
+            
+            {loadingFree ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color="#00E676" />
+                <Text style={styles.loadingText}>Finding free servers...</Text>
+              </View>
+            ) : freeServers.length === 0 ? (
+              <View style={styles.modalLoading}>
+                <Ionicons name="cloud-offline" size={48} color={theme.colors.textSecondary} />
+                <Text style={styles.loadingText}>No free servers found</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.modalScroll}>
+                <Text style={styles.freeServerNote}>
+                  Tap any server to play instantly — no account needed
+                </Text>
+                {freeServers.map((server, index) => (
+                  <Pressable
+                    key={`${server.name}-${index}`}
+                    style={[styles.freeServerCard, index === 0 && styles.freeServerCardBest]}
+                    onPress={() => handlePlayFreeServer(server)}
+                    data-testid={`free-server-${server.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <View style={styles.freeServerInfo}>
+                      {index === 0 && (
+                        <View style={styles.bestServerBadge}>
+                          <Ionicons name="star" size={10} color="#000" />
+                          <Text style={styles.bestServerText}>BEST</Text>
+                        </View>
+                      )}
+                      <View style={styles.freeServerBadge}>
+                        <Ionicons name="server" size={12} color="#00E676" />
+                        <Text style={styles.freeServerBadgeText}>SERVER {index + 1}</Text>
+                      </View>
+                      <Text style={styles.freeServerName}>{server.name}</Text>
+                      <Text style={styles.freeServerQuality}>{server.quality}</Text>
+                    </View>
+                    <Ionicons name="play-circle" size={32} color={index === 0 ? '#00E676' : theme.colors.primary} />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1066,6 +1156,20 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
+  },
+  freePlayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00E676',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    gap: theme.spacing.xs,
+  },
+  freePlayButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.bold,
+    color: '#000',
   },
   searchAllButton: {
     flexDirection: 'row',
@@ -1673,5 +1777,89 @@ const styles = StyleSheet.create({
   },
   resumeModalButtonTextSecondary: {
     color: theme.colors.text,
+  },
+  // Free Servers Modal Styles
+  freeModalContent: {
+    backgroundColor: theme.colors.card,
+    borderTopLeftRadius: theme.borderRadius.xl,
+    borderTopRightRadius: theme.borderRadius.xl,
+    maxHeight: SCREEN_HEIGHT * 0.75,
+    borderWidth: 1,
+    borderColor: '#00E676',
+  },
+  freeModalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  freeServerNote: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    marginBottom: theme.spacing.md,
+  },
+  freeServerCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    padding: isTV ? theme.spacing.lg : theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  freeServerCardBest: {
+    borderColor: '#00E676',
+    borderWidth: 2,
+    backgroundColor: 'rgba(0, 230, 118, 0.08)',
+  },
+  freeServerInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  freeServerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: theme.borderRadius.sm,
+    gap: 4,
+  },
+  freeServerBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#00E676',
+    letterSpacing: 0.5,
+  },
+  bestServerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00E676',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    gap: 2,
+  },
+  bestServerText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#000',
+  },
+  freeServerName: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  freeServerQuality: {
+    fontSize: theme.fontSize.sm,
+    color: '#00E676',
+    fontWeight: theme.fontWeight.medium,
   },
 });
