@@ -98,6 +98,17 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - **TV show detail page**: Added green "Free" button on each episode card. Opens same modal with episode label (e.g., S1E1). Tap any server to play the episode instantly.
 - No Debrid required — these are free embed sources that work like Mobiflix servers
 
+### Critical Bug Fix: Sources Dialog Links Not Visible (2026-03-27)
+- **Problem**: SourcesSearchDialog showed header, source badges, and tabs, but the actual clickable stream links were invisible (FlatList had 0 height because dialog used content-determined maxHeight)
+- **Fix**: Converted dialog from centered modal to bottom sheet with fixed `SCREEN_HEIGHT * 0.80` height. FlatList now fills remaining space after header/tabs.
+- **Result**: All 15 sources' links are now visible and tappable
+
+### Player Ad-Blocking for Free Streams (2026-03-27)
+- Added `onShouldStartLoadWithRequest` URL filter blocking 30+ ad/popup domains
+- Added `injectedJavaScript` that injects CSS to hide ad elements, blocks `window.open()` popups, periodically removes injected ad DOM elements
+- Embeds now play much cleaner on native Android — similar to Mobiflix's approach
+- Backend video URL extractor created (`video_extractor.py`) for future direct m3u8/mp4 extraction (requires JS-capable scraping for most sources)
+
 
 ### 6 Bug Fixes (2026-03-27)
 1. **TV Guide crash fixed** - Added `safeFormat()` helper with `isValid()` date checking. Try-catch around FlashList renderItem prevents individual channel errors from crashing the list.
