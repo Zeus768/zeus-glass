@@ -83,6 +83,15 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - TV Guide crash fix (null-safe EPG)
 - Donation modal fix (focusable={false} on TV)
 
+
+### Performance Refactoring: FlashList Migration (2026-03-27)
+- Replaced FlatList/ScrollView with `@shopify/flash-list` across all performance-critical screens
+- **Grid screens converted**: `movies.tsx`, `tv-shows.tsx`, `vod.tsx`, `franchises.tsx` (2 lists), `live-tv.tsx` (2 lists)
+- **Search results**: Converted from ScrollView with pre-rendered `.map()` to FlashList with proper `renderItem` pattern
+- **Home carousels**: `Carousel.tsx` horizontal ScrollView replaced with horizontal FlashList for recycled rendering
+- **Bug fixes**: Fixed `await` inside non-async `useEffect` in `search.tsx`; moved `logger` initialization before first usage in `server.py`
+- Significantly reduces memory footprint and improves scroll performance on Fire TV/Shield/older Firesticks
+
 ### 6 Bug Fixes (2026-03-27)
 1. **TV Guide crash fixed** - Added `safeFormat()` helper with `isValid()` date checking. Try-catch around FlashList renderItem prevents individual channel errors from crashing the list.
 2. **IPTV not populating fixed** - Changed `isLoggedIn()` from sync to async - now actually checks config state instead of relying on uninitialized `_isLoggedIn` property.
@@ -133,14 +142,12 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - TV UI Scaling, App Branding v1.5.0
 
 ## Pending Tasks
-- P2: TV performance optimization (replace ScrollView with @shopify/flash-list in remaining areas)
-- P3: Settings page scrolling fix (web-only)
-- P3: IMDB Login integration
 - P1: GitLab CI/CD setup
+- P3: IMDB Login integration
+- P3: Watch Party feature
 
 ## Known Limitations
 - Torrentio/Stremio addon APIs are blocked by Cloudflare from datacenter IPs (preview environment). Works on real Android devices with residential IPs.
-- Cast button rendering issue on web (deprioritized per user request)
 - Casting service (castService.ts) is MOCKED - packages not installed/configured
 - VLC no-video fix needs user verification on real Android device
 
