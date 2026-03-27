@@ -19,6 +19,7 @@ interface CarouselProps {
   icon?: keyof typeof Ionicons.glyphMap;
   watchedIds?: Set<number>;
   mediaType?: 'movie' | 'tv' | 'mixed';
+  progressMap?: Map<number, number>; // tmdbId -> progress (0-100)
 }
 
 const isMovie = (item: Movie | TVShow): item is Movie => 'title' in item;
@@ -28,9 +29,10 @@ interface CarouselItemProps {
   index: number;
   onPress: (item: Movie | TVShow) => void;
   isWatched?: boolean;
+  progress?: number; // 0-100
 }
 
-const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress, isWatched }) => {
+const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress, isWatched, progress }) => {
   const [isFocused, setIsFocused] = useState(false);
   
   const imageUrl = tmdbService.getImageUrl(item.poster_path, 'w342');
@@ -94,6 +96,12 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress, isWat
           </View>
         )}
       </View>
+      {/* Progress bar — Netflix-style red bar at bottom of card */}
+      {progress !== undefined && progress > 0 && progress < 95 && (
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }]} />
+        </View>
+      )}
       <Text style={[styles.title, isFocused && styles.titleFocused]} numberOfLines={2}>
         {displayTitle}
       </Text>
@@ -102,7 +110,7 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress, isWat
   );
 };
 
-export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon, watchedIds, mediaType = 'mixed' }) => {
+export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon, watchedIds, mediaType = 'mixed', progressMap }) => {
   const router = useRouter();
 
   const handlePress = useCallback((item: Movie | TVShow) => {
@@ -157,6 +165,7 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon,
               index={index}
               onPress={handlePress}
               isWatched={checkWatched(item)}
+              progress={progressMap?.get(item.id)}
             />
           )}
           keyExtractor={(item) => item.id.toString()}
