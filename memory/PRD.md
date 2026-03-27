@@ -121,6 +121,14 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - Created `ChangelogOverlay.tsx` — centered closeable popup showing "What's New" with version, green bullet points for each change, and a "Got it" button
 - Changelog automatically appears on app launch when version changes (tracked via AsyncStorage)
 
+### TV Navigation & Focus Fixes — Firestick/Shield (2026-03-27)
+- **Movie/TV detail buttons**: Added `focusedBtn` state with `onFocus`/`onBlur` on all 4 action buttons (Play, Watch Free, All Sources, Favorite). Gold (#FFD700) highlight with scale(1.08) for maximum visibility
+- **Source links (SourcesSearchDialog)**: Updated `resultItemFocused` to gold background/border with scale — visible indicator on selected link
+- **Stream link cards**: Updated `linkCardFocused` to gold border/background for both torrent and direct streams
+- **Episode cards (TV shows)**: Brightened `episodeCardFocused` to gold border with subtle background tint
+- **Settings scroll fix**: Added `scrollRef` + `scrollY` position tracking. `scrollsToTop={false}`, `useEffect` restores scroll position after re-renders — prevents jumping to top
+- **Shield crash fix**: Replaced `BlurView` in QRAuthModal with `SafeBlur` (plain View fallback on TV). Wrapped auth handlers in try/catch with Alert error messages
+
 
 ### 6 Bug Fixes (2026-03-27)
 1. **TV Guide crash fixed** - Added `safeFormat()` helper with `isValid()` date checking. Try-catch around FlashList renderItem prevents individual channel errors from crashing the list.
