@@ -8,7 +8,9 @@ import { playerState } from '../utils/playerState';
 import { initWatchedStore } from '../stores/useWatchedStore';
 import { updateService, UpdateInfo } from '../services/updateService';
 import { UpdateDialog } from '../components/UpdateDialog';
+import { ChangelogOverlay } from '../components/ChangelogOverlay';
 import { BackHandler } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   Platform, 
   StatusBar, 
@@ -184,7 +186,7 @@ const FocusableButton = ({
 // Donation Modal Component
 function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const handleDonate = () => {
-    Linking.openURL('https://buymeacoffee.com/zeus768?new=1');
+    Linking.openURL('https://ko-fi.com/zeus768');
   };
 
   return (
@@ -196,18 +198,18 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
           </FocusableButton>
           
           <View style={[donationStyles.coffeeIcon, isTV && donationStyles.coffeeIconTV]}>
-            <Text style={[donationStyles.coffeeEmoji, isTV && { fontSize: 40 }]}>☕</Text>
+            <Ionicons name="heart" size={isTV ? 40 : 28} color="#FF5E5B" />
           </View>
           
           <Text style={[donationStyles.title, isTV && donationStyles.titleTV]}>Support Zeus Glass</Text>
           <Text style={[donationStyles.subtitle, isTV && donationStyles.subtitleTV]}>
-            If you enjoy the app, consider buying me a coffee!
+            If you enjoy the app, consider supporting us on Ko-fi!
           </Text>
           
           {/* QR Code */}
           <View style={[donationStyles.qrContainer, isTV && donationStyles.qrContainerTV]}>
             <Image 
-              source={{ uri: 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https://buymeacoffee.com/zeus768' }}
+              source={{ uri: 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https://ko-fi.com/zeus768' }}
               style={[donationStyles.qrCode, isTV && donationStyles.qrCodeTV]}
               contentFit="contain"
             />
@@ -219,8 +221,8 @@ function DonationModal({ visible, onClose }: { visible: boolean; onClose: () => 
             onPress={handleDonate}
             testID="donate-button"
           >
-            <Ionicons name="heart" size={isTV ? 32 : 22} color="#000" />
-            <Text style={[donationStyles.donateButtonText, isTV && { fontSize: 16 }]}>Buy Me a Coffee</Text>
+            <Ionicons name="heart" size={isTV ? 32 : 22} color="#fff" />
+            <Text style={[donationStyles.donateButtonText, isTV && { fontSize: 16 }]}>Support on Ko-fi</Text>
           </FocusableButton>
           
           <Text style={[donationStyles.thankYou, isTV && { fontSize: 13 }]}>Thank you for your support!</Text>
@@ -329,7 +331,7 @@ const donationStyles = StyleSheet.create({
   donateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFDD00',
+    backgroundColor: '#29ABE0',
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 30,
@@ -337,15 +339,15 @@ const donationStyles = StyleSheet.create({
     marginBottom: 20,
   },
   donateButtonTV: {
-    paddingVertical: 14,  // Reduced from 22
-    paddingHorizontal: 28,  // Reduced from 50
+    paddingVertical: 14,
+    paddingHorizontal: 28,
     marginBottom: 16,
     borderRadius: 24,
   },
   donateButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#fff',
   },
   thankYou: {
     fontSize: 14,
@@ -360,6 +362,9 @@ export default function TabLayout() {
   const [showDonation, setShowDonation] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdate, setShowUpdate] = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [changelogVersion, setChangelogVersion] = useState('');
+  const [changelogText, setChangelogText] = useState('');
 
   useEffect(() => {
     const init = async () => {
@@ -383,6 +388,20 @@ export default function TabLayout() {
           setUpdateInfo(update);
           setShowUpdate(true);
         }
+      } catch {}
+      // Show changelog if version changed since last launch
+      try {
+        const currentVer = updateService.getCurrentVersion();
+        const lastSeenVer = await AsyncStorage.getItem('zeus_last_seen_version');
+        if (lastSeenVer && lastSeenVer !== currentVer) {
+          // Version changed — fetch changelog from version.json or use local
+          const versionData = require('../version.json');
+          setChangelogVersion(currentVer);
+          setChangelogText(versionData.changelog || 'Bug fixes and improvements');
+          setShowChangelog(true);
+        }
+        // Save current version
+        await AsyncStorage.setItem('zeus_last_seen_version', currentVer);
       } catch {}
     };
     init();
@@ -487,6 +506,14 @@ export default function TabLayout() {
           onDismiss={() => setShowUpdate(false)} 
         />
       )}
+
+      {/* Changelog Overlay — shows after version changes */}
+      <ChangelogOverlay
+        visible={showChangelog}
+        version={changelogVersion}
+        changelog={changelogText}
+        onClose={() => setShowChangelog(false)}
+      />
     </View>
   );
 }

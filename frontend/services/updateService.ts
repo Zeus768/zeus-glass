@@ -15,6 +15,7 @@ const getAuthHeaders = () => ({
 export interface UpdateInfo {
   version: string;
   versionCode: number;
+  buildNumber?: number;
   apkFilename: string;
   changelog: string;
   forceUpdate: boolean;
@@ -37,6 +38,15 @@ class UpdateService {
 
   getCurrentVersion(): string {
     return this.currentVersion;
+  }
+
+  getCurrentBuildNumber(): number {
+    try {
+      const versionData = require('../version.json');
+      return versionData.buildNumber || 0;
+    } catch {
+      return 0;
+    }
   }
 
   // Compare version strings (e.g., "1.5.0" vs "1.6.0")
@@ -69,6 +79,13 @@ class UpdateService {
       }
 
       const updateInfo: UpdateInfo = await response.json();
+
+      // Check by buildNumber first (catches ALL changes), fallback to version string
+      const localBuildNumber = this.getCurrentBuildNumber();
+      if (updateInfo.buildNumber && localBuildNumber && updateInfo.buildNumber > localBuildNumber) {
+        console.log(`[Update] New build available: ${updateInfo.buildNumber} (current: ${localBuildNumber})`);
+        return updateInfo;
+      }
 
       if (this.isNewerVersion(updateInfo.version, this.currentVersion)) {
         console.log(`[Update] New version available: ${updateInfo.version} (current: ${this.currentVersion})`);
