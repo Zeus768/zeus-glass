@@ -420,6 +420,19 @@ export default function MovieDetailScreen() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Ambient Background — blurred backdrop glow behind hero */}
+        {backdropUrl && (
+          <View style={styles.ambientContainer} pointerEvents="none">
+            <Image
+              source={{ uri: backdropUrl }}
+              style={styles.ambientImage}
+              contentFit="cover"
+              blurRadius={60}
+            />
+            <View style={styles.ambientOverlay} />
+          </View>
+        )}
+
         {/* Hero Section */}
         <View style={styles.heroContainer}>
           {backdropUrl && (
@@ -469,6 +482,38 @@ export default function MovieDetailScreen() {
               <Text style={styles.overview}>{movie.overview}</Text>
             </View>
           </View>
+
+          {/* Quick Resume Banner */}
+          {resumeData && resumeData.currentTime > 60 && (
+            <Pressable
+              style={[styles.resumeBanner, focusedBtn === 'resume' && styles.resumeBannerFocused]}
+              onPress={() => {
+                if (resumeData.streamUrl) {
+                  navigateToPlayer(resumeData.streamUrl, 'video', resumeData.currentTime);
+                } else {
+                  loadStreamLinks();
+                }
+              }}
+              onFocus={() => setFocusedBtn('resume')}
+              onBlur={() => setFocusedBtn(null)}
+              data-testid="quick-resume-btn"
+            >
+              <View style={styles.resumeBannerLeft}>
+                <View style={styles.resumePlayIcon}>
+                  <Ionicons name="play" size={isTV ? 22 : 18} color="#000" />
+                </View>
+                <View>
+                  <Text style={styles.resumeBannerTitle}>Resume Watching</Text>
+                  <Text style={styles.resumeBannerSub}>
+                    {formatResumeTime(resumeData.currentTime)} watched - {Math.round(resumeData.progress)}% complete
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.resumeProgressTrack}>
+                <View style={[styles.resumeProgressFill, { width: `${resumeData.progress}%` }]} />
+              </View>
+            </Pressable>
+          )}
 
           {/* Action Buttons */}
           <View style={styles.actions}>
@@ -1075,6 +1120,76 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.background,
+  },
+  // Ambient background — blurred backdrop image creating immersive glow
+  ambientContainer: {
+    position: 'absolute',
+    top: -40,
+    left: -40,
+    right: -40,
+    height: SCREEN_HEIGHT * 0.7,
+    overflow: 'hidden',
+    zIndex: 0,
+  },
+  ambientImage: {
+    width: '120%',
+    height: '120%',
+    opacity: 0.35,
+  },
+  ambientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10, 14, 39, 0.4)',
+  },
+  // Quick Resume Banner
+  resumeBanner: {
+    flexDirection: 'column',
+    backgroundColor: 'rgba(0, 217, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.25)',
+    borderRadius: 14,
+    padding: isTV ? 18 : 14,
+    marginBottom: theme.spacing.lg,
+  },
+  resumeBannerFocused: {
+    backgroundColor: 'rgba(0, 217, 255, 0.2)',
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
+    transform: [{ scale: 1.02 }],
+  },
+  resumeBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: isTV ? 14 : 10,
+    marginBottom: 10,
+  },
+  resumePlayIcon: {
+    width: isTV ? 44 : 36,
+    height: isTV ? 44 : 36,
+    borderRadius: isTV ? 22 : 18,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resumeBannerTitle: {
+    fontSize: isTV ? 18 : 15,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  resumeBannerSub: {
+    fontSize: isTV ? 14 : 12,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  resumeProgressTrack: {
+    height: isTV ? 6 : 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  resumeProgressFill: {
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 3,
   },
   scrollView: {
     flex: 1,

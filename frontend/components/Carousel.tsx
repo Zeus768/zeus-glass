@@ -95,13 +95,13 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress, isWat
             <Text style={styles.focusLabel}>PRESS TO PLAY</Text>
           </View>
         )}
+        {/* Progress bar — Netflix-style red bar at bottom of image */}
+        {progress !== undefined && progress > 0 && progress < 95 && (
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }]} />
+          </View>
+        )}
       </View>
-      {/* Progress bar — Netflix-style red bar at bottom of card */}
-      {progress !== undefined && progress > 0 && progress < 95 && (
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }]} />
-        </View>
-      )}
       <Text style={[styles.title, isFocused && styles.titleFocused]} numberOfLines={2}>
         {displayTitle}
       </Text>
@@ -345,5 +345,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: isTV ? 16 : 12,
     fontWeight: '900',
+  },
+  progressTrack: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: isTV ? 5 : 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderBottomLeftRadius: isTV ? 16 : 12,
+    borderBottomRightRadius: isTV ? 16 : 12,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#E50914',
+    borderRadius: 2,
   },
 });

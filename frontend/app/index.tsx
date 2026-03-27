@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, RefreshControl, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ import { RecentlyPlayedCarousel } from '../components/RecentlyPlayedCarousel';
 import { useContentStore } from '../store/contentStore';
 import { tmdbService } from '../services/tmdb';
 import { useWatchedStore } from '../stores/useWatchedStore';
+import { watchHistoryService, WatchHistoryItem } from '../services/watchHistoryService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HERO_HEIGHT = isTV ? SCREEN_HEIGHT * 0.42 : SCREEN_HEIGHT * 0.65;
@@ -55,6 +56,9 @@ export default function HomeScreen() {
   const [recommendedMovies, setRecommendedMovies] = useState<any[]>([]);
   const [recommendedShows, setRecommendedShows] = useState<any[]>([]);
 
+  // Watch history for progress bars on carousels
+  const [watchHistory, setWatchHistory] = useState<WatchHistoryItem[]>([]);
+
   useEffect(() => {
     if (trendingMovies.length > 0 && !heroMovie) {
       setHeroMovie(trendingMovies[0]);
@@ -65,7 +69,23 @@ export default function HomeScreen() {
   useEffect(() => {
     loadTraktLists();
     loadLocalWatchHistory();
+    // Load full watch history for progress map
+    watchHistoryService.getHistory().then(setWatchHistory);
   }, []);
+
+  // Build progress map from watch history (tmdbId -> progress 0-100)
+  const progressMap = useMemo(() => {
+    const map = new Map<number, number>();
+    watchHistory.forEach(item => {
+      if (item.progress > 0 && item.progress < 95) {
+        // Only add if not already in map (first = most recent)
+        if (!map.has(item.tmdbId)) {
+          map.set(item.tmdbId, item.progress);
+        }
+      }
+    });
+    return map;
+  }, [watchHistory]);
 
   // Resolve recommendation IDs to full TMDB objects
   useEffect(() => {
@@ -248,20 +268,20 @@ export default function HomeScreen() {
             />
           )}
 
-          {/* Trending Movies - with flame icon */}
-          <Carousel title="Trending Movies" data={trendingMovies} icon="flame" watchedIds={watchedMovies} />
+          {/* Trending Movies - with flame icon + progress bars */}
+          <Carousel title="Trending Movies" data={trendingMovies} icon="flame" watchedIds={watchedMovies} progressMap={progressMap} />
           
-          {/* Trending TV Shows - with flame icon */}
-          <Carousel title="Trending TV Shows" data={trendingTVShows} icon="flame" watchedIds={watchedShows} />
+          {/* Trending TV Shows - with flame icon + progress bars */}
+          <Carousel title="Trending TV Shows" data={trendingTVShows} icon="flame" watchedIds={watchedShows} progressMap={progressMap} />
           
           {/* Popular Movies */}
-          <Carousel title="Popular Movies" data={popularMovies} icon="star" watchedIds={watchedMovies} />
+          <Carousel title="Popular Movies" data={popularMovies} icon="star" watchedIds={watchedMovies} progressMap={progressMap} />
           
           {/* Popular TV Shows */}
-          <Carousel title="Popular TV Shows" data={popularTVShows} icon="star" watchedIds={watchedShows} />
+          <Carousel title="Popular TV Shows" data={popularTVShows} icon="star" watchedIds={watchedShows} progressMap={progressMap} />
           
           {/* In Cinemas */}
-          <Carousel title="In Cinemas" data={nowPlayingMovies} icon="film" watchedIds={watchedMovies} />
+          <Carousel title="In Cinemas" data={nowPlayingMovies} icon="film" watchedIds={watchedMovies} progressMap={progressMap} />
         </View>
       </ScrollView>
     </View>

@@ -15,6 +15,7 @@ import { traktService } from '../../services/trakt';
 import { PlayerChoice } from '../../components/PlayerChoice';
 import { DebridDownloadDialog } from '../../components/DebridDownloadDialog';
 import { freeStreamService, FreeServer } from '../../services/freeStreamService';
+import { watchHistoryService, WatchHistoryItem } from '../../services/watchHistoryService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -59,10 +60,20 @@ export default function TVShowDetailScreen() {
   const [loadingFree, setLoadingFree] = useState(false);
   const [freeEpisode, setFreeEpisode] = useState<Episode | null>(null);
 
+  // Quick Resume state
+  const [lastWatched, setLastWatched] = useState<WatchHistoryItem | null>(null);
+  const [focusedBtn, setFocusedBtn] = useState<string | null>(null);
+
   useEffect(() => {
     if (id) {
       loadTVShowDetails();
       loadTraktProgress();
+      // Check for resume position
+      watchHistoryService.getLastWatched(parseInt(id), 'tv').then(item => {
+        if (item && item.progress > 5 && item.progress < 95) {
+          setLastWatched(item);
+        }
+      });
     }
   }, [id]);
 
@@ -257,6 +268,14 @@ export default function TVShowDetailScreen() {
     }, 350);
   };
 
+  // Format time helper for quick resume
+  const formatResumeTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const hrs = Math.floor(mins / 60);
+    if (hrs > 0) return `${hrs}h ${mins % 60}m`;
+    return `${mins}m`;
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -279,6 +298,19 @@ export default function TVShowDetailScreen() {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Ambient Background — blurred backdrop glow */}
+        {tvShow.backdrop_path && (
+          <View style={styles.ambientContainer} pointerEvents="none">
+            <Image
+              source={{ uri: `${TMDB_IMAGE_BASE}/w780${tvShow.backdrop_path}` }}
+              style={styles.ambientImage}
+              contentFit="cover"
+              blurRadius={60}
+            />
+            <View style={styles.ambientOverlay} />
+          </View>
+        )}
+
         {/* Backdrop Header */}
         <View style={styles.header}>
           <Image
@@ -349,6 +381,50 @@ export default function TVShowDetailScreen() {
               </Pressable>
             </View>
           </View>
+
+          {/* Quick Resume Banner for TV Shows */}
+          {lastWatched && lastWatched.currentTime > 60 && (
+            <Pressable
+              style={[styles.resumeBanner, focusedBtn === 'resume' && styles.resumeBannerFocused]}
+              onPress={() => {
+                if (lastWatched.streamUrl) {
+                  router.push({
+                    pathname: '/player',
+                    params: {
+                      url: lastWatched.streamUrl,
+                      title: `${tvShow.name} S${lastWatched.season}E${lastWatched.episode}`,
+                      type: 'video',
+                      startTime: String(lastWatched.currentTime),
+                    },
+                  });
+                } else {
+                  // Navigate to the episode's season
+                  if (lastWatched.season) setSelectedSeason(lastWatched.season);
+                }
+              }}
+              onFocus={() => setFocusedBtn('resume')}
+              onBlur={() => setFocusedBtn(null)}
+              data-testid="quick-resume-tv-btn"
+            >
+              <View style={styles.resumeBannerLeft}>
+                <View style={styles.resumePlayIcon}>
+                  <Ionicons name="play" size={isTV ? 22 : 18} color="#000" />
+                </View>
+                <View>
+                  <Text style={styles.resumeBannerTitle}>
+                    Resume S{lastWatched.season}E{lastWatched.episode}
+                    {lastWatched.episodeTitle ? ` - ${lastWatched.episodeTitle}` : ''}
+                  </Text>
+                  <Text style={styles.resumeBannerSub}>
+                    {formatResumeTime(lastWatched.currentTime)} watched - {Math.round(lastWatched.progress)}% complete
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.resumeProgressTrack}>
+                <View style={[styles.resumeProgressFill, { width: `${lastWatched.progress}%` }]} />
+              </View>
+            </Pressable>
+          )}
 
           {/* Next Up Episode (from Trakt) */}
           {nextUpEpisode && (
@@ -765,6 +841,77 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.background,
+  },
+  // Ambient background
+  ambientContainer: {
+    position: 'absolute',
+    top: -40,
+    left: -40,
+    right: -40,
+    height: SCREEN_HEIGHT * 0.7,
+    overflow: 'hidden',
+    zIndex: 0,
+  },
+  ambientImage: {
+    width: '120%',
+    height: '120%',
+    opacity: 0.35,
+  },
+  ambientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10, 14, 39, 0.4)',
+  },
+  // Quick Resume Banner
+  resumeBanner: {
+    flexDirection: 'column',
+    backgroundColor: 'rgba(0, 217, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.25)',
+    borderRadius: 14,
+    padding: isTV ? 18 : 14,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  resumeBannerFocused: {
+    backgroundColor: 'rgba(0, 217, 255, 0.2)',
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
+    transform: [{ scale: 1.02 }],
+  },
+  resumeBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: isTV ? 14 : 10,
+    marginBottom: 10,
+  },
+  resumePlayIcon: {
+    width: isTV ? 44 : 36,
+    height: isTV ? 44 : 36,
+    borderRadius: isTV ? 22 : 18,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resumeBannerTitle: {
+    fontSize: isTV ? 18 : 15,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  resumeBannerSub: {
+    fontSize: isTV ? 14 : 12,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  resumeProgressTrack: {
+    height: isTV ? 6 : 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  resumeProgressFill: {
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 3,
   },
   errorContainer: {
     flex: 1,

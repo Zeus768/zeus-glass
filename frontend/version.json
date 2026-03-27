@@ -1,9 +1,9 @@
 {
-  "version": "2.0.0",
-  "versionCode": 20,
-  "buildNumber": 20260327,
+  "version": "2.5.0",
+  "versionCode": 25,
+  "buildNumber": 20260328,
   "apkFilename": "zeus-glass-release.apk",
-  "changelog": "- Mobiflix-style free streaming (Watch Free button)\n- Ad-free playback via headless extraction\n- Sources dialog fix (links now visible)\n- Player ad-blocking (30+ domains blocked)\n- FlashList performance upgrade across all screens\n- Ko-fi donation support\n- Changelog popup on updates\n- Version auto-increment on every build",
+  "changelog": "- Netflix-style progress bars on all carousel cards\n- Ambient background glow on movie & TV detail pages\n- Quick Resume banner (instantly continue from where you left off)\n- Watch history progress shown across home screen carousels\n- TV show detail page shows last watched episode resume point\n- Version auto-increment on every build",
   "forceUpdate": false,
   "minVersion": "1.0.0"
 }
