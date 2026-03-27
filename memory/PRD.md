@@ -92,6 +92,13 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - **Bug fixes**: Fixed `await` inside non-async `useEffect` in `search.tsx`; moved `logger` initialization before first usage in `server.py`
 - Significantly reduces memory footprint and improves scroll performance on Fire TV/Shield/older Firesticks
 
+### Free Streams Feature — Mobiflix-style (2026-03-27)
+- Created `freeStreamService.ts` — ranks 15 free embed servers by reliability (VidSrc → VidSrc Pro → Videasy → SuperEmbed → etc.)
+- **Movie detail page**: Added green "Watch Free" button between Play and All Sources. Opens a modal showing all free servers with a "BEST" badge on top pick. Tap any server to play instantly.
+- **TV show detail page**: Added green "Free" button on each episode card. Opens same modal with episode label (e.g., S1E1). Tap any server to play the episode instantly.
+- No Debrid required — these are free embed sources that work like Mobiflix servers
+
+
 ### 6 Bug Fixes (2026-03-27)
 1. **TV Guide crash fixed** - Added `safeFormat()` helper with `isValid()` date checking. Try-catch around FlashList renderItem prevents individual channel errors from crashing the list.
 2. **IPTV not populating fixed** - Changed `isLoggedIn()` from sync to async - now actually checks config state instead of relying on uninitialized `_isLoggedIn` property.
@@ -150,6 +157,7 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - Torrentio/Stremio addon APIs are blocked by Cloudflare from datacenter IPs (preview environment). Works on real Android devices with residential IPs.
 - Casting service (castService.ts) is MOCKED - packages not installed/configured
 - VLC no-video fix needs user verification on real Android device
+- Web preview has ScrollView limitations (can't scroll to see below-fold content)
 
 ## Test Accounts
 - Xtreme Codes: trex-iptv.com:8080
