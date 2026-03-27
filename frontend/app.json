@@ -28,8 +28,10 @@
       "permissions": [
         "INTERNET",
         "CAMERA",
-        "REQUEST_INSTALL_PACKAGES"
+        "REQUEST_INSTALL_PACKAGES",
+        "ACCESS_NETWORK_STATE"
       ],
+      "minSdkVersion": 21,
       "edgeToEdgeEnabled": true,
       "fullscreen": true
     },

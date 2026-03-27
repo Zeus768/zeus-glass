@@ -254,9 +254,12 @@ export default function MovieDetailScreen() {
   const navigateToPlayer = (streamUrl: string, streamType: 'video' | 'embed' = 'video', resumePosition?: number) => {
     // Track the last resolved URL for cast feature
     setLastResolvedUrl(streamUrl);
-    // Show player choice dialog
-    setPendingPlayerStream({ url: streamUrl, title: movie?.title || 'Movie' });
-    setPlayerChoiceVisible(true);
+    // Delay to let the links modal fully close before opening player choice
+    // Prevents modal overlap issues on Android/TV
+    setTimeout(() => {
+      setPendingPlayerStream({ url: streamUrl, title: movie?.title || 'Movie' });
+      setPlayerChoiceVisible(true);
+    }, 350);
   };
 
   // Check if should show resume prompt before playing

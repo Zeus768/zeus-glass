@@ -852,8 +852,10 @@ export const iptvService = {
   },
 
   // Check if IPTV is logged in
-  isLoggedIn: (): boolean => {
-    // Synchronous check using cached state - will be updated on app load
+  isLoggedIn: async (): Promise<boolean> => {
+    // Always check the actual config state
+    const config = await iptvService.getConfig();
+    iptvService._isLoggedIn = !!(config && config.enabled);
     return iptvService._isLoggedIn;
   },
 

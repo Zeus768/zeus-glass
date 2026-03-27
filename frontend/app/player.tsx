@@ -350,7 +350,8 @@ export default function PlayerScreen() {
   useFocusEffect(
     useCallback(() => {
       return () => {
-        // Cleanup when screen loses focus
+        // Cleanup when screen loses focus - always restore tabs and orientation
+        playerState.setActive(false);
         resetOrientation();
       };
     }, [])
@@ -646,29 +647,7 @@ export default function PlayerScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar hidden />
 
-      {/* Persistent Back Button - always visible */}
-      <Pressable
-        onPress={handleClose}
-        style={[styles.persistentBackBtn, focusedButton === 'persistent-back' && styles.buttonFocused]}
-        onFocus={() => setFocusedButton('persistent-back')}
-        onBlur={() => setFocusedButton(null)}
-        data-testid="player-back-btn"
-      >
-        <Ionicons name="arrow-back" size={isTV ? 28 : 24} color="#fff" />
-      </Pressable>
-
-      {/* Persistent Cast Button - always visible (mobile only) */}
-      {!isTV && (
-        <Pressable
-          onPress={() => setShowCastDialog(true)}
-          style={[styles.persistentCastBtn, focusedButton === 'persistent-cast' && styles.buttonFocused]}
-          onFocus={() => setFocusedButton('persistent-cast')}
-          onBlur={() => setFocusedButton(null)}
-          data-testid="player-cast-btn"
-        >
-          <Ionicons name="tv-outline" size={isTV ? 28 : 24} color="#fff" />
-        </Pressable>
-      )}
+      {/* Persistent buttons removed - all controls now only show on tap */}
       
       {/* Video Player - Full Screen */}
       <Pressable 
@@ -773,18 +752,32 @@ export default function PlayerScreen() {
                 style={[styles.closeButton, focusedButton === 'close' && styles.buttonFocused]}
                 onFocus={() => setFocusedButton('close')}
                 onBlur={() => setFocusedButton(null)}
+                data-testid="player-back-btn"
               >
                 <Ionicons name="arrow-back" size={isTV ? 36 : 28} color="#fff" />
               </Pressable>
               <Text style={styles.titleText} numberOfLines={1}>{title || 'Playing'}</Text>
-              <Pressable 
-                onPress={() => setShowExternalPlayerModal(true)} 
-                style={[styles.externalPlayerButton, focusedButton === 'external' && styles.buttonFocused]}
-                onFocus={() => setFocusedButton('external')}
-                onBlur={() => setFocusedButton(null)}
-              >
-                <Ionicons name="open-outline" size={isTV ? 28 : 22} color="#fff" />
-              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {!isTV && (
+                  <Pressable 
+                    onPress={() => setShowCastDialog(true)} 
+                    style={[styles.externalPlayerButton, focusedButton === 'cast' && styles.buttonFocused]}
+                    onFocus={() => setFocusedButton('cast')}
+                    onBlur={() => setFocusedButton(null)}
+                    data-testid="player-cast-btn"
+                  >
+                    <Ionicons name="tv-outline" size={isTV ? 28 : 22} color="#fff" />
+                  </Pressable>
+                )}
+                <Pressable 
+                  onPress={() => setShowExternalPlayerModal(true)} 
+                  style={[styles.externalPlayerButton, focusedButton === 'external' && styles.buttonFocused]}
+                  onFocus={() => setFocusedButton('external')}
+                  onBlur={() => setFocusedButton(null)}
+                >
+                  <Ionicons name="open-outline" size={isTV ? 28 : 22} color="#fff" />
+                </Pressable>
+              </View>
             </View>
 
             {/* Center Controls */}

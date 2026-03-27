@@ -202,17 +202,22 @@ export default function TVShowDetailScreen() {
     setShowDownloadDialog(false);
     setDownloadingTorrent(null);
     
-    // Navigate to player
+    // Navigate to player - delay to let modal close first
     const title = `${tvShow?.name} S${selectedEpisode?.season_number}E${selectedEpisode?.episode_number}`;
-    setPendingPlayerStream({ url: streamUrl, title });
-    setPlayerChoiceVisible(true);
+    setTimeout(() => {
+      setPendingPlayerStream({ url: streamUrl, title });
+      setPlayerChoiceVisible(true);
+    }, 350);
   };
 
   const handlePlayDirectStream = async (stream: StreamSource) => {
     setShowLinksModal(false);
     const title = `${tvShow?.name} S${selectedEpisode?.season_number}E${selectedEpisode?.episode_number}`;
-    setPendingPlayerStream({ url: stream.url, title });
-    setPlayerChoiceVisible(true);
+    // Delay to let links modal close before opening player choice
+    setTimeout(() => {
+      setPendingPlayerStream({ url: stream.url, title });
+      setPlayerChoiceVisible(true);
+    }, 350);
   };
 
   if (loading) {

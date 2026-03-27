@@ -14,8 +14,20 @@ import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { format, addMinutes } from 'date-fns';
+import { format, addMinutes, isValid } from 'date-fns';
 import { theme, isTV } from '../constants/theme';
+
+// Safe date format helper - prevents crashes from invalid dates
+const safeFormat = (dateStr: string | undefined, formatStr: string, fallback: string = '--:--'): string => {
+  if (!dateStr) return fallback;
+  try {
+    const date = new Date(dateStr);
+    if (!isValid(date)) return fallback;
+    return format(date, formatStr);
+  } catch {
+    return fallback;
+  }
+};
 import { iptvService } from '../services/iptv';
 import { recordingService, RecordingCategory } from '../services/recordingService';
 import { contentFilterService } from '../services/contentFilterService';
@@ -396,6 +408,7 @@ export default function TVGuideScreen() {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           renderItem={({ item: channel }) => {
+            try {
             const isRecording = recordingChannels.has(channel.name);
             const epg = channelEPGs[channel.id] || [];
             const { current, next } = getCurrentAndNextProgram(epg);
@@ -484,7 +497,7 @@ export default function TVGuideScreen() {
                           <View style={styles.programDetails}>
                             <Text style={styles.programTitleNow} numberOfLines={1}>{current.title}</Text>
                             <Text style={styles.programTimeNow}>
-                              {format(new Date(current.start), 'HH:mm')} - {format(new Date(current.end), 'HH:mm')}
+                              {safeFormat(current.start, 'HH:mm')} - {safeFormat(current.end, 'HH:mm')}
                             </Text>
                             {current.description && (
                               <Text style={styles.programDescNow} numberOfLines={2}>{current.description}</Text>
@@ -497,7 +510,7 @@ export default function TVGuideScreen() {
                           <Text style={styles.nextLabel}>NEXT</Text>
                           <Text style={styles.programTitleNext} numberOfLines={1}>{next.title}</Text>
                           <Text style={styles.programTimeNext}>
-                            {format(new Date(next.start), 'HH:mm')}
+                            {safeFormat(next.start, 'HH:mm')}
                           </Text>
                         </View>
                       )}
@@ -520,21 +533,29 @@ export default function TVGuideScreen() {
                         key={program.id}
                         style={styles.programCard}
                         onPress={() => {
-                          setSelectedChannel(channel);
-                          setIsScheduling(true);
-                          setScheduleDate(new Date(program.start));
-                          const durationMs = new Date(program.end).getTime() - new Date(program.start).getTime();
-                          setRecordDuration(String(Math.ceil(durationMs / 60000)));
-                          setShowRecordModal(true);
+                          try {
+                            setSelectedChannel(channel);
+                            setIsScheduling(true);
+                            const startDate = new Date(program.start);
+                            const endDate = new Date(program.end);
+                            if (!isNaN(startDate.getTime())) setScheduleDate(startDate);
+                            const durationMs = endDate.getTime() - startDate.getTime();
+                            if (!isNaN(durationMs) && durationMs > 0) {
+                              setRecordDuration(String(Math.ceil(durationMs / 60000)));
+                            }
+                            setShowRecordModal(true);
+                          } catch (e) {
+                            console.warn('[TVGuide] Error handling program press:', e);
+                          }
                         }}
                       >
                         <View style={styles.programTime}>
                           <Text style={styles.programTimeText}>
-                            {format(new Date(program.start), 'HH:mm')}
+                            {safeFormat(program.start, 'HH:mm')}
                           </Text>
                           <Text style={styles.programTimeSeparator}>-</Text>
                           <Text style={styles.programTimeText}>
-                            {format(new Date(program.end), 'HH:mm')}
+                            {safeFormat(program.end, 'HH:mm')}
                           </Text>
                         </View>
                         <View style={styles.programInfo}>
@@ -550,6 +571,16 @@ export default function TVGuideScreen() {
                 )}
               </View>
             );
+            } catch (e) {
+              console.warn('[TVGuide] Error rendering channel:', channel?.name, e);
+              return (
+                <View style={styles.channelCard}>
+                  <Text style={{ color: theme.colors.textSecondary, padding: 16 }}>
+                    Error loading channel: {channel?.name || 'Unknown'}
+                  </Text>
+                </View>
+              );
+            }
           }}
           ListFooterComponent={<View style={{ height: 100 }} />}
           onViewableItemsChanged={useCallback(({ viewableItems }) => {

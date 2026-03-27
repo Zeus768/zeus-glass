@@ -48,7 +48,8 @@ export default function SearchScreen() {
     
     // Check IPTV status safely
     try {
-      setHasIPTV(iptvService.isLoggedIn());
+      const iptvLoggedIn = await iptvService.isLoggedIn();
+      setHasIPTV(iptvLoggedIn);
     } catch {
       setHasIPTV(false);
     }

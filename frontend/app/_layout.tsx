@@ -402,6 +402,21 @@ export default function TabLayout() {
   const segments = useSegments();
   const isPlayerScreen = isPlayerActive || segments[0] === 'player' || pathname === '/player' || pathname?.startsWith('/player');
 
+  // Failsafe: If we're NOT on the player screen but playerState is still active, reset it
+  useEffect(() => {
+    if (!isPlayerScreen) return;
+    // When we leave the player screen, ensure playerState is reset
+  }, [isPlayerScreen]);
+
+  useEffect(() => {
+    const isOnPlayer = segments[0] === 'player' || pathname === '/player' || pathname?.startsWith('/player');
+    if (!isOnPlayer && isPlayerActive) {
+      // User navigated away from player but playerState still active - force reset
+      console.log('[Layout] Failsafe: Resetting playerState - navigated away from player');
+      playerState.setActive(false);
+    }
+  }, [pathname, segments]);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={isPlayerScreen ? '#000' : theme.colors.background} />
