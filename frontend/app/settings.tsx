@@ -1333,22 +1333,22 @@ export default function SettingsScreen() {
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>Zeus Glass v{updateService.getCurrentVersion()}</Text>
             <Text style={styles.infoSubtext}>Premium Streaming Platform</Text>
+            <Pressable 
+              style={[styles.settingButton, { marginTop: 16 }]} 
+              onPress={handleCheckForUpdates}
+              disabled={checkingUpdate}
+              data-testid="check-updates-btn"
+            >
+              {checkingUpdate ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              ) : (
+                <Ionicons name="cloud-download-outline" size={20} color={theme.colors.primary} />
+              )}
+              <Text style={styles.settingButtonText}>
+                {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+              </Text>
+            </Pressable>
           </View>
-          <Pressable 
-            style={[styles.settingButton, { marginTop: 12 }]} 
-            onPress={handleCheckForUpdates}
-            disabled={checkingUpdate}
-            data-testid="check-updates-btn"
-          >
-            {checkingUpdate ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-            ) : (
-              <Ionicons name="cloud-download-outline" size={20} color={theme.colors.primary} />
-            )}
-            <Text style={styles.settingButtonText}>
-              {checkingUpdate ? 'Checking...' : 'Check for Updates'}
-            </Text>
-          </Pressable>
         </AccountSection>
 
         <View style={{ height: 100 }} />

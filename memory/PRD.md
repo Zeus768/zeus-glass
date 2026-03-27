@@ -83,6 +83,15 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - TV Guide crash fix (null-safe EPG)
 - Donation modal fix (focusable={false} on TV)
 
+### Auto-Update from Nextcloud (2026-03-27)
+- Created `updateService.ts` - checks Nextcloud WebDAV (`https://nextcloud.rs-s.co.uk/public.php/webdav/`) for `version.json`, compares with app version, downloads APK, triggers Android package installer
+- Created `UpdateDialog.tsx` - modal with changelog, download progress bar, retry on failure
+- Integrated auto-check on app startup in `_layout.tsx` (Android only)
+- Added "Check for Updates" button in Settings > About section
+- Added `REQUEST_INSTALL_PACKAGES` permission to AndroidManifest.xml and app.json
+- Template `version.json` created at `/app/frontend/version.json` - user uploads this + APK to Nextcloud share
+- Installed `expo-intent-launcher` for triggering APK install intent
+
 ### Bug Fixes (2026-03-24)
 - **Settings crash fix** - Added missing `Platform` import from react-native in settings.tsx (was causing ReferenceError crash)
 - **Stream source fallbacks** - Backend proxy now tries Torrentio -> Knightcrawler -> MediaFusion as fallback Stremio addons
