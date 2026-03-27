@@ -107,7 +107,13 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - Added `onShouldStartLoadWithRequest` URL filter blocking 30+ ad/popup domains
 - Added `injectedJavaScript` that injects CSS to hide ad elements, blocks `window.open()` popups, periodically removes injected ad DOM elements
 - Embeds now play much cleaner on native Android — similar to Mobiflix's approach
-- Backend video URL extractor created (`video_extractor.py`) for future direct m3u8/mp4 extraction (requires JS-capable scraping for most sources)
+
+### P2: Headless Browser Video Extractor (2026-03-27)
+- Built `headless_extractor.py` using Playwright + Chromium for true ad-free m3u8 extraction
+- Successfully extracts direct m3u8 URLs from Videasy (confirmed: Fight Club, Breaking Bad S1E1, The Dark Knight)
+- Backend endpoints `/api/extract/video` and `/api/extract/best` try headless extraction first, fall back to HTTP-only
+- Frontend `freeStreamService.ts` calls backend extraction, labels extracted URLs as "Ad-Free" with blue badge
+- Direct m3u8 URLs play in native video player — zero ads, zero popups, like Mobiflix
 
 
 ### 6 Bug Fixes (2026-03-27)

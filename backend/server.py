@@ -13,6 +13,7 @@ from torrent_scraper import TorrentScraper
 from torrentio_indexer import TorrentioIndexer, RealDebridIntegration
 from smart_scraper import SmartScraper
 from video_extractor import extract_all, extract_best
+from headless_extractor import extract_movie_streams, extract_tv_streams, shutdown_browser
 import httpx
 
 # Constants for Debrid services
@@ -625,14 +626,30 @@ async def extract_video(
     season: Optional[int] = None,
     episode: Optional[int] = None,
 ):
-    """Extract all available direct video URLs (m3u8/mp4) from embed sources.
+    """Extract direct video URLs (m3u8/mp4) using headless browser.
     Returns clean URLs that play without ads — like Mobiflix."""
     try:
+        # Try headless extraction first (Playwright)
+        if type == 'movie':
+            headless_results = await extract_movie_streams(tmdb_id, imdb_id)
+        else:
+            headless_results = await extract_tv_streams(tmdb_id, imdb_id, season or 1, episode or 1)
+        
+        if headless_results:
+            return {
+                "success": True,
+                "count": len(headless_results),
+                "streams": headless_results,
+                "method": "headless",
+            }
+        
+        # Fallback to HTTP-only extraction
         results = await extract_all(tmdb_id, type, imdb_id, season, episode)
         return {
             "success": True,
             "count": len(results),
             "streams": results,
+            "method": "http",
         }
     except Exception as e:
         logger.error(f"[Extract] Error: {e}")
@@ -647,11 +664,21 @@ async def extract_best_video(
     season: Optional[int] = None,
     episode: Optional[int] = None,
 ):
-    """Extract the BEST (first available) direct video URL — for instant play."""
+    """Extract the BEST direct video URL — for instant play."""
     try:
+        # Try headless extraction first
+        if type == 'movie':
+            headless_results = await extract_movie_streams(tmdb_id, imdb_id)
+        else:
+            headless_results = await extract_tv_streams(tmdb_id, imdb_id, season or 1, episode or 1)
+        
+        if headless_results:
+            return {"success": True, "stream": headless_results[0], "method": "headless"}
+        
+        # Fallback to HTTP extraction
         result = await extract_best(tmdb_id, type, imdb_id, season, episode)
         if result:
-            return {"success": True, "stream": result}
+            return {"success": True, "stream": result, "method": "http"}
         return {"success": False, "stream": None, "error": "No direct streams found"}
     except Exception as e:
         logger.error(f"[Extract] Error: {e}")
