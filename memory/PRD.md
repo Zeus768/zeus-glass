@@ -115,6 +115,12 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - Frontend `freeStreamService.ts` calls backend extraction, labels extracted URLs as "Ad-Free" with blue badge
 - Direct m3u8 URLs play in native video player — zero ads, zero popups, like Mobiflix
 
+### Ko-fi Donation, Version Auto-Increment, Changelog Popup (2026-03-27)
+- Replaced Buy Me a Coffee with Ko-fi (`ko-fi.com/zeus768`) — QR code + branded button (#29ABE0)
+- Added `buildNumber` field to version.json and updateService — compares build numbers so even hotfixes trigger updates
+- Created `ChangelogOverlay.tsx` — centered closeable popup showing "What's New" with version, green bullet points for each change, and a "Got it" button
+- Changelog automatically appears on app launch when version changes (tracked via AsyncStorage)
+
 
 ### 6 Bug Fixes (2026-03-27)
 1. **TV Guide crash fixed** - Added `safeFormat()` helper with `isValid()` date checking. Try-catch around FlashList renderItem prevents individual channel errors from crashing the list.
