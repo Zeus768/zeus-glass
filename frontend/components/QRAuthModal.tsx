@@ -15,6 +15,14 @@ const isSmallScreen = SCREEN_WIDTH < 400;
 // TV modal scale factor - reduce by ~50%
 const tvScale = 0.6;
 
+// BlurView crashes on some TV devices — use plain View fallback on TV
+const SafeBlur: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
+  if (isTV) {
+    return <View style={[style, { backgroundColor: 'rgba(0,0,0,0.9)' }]}>{children}</View>;
+  }
+  return <BlurView intensity={80} style={style}>{children}</BlurView>;
+};
+
 type ServiceType = 'real-debrid' | 'alldebrid' | 'premiumize' | 'trakt';
 
 interface QRAuthModalProps {
@@ -379,7 +387,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
       animationType="fade"
       onRequestClose={handleClose}
     >
-      <BlurView intensity={80} style={styles.blurContainer}>
+      <SafeBlur style={styles.blurContainer}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={[styles.modalContainer, isTV && styles.modalContainerTV]}>
             <View style={[styles.modal, isTV && styles.modalTV]}>
@@ -412,7 +420,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
             </View>
           </View>
         </ScrollView>
-      </BlurView>
+      </SafeBlur>
     </Modal>
   );
 };

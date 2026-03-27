@@ -72,6 +72,9 @@ export default function MovieDetailScreen() {
   // TV Focus state for stream sources
   const [focusedStream, setFocusedStream] = useState<string | null>(null);
   
+  // TV Focus state for action buttons
+  const [focusedBtn, setFocusedBtn] = useState<string | null>(null);
+  
   // Debrid download dialog state
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [showCastDialog, setShowCastDialog] = useState(false);
@@ -469,13 +472,21 @@ export default function MovieDetailScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actions}>
-            <Pressable style={styles.playButton} onPress={loadStreamLinks} data-testid="play-btn">
-              <Ionicons name="play" size={24} color={theme.colors.text} />
-              <Text style={styles.playButtonText}>Play</Text>
+            <Pressable 
+              style={[styles.playButton, focusedBtn === 'play' && styles.btnFocused]}
+              onPress={loadStreamLinks} 
+              onFocus={() => setFocusedBtn('play')}
+              onBlur={() => setFocusedBtn(null)}
+              data-testid="play-btn"
+            >
+              <Ionicons name="play" size={24} color={focusedBtn === 'play' ? '#000' : theme.colors.text} />
+              <Text style={[styles.playButtonText, focusedBtn === 'play' && styles.btnTextFocused]}>Play</Text>
             </Pressable>
             <Pressable 
-              style={styles.freePlayButton} 
+              style={[styles.freePlayButton, focusedBtn === 'free' && styles.freeBtnFocused]}
               onPress={handleWatchFree}
+              onFocus={() => setFocusedBtn('free')}
+              onBlur={() => setFocusedBtn(null)}
               data-testid="watch-free-btn"
             >
               {loadingFree ? (
@@ -486,22 +497,26 @@ export default function MovieDetailScreen() {
               <Text style={styles.freePlayButtonText}>Watch Free</Text>
             </Pressable>
             <Pressable 
-              style={styles.searchAllButton} 
+              style={[styles.searchAllButton, focusedBtn === 'sources' && styles.btnFocused]}
               onPress={() => setShowSourcesDialog(true)}
+              onFocus={() => setFocusedBtn('sources')}
+              onBlur={() => setFocusedBtn(null)}
               data-testid="search-all-sources-btn"
             >
-              <Ionicons name="search" size={20} color={theme.colors.text} />
-              <Text style={styles.searchAllButtonText}>All Sources</Text>
+              <Ionicons name="search" size={20} color={focusedBtn === 'sources' ? '#000' : theme.colors.text} />
+              <Text style={[styles.searchAllButtonText, focusedBtn === 'sources' && styles.btnTextFocused]}>All Sources</Text>
             </Pressable>
             <Pressable
-              style={styles.favoriteButton}
+              style={[styles.favoriteButton, focusedBtn === 'fav' && styles.btnFocused]}
               onPress={handleFavoriteToggle}
+              onFocus={() => setFocusedBtn('fav')}
+              onBlur={() => setFocusedBtn(null)}
               data-testid="favorite-btn"
             >
               <Ionicons
                 name={isFavorite(movie.id) ? 'heart' : 'heart-outline'}
                 size={24}
-                color={isFavorite(movie.id) ? theme.colors.error : theme.colors.text}
+                color={focusedBtn === 'fav' ? '#000' : (isFavorite(movie.id) ? theme.colors.error : theme.colors.text)}
               />
             </Pressable>
           </View>
@@ -1178,6 +1193,22 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.bold,
     color: '#000',
   },
+  // TV Focus styles for action buttons
+  btnFocused: {
+    backgroundColor: '#fff',
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    transform: [{ scale: 1.08 }],
+  },
+  freeBtnFocused: {
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    transform: [{ scale: 1.08 }],
+    backgroundColor: '#00C853',
+  },
+  btnTextFocused: {
+    color: '#000',
+  },
   searchAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1300,10 +1331,10 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   linkCardFocused: {
-    backgroundColor: theme.colors.primary,
-    borderColor: '#FFFFFF',
+    backgroundColor: '#FFD700',
+    borderColor: '#FFD700',
     borderWidth: 3,
-    transform: [{ scale: 1.02 }],
+    transform: [{ scale: 1.03 }],
   },
   linkInfo: {
     flex: 1,

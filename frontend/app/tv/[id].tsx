@@ -1022,13 +1022,9 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   episodeCardFocused: {
-    borderColor: theme.colors.primary,
-    transform: [{ scale: 1.02 }],
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 10,
+    borderColor: '#FFD700',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    transform: [{ scale: 1.03 }],
   },
   episodeThumb: {
     width: isTV ? 180 : 140,

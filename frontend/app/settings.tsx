@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -358,24 +358,34 @@ export default function SettingsScreen() {
   };
 
   const handleQRAuth = (service: ServiceType) => {
-    setSelectedService(service);
-    setQrModalVisible(true);
+    try {
+      setSelectedService(service);
+      setQrModalVisible(true);
+    } catch (e) {
+      console.error('[Settings] QR Auth error:', e);
+      Alert.alert('Error', 'Failed to start authentication. Please try again.');
+    }
   };
 
   const handleQRSuccess = () => {
-    switch (selectedService) {
-      case 'trakt':
-        loadTraktAccount();
-        break;
-      case 'real-debrid':
-        loadRealDebridAccount();
-        break;
-      case 'alldebrid':
-        loadAllDebridAccount();
-        break;
-      case 'premiumize':
-        loadPremiumizeAccount();
-        break;
+    try {
+      switch (selectedService) {
+        case 'trakt':
+          loadTraktAccount();
+          break;
+        case 'real-debrid':
+          loadRealDebridAccount();
+          break;
+        case 'alldebrid':
+          loadAllDebridAccount();
+          break;
+        case 'premiumize':
+          loadPremiumizeAccount();
+          break;
+      }
+    } catch (e) {
+      console.error('[Settings] QR Success handler error:', e);
+      Alert.alert('Error', 'Authentication completed but failed to load account. Please restart the app.');
     }
   };
 
@@ -516,6 +526,24 @@ export default function SettingsScreen() {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  
+  // Scroll position preservation for TV (prevents snap-to-top on re-render)
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  
+  const handleScroll = useCallback((e: any) => {
+    scrollY.current = e.nativeEvent.contentOffset.y;
+  }, []);
+  
+  // Restore scroll position after re-renders (TV fix)
+  useEffect(() => {
+    if (isTV && scrollRef.current && scrollY.current > 0) {
+      const pos = scrollY.current;
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ y: pos, animated: false });
+      });
+    }
+  });
 
   const handleCheckForUpdates = async () => {
     setCheckingUpdate(true);
@@ -681,10 +709,14 @@ export default function SettingsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView 
+        ref={scrollRef}
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={true}
-        {...(Platform.isTV && {
+        scrollsToTop={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        {...(isTV && {
           scrollEnabled: true,
           keyboardDismissMode: 'none',
           removeClippedSubviews: false,

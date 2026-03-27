@@ -470,8 +470,10 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   resultItemFocused: {
-    backgroundColor: theme.colors.primary,
-    borderColor: '#fff',
+    backgroundColor: '#FFD700',
+    borderColor: '#FFD700',
+    borderWidth: 3,
+    transform: [{ scale: 1.02 }],
   },
   resultLeft: {
     alignItems: 'center',
