@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, Pressable, 
   ActivityIndicator, ScrollView, Dimensions 
@@ -38,21 +38,14 @@ export default function SearchScreen() {
 
   useEffect(() => {
     // Check debrid status safely
-    try {
-      resolveUrlService.init().then(() => {
-        setHasDebrid(resolveUrlService.hasDebridEnabled());
-      }).catch(() => setHasDebrid(false));
-    } catch {
-      setHasDebrid(false);
-    }
+    resolveUrlService.init().then(() => {
+      setHasDebrid(resolveUrlService.hasDebridEnabled());
+    }).catch(() => setHasDebrid(false));
     
     // Check IPTV status safely
-    try {
-      const iptvLoggedIn = await iptvService.isLoggedIn();
-      setHasIPTV(iptvLoggedIn);
-    } catch {
-      setHasIPTV(false);
-    }
+    iptvService.isLoggedIn().then((loggedIn) => {
+      setHasIPTV(loggedIn);
+    }).catch(() => setHasIPTV(false));
   }, []);
 
   const handleSearch = useCallback(async (searchQuery: string) => {
@@ -236,32 +229,38 @@ export default function SearchScreen() {
     );
   };
 
-  // Get filtered results based on active tab
-  const getFilteredResults = () => {
+  // Build unified search results list for FlashList
+  const searchResultsList = useMemo(() => {
+    const results: SearchResult[] = [];
     switch (activeTab) {
       case 'movies':
-        return [
-          ...tmdbResults.filter(r => isMovie(r)).map(item => renderTMDBItem(item)),
-          ...iptvMovieResults.map(item => renderIPTVItem(item, 'movie')),
-        ];
+        tmdbResults.filter(r => isMovie(r)).forEach(item => results.push({ type: 'movie', item, source: 'tmdb' }));
+        iptvMovieResults.forEach(item => results.push({ type: 'iptv_movie', item, source: 'iptv' }));
+        break;
       case 'tvshows':
-        return [
-          ...tmdbResults.filter(r => !isMovie(r)).map(item => renderTMDBItem(item)),
-          ...iptvSeriesResults.map(item => renderIPTVItem(item, 'series')),
-        ];
+        tmdbResults.filter(r => !isMovie(r)).forEach(item => results.push({ type: 'tvshow', item, source: 'tmdb' }));
+        iptvSeriesResults.forEach(item => results.push({ type: 'iptv_series', item, source: 'iptv' }));
+        break;
       case 'iptv':
-        return [
-          ...iptvMovieResults.map(item => renderIPTVItem(item, 'movie')),
-          ...iptvSeriesResults.map(item => renderIPTVItem(item, 'series')),
-        ];
-      default: // 'all'
-        return [
-          ...tmdbResults.map(item => renderTMDBItem(item)),
-          ...iptvMovieResults.map(item => renderIPTVItem(item, 'movie')),
-          ...iptvSeriesResults.map(item => renderIPTVItem(item, 'series')),
-        ];
+        iptvMovieResults.forEach(item => results.push({ type: 'iptv_movie', item, source: 'iptv' }));
+        iptvSeriesResults.forEach(item => results.push({ type: 'iptv_series', item, source: 'iptv' }));
+        break;
+      default:
+        tmdbResults.forEach(item => results.push({ type: isMovie(item) ? 'movie' : 'tvshow', item, source: 'tmdb' }));
+        iptvMovieResults.forEach(item => results.push({ type: 'iptv_movie', item, source: 'iptv' }));
+        iptvSeriesResults.forEach(item => results.push({ type: 'iptv_series', item, source: 'iptv' }));
+        break;
     }
-  };
+    return results;
+  }, [activeTab, tmdbResults, iptvMovieResults, iptvSeriesResults]);
+
+  const renderSearchResult = useCallback(({ item: result }: { item: SearchResult }) => {
+    if (result.source === 'tmdb') {
+      return renderTMDBItem(result.item as MediaItem);
+    } else {
+      return renderIPTVItem(result.item as IPTVVODItem, result.type === 'iptv_movie' ? 'movie' : 'series');
+    }
+  }, [focusedItem]);
 
   const totalResults = tmdbResults.length + iptvMovieResults.length + iptvSeriesResults.length;
   const iptvTotal = iptvMovieResults.length + iptvSeriesResults.length;
@@ -382,10 +381,15 @@ export default function SearchScreen() {
 
       {/* Results */}
       {!loading && totalResults > 0 && (
-        <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
-          {getFilteredResults()}
-          <View style={{ height: 100 }} />
-        </ScrollView>
+        <FlashList
+          data={searchResultsList}
+          renderItem={renderSearchResult}
+          keyExtractor={(item, index) => `${item.source}-${item.type}-${index}`}
+          contentContainerStyle={styles.resultsContainer}
+          showsVerticalScrollIndicator={false}
+          estimatedItemSize={isTV ? 190 : 165}
+          ListFooterComponent={<View style={{ height: 100 }} />}
+        />
       )}
 
       {/* No Results */}
@@ -491,7 +495,6 @@ const styles = StyleSheet.create({
     color: '#FFD700',
   },
   resultsContainer: {
-    flex: 1,
     paddingHorizontal: isTV ? 40 : 16,
   },
   resultCard: {

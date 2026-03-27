@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
@@ -143,13 +144,13 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon,
         )}
       </View>
       <View style={styles.scrollWrapper}>
-        <ScrollView
+        <FlashList
+          data={data}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          style={styles.scrollView}
-        >
-          {data.map((item, index) => (
+          estimatedItemSize={CARD_WIDTH + CARD_SPACING}
+          renderItem={({ item, index }) => (
             <CarouselItem
               key={item.id}
               item={item}
@@ -157,8 +158,9 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon,
               onPress={handlePress}
               isWatched={checkWatched(item)}
             />
-          ))}
-        </ScrollView>
+          )}
+          keyExtractor={(item) => item.id.toString()}
+        />
       </View>
     </View>
   );
@@ -199,12 +201,8 @@ const styles = StyleSheet.create({
   scrollWrapper: {
     height: TOTAL_CARD_HEIGHT,
   },
-  scrollView: {
-    flex: 1,
-  },
   listContent: {
     paddingHorizontal: isTV ? 50 : 16,
-    alignItems: 'flex-start',
   },
   card: {
     width: CARD_WIDTH,

@@ -5,13 +5,13 @@ import {
   StyleSheet, 
   Pressable, 
   ActivityIndicator, 
-  FlatList,
   Dimensions,
   Alert,
   Linking,
   Platform,
   BackHandler,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -306,21 +306,14 @@ export default function LiveTVScreen() {
         <Text style={styles.hintText}>Long-press a channel for external player</Text>
 
         {/* Full screen channel grid */}
-        <FlatList
+        <FlashList
           data={filteredChannels}
           renderItem={renderChannel}
           keyExtractor={(item) => item.id}
           numColumns={NUM_COLUMNS}
           contentContainerStyle={styles.channelsGrid}
           showsVerticalScrollIndicator={false}
-          initialNumToRender={30}
-          maxToRenderPerBatch={30}
-          windowSize={7}
-          getItemLayout={(_, index) => ({
-            length: ITEM_WIDTH + ITEM_GAP,
-            offset: (ITEM_WIDTH + ITEM_GAP) * Math.floor(index / NUM_COLUMNS),
-            index,
-          })}
+          estimatedItemSize={isTV ? 120 : 100}
         />
         
         {selectedStream && (
@@ -349,13 +342,14 @@ export default function LiveTVScreen() {
         <Text style={styles.headerSubtitle}>{channels.length} channels in {categories.length} categories</Text>
       </View>
 
-      <FlatList
+      <FlashList
         data={allCategories}
         renderItem={renderCategoryCard}
         keyExtractor={(item) => item.category_id}
         numColumns={CAT_COLUMNS}
         contentContainerStyle={styles.categoriesGrid}
         showsVerticalScrollIndicator={false}
+        estimatedItemSize={isTV ? 160 : 120}
       />
       
       {selectedStream && (

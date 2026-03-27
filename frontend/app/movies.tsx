@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
@@ -333,21 +334,17 @@ export default function MoviesScreen() {
           <Text style={styles.loadingText}>Loading movies...</Text>
         </View>
       ) : (
-        <FlatList
+        <FlashList
           data={movies}
           renderItem={renderMovieCard}
           keyExtractor={(item, index) => `${item.id}-${index}`}
           numColumns={NUM_COLUMNS}
-          key={NUM_COLUMNS}
           contentContainerStyle={styles.moviesGrid}
           showsVerticalScrollIndicator={false}
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
-          initialNumToRender={20}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          removeClippedSubviews={true}
+          estimatedItemSize={isTV ? 350 : 280}
         />
       )}
     </View>

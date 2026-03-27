@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
@@ -310,21 +311,17 @@ export default function TVShowsScreen() {
           <Text style={styles.loadingText}>Loading TV shows...</Text>
         </View>
       ) : (
-        <FlatList
+        <FlashList
           data={shows}
           renderItem={renderShowCard}
           keyExtractor={(item, index) => `${item.id}-${index}`}
           numColumns={NUM_COLUMNS}
-          key={NUM_COLUMNS}
           contentContainerStyle={styles.showsGrid}
           showsVerticalScrollIndicator={false}
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
-          initialNumToRender={20}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          removeClippedSubviews={true}
+          estimatedItemSize={isTV ? 350 : 280}
         />
       )}
     </View>

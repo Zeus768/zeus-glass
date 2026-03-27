@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, FlatList, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -204,13 +205,14 @@ export default function FranchisesScreen() {
           </View>
         )}
 
-        <FlatList
+        <FlashList
           data={sortedMovies}
           renderItem={renderMovieCard}
           keyExtractor={(item) => item.id.toString()}
           numColumns={isTV ? 6 : 3}
           contentContainerStyle={styles.moviesGrid}
           showsVerticalScrollIndicator={false}
+          estimatedItemSize={isTV ? 300 : 250}
         />
       </View>
     );
@@ -227,7 +229,7 @@ export default function FranchisesScreen() {
         <Text style={styles.subtitle}>{franchises.length} collections</Text>
       </View>
 
-      <FlatList
+      <FlashList
         data={franchises}
         renderItem={renderFranchiseCard}
         keyExtractor={(item, index) => `${item.id}-${index}`}
@@ -237,7 +239,7 @@ export default function FranchisesScreen() {
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={renderFooter}
-        data-testid="franchise-list"
+        estimatedItemSize={isTV ? 300 : 250}
       />
     </View>
   );

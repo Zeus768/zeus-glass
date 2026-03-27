@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, ScrollView, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView, Alert, Modal } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { theme, isTV } from '../constants/theme';
 import { useRouter } from 'expo-router';
@@ -316,7 +317,7 @@ export default function VODScreen() {
       </View>
 
       {/* VOD Grid with Infinite Scroll */}
-      <FlatList
+      <FlashList
         data={currentContent}
         renderItem={renderVODCard}
         keyExtractor={(item) => `${contentType}-${item.id}`}
@@ -332,6 +333,7 @@ export default function VODScreen() {
             <Text style={styles.emptyText}>No content found in this category</Text>
           </View>
         }
+        estimatedItemSize={isTV ? 350 : 270}
       />
 
       {/* Series Detail Modal */}

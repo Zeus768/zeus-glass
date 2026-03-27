@@ -83,6 +83,14 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - TV Guide crash fix (null-safe EPG)
 - Donation modal fix (focusable={false} on TV)
 
+### 6 Bug Fixes (2026-03-27)
+1. **TV Guide crash fixed** - Added `safeFormat()` helper with `isValid()` date checking. Try-catch around FlashList renderItem prevents individual channel errors from crashing the list.
+2. **IPTV not populating fixed** - Changed `isLoggedIn()` from sync to async - now actually checks config state instead of relying on uninitialized `_isLoggedIn` property.
+3. **Player controls fixed** - Removed persistent back/cast buttons. ALL controls (back, cast, play/pause, seek) now only appear when user taps screen, auto-hide after inactivity.
+4. **Movie links can't play fixed** - Added 350ms delay between closing links modal and opening PlayerChoice dialog to prevent Android modal overlap issues.
+5. **Menu tabs stuck fixed** - Added playerState failsafe in `_layout.tsx`: if user navigates away from player but playerState still active, force resets tabs. Also improved `useFocusEffect` cleanup.
+6. **Android 11+ & Fire Stick support** - Set `minSdkVersion: 21` for older devices, added `ACCESS_NETWORK_STATE` permission, leanback features already present.
+
 ### Auto-Update from Nextcloud (2026-03-27)
 - Created `updateService.ts` - checks Nextcloud WebDAV (`https://nextcloud.rs-s.co.uk/public.php/webdav/`) for `version.json`, compares with app version, downloads APK, triggers Android package installer
 - Created `UpdateDialog.tsx` - modal with changelog, download progress bar, retry on failure
