@@ -1,9 +1,9 @@
 {
-  "version": "2.5.0",
-  "versionCode": 25,
+  "version": "2.6.0",
+  "versionCode": 26,
   "buildNumber": 20260328,
   "apkFilename": "zeus-glass-release.apk",
-  "changelog": "- Netflix-style progress bars on all carousel cards\n- Ambient background glow on movie & TV detail pages\n- Quick Resume banner (instantly continue from where you left off)\n- Watch history progress shown across home screen carousels\n- TV show detail page shows last watched episode resume point\n- Version auto-increment on every build",
+  "changelog": "- Navigation focus tick sounds for TV remote\n- Button press audio feedback\n- Sound toggle in Settings > Navigation Sounds\n- Focus sounds play on all carousel cards, tab bar, and buttons\n- Settings persisted via AsyncStorage\n- Netflix-style progress bars on carousel cards\n- Ambient background glow on detail pages\n- Quick Resume banner on detail pages",
   "forceUpdate": false,
   "minVersion": "1.0.0"
 }

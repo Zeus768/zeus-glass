@@ -7,6 +7,7 @@ import { theme, isTV } from '../constants/theme';
 import { Movie, TVShow } from '../types';
 import { tmdbService } from '../services/tmdb';
 import { useRouter } from 'expo-router';
+import { focusSoundService } from '../services/focusSoundService';
 
 const CARD_WIDTH = isTV ? theme.tv.cardWidth : theme.mobile.cardWidth;
 const CARD_HEIGHT = isTV ? theme.tv.cardHeight : theme.mobile.cardHeight;
@@ -43,8 +44,14 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress, isWat
 
   return (
     <Pressable
-      onPress={() => onPress(item)}
-      onFocus={() => setIsFocused(true)}
+      onPress={() => {
+        focusSoundService.playSelect();
+        onPress(item);
+      }}
+      onFocus={() => {
+        setIsFocused(true);
+        focusSoundService.playFocus();
+      }}
       onBlur={() => setIsFocused(false)}
       style={[
         styles.card,

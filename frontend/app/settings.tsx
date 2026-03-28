@@ -32,6 +32,7 @@ import { zeusVaultService, VaultData } from '../services/zeusVaultService';
 import { proxyService, ProxySettings, getAvailableCountries } from '../services/proxyService';
 import { scraperStatusService, ScraperStatus } from '../services/scraperStatusService';
 import { contentFilterService, ContentFilterSettings } from '../services/contentFilterService';
+import { focusSoundService } from '../services/focusSoundService';
 import { formatDistanceToNow, format } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -128,6 +129,9 @@ export default function SettingsScreen() {
     blockAdultCategories: true,
     customBlockedKeywords: [],
   });
+
+  // Navigation sound state
+  const [navSoundEnabled, setNavSoundEnabled] = useState(focusSoundService.isEnabled());
 
   useEffect(() => {
     // Initialize services
@@ -1204,6 +1208,59 @@ export default function SettingsScreen() {
               </View>
               <View style={[styles.toggleButton, styles.toggleButtonActive]}>
                 <Text style={[styles.toggleText, styles.toggleTextActive]}>AUTO</Text>
+              </View>
+            </View>
+          </View>
+        </AccountSection>
+
+        {/* Parental Controls Section */}
+        <AccountSection title="Navigation Sounds">
+          <View style={styles.settingsCard}>
+            <View style={styles.scraperHeader}>
+              <View style={styles.scraperTitleRow}>
+                <Ionicons name="volume-high" size={24} color={theme.colors.primary} />
+                <View style={styles.scraperTitleContainer}>
+                  <Text style={styles.scraperTitle}>Focus Sounds</Text>
+                  <Text style={styles.scraperSubtitle}>
+                    {navSoundEnabled ? 'Audio tick on D-Pad navigation' : 'Sound effects disabled'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Text style={styles.settingLabel}>Navigation Tick Sound</Text>
+                <Text style={styles.settingDescription}>Play a subtle click when moving focus with the remote</Text>
+              </View>
+              <Pressable
+                style={[
+                  styles.toggleButton,
+                  navSoundEnabled && styles.toggleButtonActive,
+                ]}
+                onPress={async () => {
+                  const newVal = !navSoundEnabled;
+                  await focusSoundService.setEnabled(newVal);
+                  setNavSoundEnabled(newVal);
+                  if (newVal) focusSoundService.playFocus(); // Preview the sound
+                }}
+                data-testid="toggle-nav-sound"
+              >
+                <Text style={[styles.toggleText, navSoundEnabled && styles.toggleTextActive]}>
+                  {navSoundEnabled ? 'ON' : 'OFF'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Text style={styles.settingLabel}>Button Press Sound</Text>
+                <Text style={styles.settingDescription}>Slightly louder tick when selecting an item</Text>
+              </View>
+              <View style={[styles.toggleButton, navSoundEnabled ? styles.toggleButtonActive : null]}>
+                <Text style={[styles.toggleText, navSoundEnabled && styles.toggleTextActive]}>
+                  {navSoundEnabled ? 'ON' : 'OFF'}
+                </Text>
               </View>
             </View>
           </View>

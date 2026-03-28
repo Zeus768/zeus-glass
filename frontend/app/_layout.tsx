@@ -9,6 +9,7 @@ import { initWatchedStore } from '../stores/useWatchedStore';
 import { updateService, UpdateInfo } from '../services/updateService';
 import { UpdateDialog } from '../components/UpdateDialog';
 import { ChangelogOverlay } from '../components/ChangelogOverlay';
+import { focusSoundService } from '../services/focusSoundService';
 import { BackHandler } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
@@ -69,8 +70,14 @@ function CustomTabBar() {
           return (
             <Pressable
               key={tab.name}
-              onPress={() => router.push(tab.route as any)}
-              onFocus={() => setFocusedTab(tab.name)}
+              onPress={() => {
+                focusSoundService.playSelect();
+                router.push(tab.route as any);
+              }}
+              onFocus={() => {
+                setFocusedTab(tab.name);
+                focusSoundService.playFocus();
+              }}
               onBlur={() => setFocusedTab(null)}
               style={[
                 tabBarStyles.tab,
@@ -163,8 +170,14 @@ const FocusableButton = ({
   
   return (
     <Pressable
-      onPress={onPress}
-      onFocus={() => setIsFocused(true)}
+      onPress={() => {
+        focusSoundService.playSelect();
+        onPress?.();
+      }}
+      onFocus={() => {
+        setIsFocused(true);
+        focusSoundService.playFocus();
+      }}
       onBlur={() => setIsFocused(false)}
       style={[
         style,
@@ -380,6 +393,10 @@ export default function TabLayout() {
       // Initialize watched store (loads cache + syncs from Trakt if connected)
       try {
         await initWatchedStore();
+      } catch {}
+      // Initialize focus sounds for TV navigation
+      try {
+        await focusSoundService.init();
       } catch {}
       // Check for app updates (Android only)
       try {

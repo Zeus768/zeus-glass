@@ -5,6 +5,7 @@ import { theme, isTV } from '../constants/theme';
 import { tmdbService } from '../services/tmdb';
 import { Movie, TVShow } from '../types';
 import { useRouter } from 'expo-router';
+import { focusSoundService } from '../services/focusSoundService';
 
 interface FocusableCardProps {
   item: Movie | TVShow;
@@ -46,8 +47,14 @@ export const FocusableCard: React.FC<FocusableCardProps> = memo(({
 
   return (
     <Pressable
-      onPress={handlePress}
-      onFocus={() => setIsFocused(true)}
+      onPress={() => {
+        focusSoundService.playSelect();
+        handlePress();
+      }}
+      onFocus={() => {
+        setIsFocused(true);
+        focusSoundService.playFocus();
+      }}
       onBlur={() => setIsFocused(false)}
       style={[
         styles.card,
