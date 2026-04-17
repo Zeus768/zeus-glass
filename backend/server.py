@@ -727,10 +727,11 @@ select,input{padding:8px 12px;border-radius:8px;border:1px solid #1a2235;backgro
 <div id="content"><div class="loading">Loading logs...</div></div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
 let allData = [];
 const API = window.location.origin + '/api';
 
-async function loadLogs() {
+window.loadLogs = async function() {
   const level = document.getElementById('levelFilter').value;
   const limit = document.getElementById('limitFilter').value;
   let url = API + '/logs?limit=' + limit;
@@ -747,7 +748,7 @@ async function loadLogs() {
   }
 }
 
-function renderStats(data) {
+window.renderStats = function(data) {
   let totalErrors = 0, totalWarns = 0, totalLogs = 0, devices = new Set();
   allData.forEach(u => {
     devices.add(u.device_id);
@@ -765,7 +766,7 @@ function renderStats(data) {
     '<div class="stat"><div class="stat-value">' + totalLogs + '</div><div class="stat-label">Total Entries</div></div>';
 }
 
-function renderLogs(uploads) {
+window.renderLogs = function(uploads) {
   if(!uploads.length) {
     document.getElementById('content').innerHTML = '<div class="empty">No logs uploaded yet. Logs will appear here when devices upload them.</div>';
     return;
@@ -781,7 +782,7 @@ function renderLogs(uploads) {
       html += '<div class="log-entry"><span class="badge ' + l.level + '">' + l.level.toUpperCase() + '</span>';
       html += '<span class="log-context">' + (l.context || '-') + '</span>';
       html += '<div><span class="log-message">' + escapeHtml(l.message) + '</span>';
-      if(l.stack) html += '<div class="toggle-stack" onclick="this.nextSibling.style.display=this.nextSibling.style.display===\'none\'?\'block\':\'none\'">Show Stack</div><div class="log-stack" style="display:none">' + escapeHtml(l.stack) + '</div>';
+      if(l.stack) html += '<div class="toggle-stack" onclick="var s=this.nextSibling;s.style.display=s.style.display===String.fromCharCode(110,111,110,101)?String.fromCharCode(98,108,111,99,107):String.fromCharCode(110,111,110,101)">Show Stack</div><div class="log-stack" style="display:none">' + escapeHtml(l.stack) + '</div>';
       html += '</div></div>';
     });
     html += '</div>';
@@ -789,7 +790,7 @@ function renderLogs(uploads) {
   document.getElementById('content').innerHTML = html;
 }
 
-function filterLocally() {
+window.filterLocally = function() {
   const q = document.getElementById('searchFilter').value.toLowerCase();
   if(!q) { renderLogs(allData); return; }
   const filtered = allData.map(u => ({
@@ -802,13 +803,13 @@ function filterLocally() {
 
 function escapeHtml(s) { const d=document.createElement('div');d.textContent=s;return d.innerHTML; }
 
-async function clearAll() {
+window.clearAll = async function() {
   if(!confirm('Delete ALL stored logs? This cannot be undone.')) return;
   await fetch(API + '/logs/clear', {method:'DELETE'});
   loadLogs();
 }
 
-function exportLogs() {
+window.exportLogs = function() {
   const blob = new Blob([JSON.stringify(allData, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -817,6 +818,7 @@ function exportLogs() {
 }
 
 loadLogs();
+});
 </script>
 </body>
 </html>"""
