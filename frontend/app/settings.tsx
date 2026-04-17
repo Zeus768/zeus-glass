@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Clipboard,
   Linking,
   Share,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
@@ -500,16 +501,42 @@ export default function SettingsScreen() {
     setParentalSettings(parentalControlService.getSettings());
   };
 
-  const AccountSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
+  const AccountSection = ({ title, children, sectionKey }: { title: string; children: React.ReactNode; sectionKey?: string }) => {
+    const key = sectionKey || title.toLowerCase().replace(/\s+/g, '-');
+    return (
+      <View style={styles.section} onLayout={trackSectionLayout(key)}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {children}
+      </View>
+    );
+  };
 
   // Focus state for account cards
   const [focusedCard, setFocusedCard] = useState<string | null>(null);
   const [focusedButton, setFocusedButton] = useState<string | null>(null);
+
+  // ScrollView ref and section position tracking for TV focus scrolling
+  const scrollViewRef = useRef<ScrollView>(null);
+  const sectionYPositions = useRef<{[key: string]: number}>({});
+
+  // Track the Y position of each focusable section
+  const trackSectionLayout = (key: string) => (event: any) => {
+    sectionYPositions.current[key] = event.nativeEvent.layout.y;
+  };
+
+  // Programmatically scroll to a section when it receives focus (critical for Fire TV)
+  const scrollToFocused = (key: string) => {
+    const y = sectionYPositions.current[key];
+    if (y !== undefined && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: Math.max(0, y - 80), animated: true });
+    }
+  };
+
+  // Combined focus handler: set state + scroll to element
+  const handleTVFocus = (elementKey: string, sectionKey?: string) => {
+    setFocusedElement(elementKey);
+    scrollToFocused(sectionKey || elementKey);
+  };
 
   const AccountCard = ({
     title,
@@ -530,10 +557,13 @@ export default function SettingsScreen() {
     const isLogoutFocused = focusedButton === `${cardId}-logout`;
     
     return (
-      <View style={[
-        styles.accountCard,
-        isCardFocused && styles.accountCardFocused,
-      ]}>
+      <View 
+        style={[
+          styles.accountCard,
+          isCardFocused && styles.accountCardFocused,
+        ]}
+        onLayout={trackSectionLayout(cardId)}
+      >
         <View style={styles.accountHeader}>
           <View style={styles.accountTitleContainer}>
             <Ionicons name={icon as any} size={isTV ? 20 : 24} color={theme.colors.primary} />
@@ -545,6 +575,7 @@ export default function SettingsScreen() {
               onFocus={() => {
                 setFocusedCard(cardId);
                 setFocusedButton(`${cardId}-logout`);
+                scrollToFocused(cardId);
               }}
               onBlur={() => {
                 setFocusedCard(null);
@@ -566,6 +597,7 @@ export default function SettingsScreen() {
               onFocus={() => {
                 setFocusedCard(cardId);
                 setFocusedButton(`${cardId}-login`);
+                scrollToFocused(cardId);
               }}
               onBlur={() => {
                 setFocusedCard(null);
@@ -658,6 +690,7 @@ export default function SettingsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={true}
@@ -782,7 +815,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.vaultButton, styles.vaultButtonPrimary, focusedElement === 'vault-save' && styles.buttonFocused]}
                 onPress={handleSaveVault}
-                onFocus={() => setFocusedElement('vault-save')}
+                onFocus={() => handleTVFocus('vault-save', 'vault')}
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
                 data-testid="vault-save-btn"
@@ -800,7 +833,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.vaultButton, focusedElement === 'vault-restore' && styles.buttonFocused]}
                 onPress={handleRestoreVault}
-                onFocus={() => setFocusedElement('vault-restore')}
+                onFocus={() => handleTVFocus('vault-restore', 'vault')}
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
                 data-testid="vault-restore-btn"
@@ -812,7 +845,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.vaultButton, focusedElement === 'vault-export' && styles.buttonFocused]}
                 onPress={handleExportVault}
-                onFocus={() => setFocusedElement('vault-export')}
+                onFocus={() => handleTVFocus('vault-export', 'vault')}
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
                 data-testid="vault-share-btn"
@@ -824,7 +857,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.vaultButton, focusedElement === 'vault-modal' && styles.buttonFocused]}
                 onPress={() => setVaultModalVisible(true)}
-                onFocus={() => setFocusedElement('vault-modal')}
+                onFocus={() => handleTVFocus('vault-modal', 'vault')}
                 onBlur={() => setFocusedElement(null)}
                 data-testid="vault-import-btn"
               >
@@ -900,7 +933,7 @@ export default function SettingsScreen() {
                         await proxyService.enableProxy(country.code);
                       }
                     }}
-                    onFocus={() => setFocusedElement(`vpn-${country.code}`)}
+                    onFocus={() => handleTVFocus(`vpn-${country.code}`, 'vpn-/-proxy')}
                     onBlur={() => setFocusedElement(null)}
                     data-testid={`vpn-country-${country.code}`}
                   >
@@ -965,7 +998,7 @@ export default function SettingsScreen() {
                   setFocusedElement(null);
                 }
               }}
-              onFocus={() => setFocusedElement('speed-test')}
+              onFocus={() => handleTVFocus('speed-test', 'vpn-/-proxy')}
               onBlur={() => setFocusedElement(null)}
               data-testid="proxy-speed-test-btn"
             >
@@ -982,7 +1015,7 @@ export default function SettingsScreen() {
         </AccountSection>
 
         {/* Scraper Status Section */}
-        <AccountSection title="Scraper Status">
+        <AccountSection title="Scraper Status" sectionKey="scraper-status">
           <View style={styles.settingsCard}>
             <View style={styles.scraperHeader}>
               <View style={styles.scraperTitleRow}>
@@ -1004,7 +1037,7 @@ export default function SettingsScreen() {
                   focusedElement === 'check-scrapers' && styles.scraperCheckButtonFocused,
                 ]}
                 onPress={handleCheckScrapers}
-                onFocus={() => setFocusedElement('check-scrapers')}
+                onFocus={() => handleTVFocus('check-scrapers', 'scraper-status')}
                 onBlur={() => setFocusedElement(null)}
                 disabled={checkingScrapers}
                 data-testid="check-scrapers-btn"
@@ -1082,7 +1115,7 @@ export default function SettingsScreen() {
 
 
         {/* Content Filter Section */}
-        <AccountSection title="Content Filter">
+        <AccountSection title="Content Filter" sectionKey="content-filter">
           <View style={styles.settingsCard}>
             <View style={styles.scraperHeader}>
               <View style={styles.scraperTitleRow}>
@@ -1105,12 +1138,15 @@ export default function SettingsScreen() {
                 style={[
                   styles.toggleButton,
                   contentFilterSettings.blockAdultStreams && styles.toggleButtonActive,
+                  focusedElement === 'filter-adult-streams' && styles.buttonFocused,
                 ]}
                 onPress={async () => {
                   const newVal = !contentFilterSettings.blockAdultStreams;
                   await contentFilterService.saveSettings({ blockAdultStreams: newVal });
                   setContentFilterSettings(contentFilterService.getSettings());
                 }}
+                onFocus={() => handleTVFocus('filter-adult-streams', 'content-filter')}
+                onBlur={() => setFocusedElement(null)}
                 data-testid="toggle-block-adult-streams"
               >
                 <Text style={[styles.toggleText, contentFilterSettings.blockAdultStreams && styles.toggleTextActive]}>
@@ -1128,12 +1164,15 @@ export default function SettingsScreen() {
                 style={[
                   styles.toggleButton,
                   contentFilterSettings.blockAdultCategories && styles.toggleButtonActive,
+                  focusedElement === 'filter-adult-categories' && styles.buttonFocused,
                 ]}
                 onPress={async () => {
                   const newVal = !contentFilterSettings.blockAdultCategories;
                   await contentFilterService.saveSettings({ blockAdultCategories: newVal });
                   setContentFilterSettings(contentFilterService.getSettings());
                 }}
+                onFocus={() => handleTVFocus('filter-adult-categories', 'content-filter')}
+                onBlur={() => setFocusedElement(null)}
                 data-testid="toggle-block-adult-categories"
               >
                 <Text style={[styles.toggleText, contentFilterSettings.blockAdultCategories && styles.toggleTextActive]}>
@@ -1155,7 +1194,7 @@ export default function SettingsScreen() {
         </AccountSection>
 
         {/* Parental Controls Section */}
-        <AccountSection title="Parental Controls">
+        <AccountSection title="Parental Controls" sectionKey="parental-controls">
           <View style={styles.settingsCard}>
             <View style={styles.parentalHeader}>
               <View style={styles.parentalTitleRow}>
@@ -1163,7 +1202,7 @@ export default function SettingsScreen() {
                 <Text style={styles.parentalTitle}>Adult Content Filter</Text>
               </View>
               <Pressable
-                style={[styles.parentalButton, parentalSettings?.enabled && styles.parentalButtonEnabled]}
+                style={[styles.parentalButton, parentalSettings?.enabled && styles.parentalButtonEnabled, focusedElement === 'parental-manage' && styles.buttonFocused]}
                 onPress={() => {
                   if (parentalSettings?.enabled) {
                     setPinMode('verify');
@@ -1172,6 +1211,8 @@ export default function SettingsScreen() {
                   }
                   setParentalModalVisible(true);
                 }}
+                onFocus={() => handleTVFocus('parental-manage', 'parental-controls')}
+                onBlur={() => setFocusedElement(null)}
                 data-testid="parental-enable-btn"
               >
                 <Text style={styles.parentalButtonText}>
@@ -1205,7 +1246,7 @@ export default function SettingsScreen() {
         </AccountSection>
 
         {/* Subtitles & Player Settings */}
-        <AccountSection title="Player Settings">
+        <AccountSection title="Player Settings" sectionKey="player-settings">
           <View style={styles.settingsCard}>
             {/* Subtitle Settings */}
             <View style={styles.settingRow}>
@@ -1221,7 +1262,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={[styles.configureButton, focusedElement === 'subtitles' && styles.buttonFocused]}
                 onPress={() => setSubtitleModalVisible(true)}
-                onFocus={() => setFocusedElement('subtitles')}
+                onFocus={() => handleTVFocus('subtitles', 'player-settings')}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Text style={styles.configureButtonText}>Configure</Text>
@@ -1242,7 +1283,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={[styles.configureButton, focusedElement === 'opensubtitles' && styles.buttonFocused]}
                 onPress={() => setSubtitleModalVisible(true)}
-                onFocus={() => setFocusedElement('opensubtitles')}
+                onFocus={() => handleTVFocus('opensubtitles', 'player-settings')}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Text style={styles.configureButtonText}>Setup</Text>
@@ -1265,7 +1306,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={[styles.configureButton, focusedElement === 'oneclick' && styles.buttonFocused]}
                 onPress={() => setOneClickModalVisible(true)}
-                onFocus={() => setFocusedElement('oneclick')}
+                onFocus={() => handleTVFocus('oneclick', 'player-settings')}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Text style={styles.configureButtonText}>Configure</Text>
@@ -1275,9 +1316,14 @@ export default function SettingsScreen() {
         </AccountSection>
 
         {/* Error Logs Section */}
-        <AccountSection title="Debug & Support">
+        <AccountSection title="Debug & Support" sectionKey="debug-support">
           <View style={styles.settingsCard}>
-            <Pressable style={styles.debugButton} onPress={handleOpenLogs}>
+            <Pressable 
+              style={[styles.debugButton, focusedElement === 'error-logs' && styles.buttonFocused]}
+              onPress={handleOpenLogs}
+              onFocus={() => handleTVFocus('error-logs', 'debug-support')}
+              onBlur={() => setFocusedElement(null)}
+            >
               <Ionicons name="bug" size={24} color={theme.colors.primary} />
               <View style={styles.debugButtonText}>
                 <Text style={styles.debugTitle}>Error Logs</Text>
@@ -1289,11 +1335,21 @@ export default function SettingsScreen() {
             </Pressable>
 
             <View style={styles.supportActions}>
-              <Pressable style={styles.supportButton} onPress={handleSendLogsEmail}>
+              <Pressable 
+                style={[styles.supportButton, focusedElement === 'send-email' && styles.buttonFocused]}
+                onPress={handleSendLogsEmail}
+                onFocus={() => handleTVFocus('send-email', 'debug-support')}
+                onBlur={() => setFocusedElement(null)}
+              >
                 <Ionicons name="mail" size={20} color={theme.colors.text} />
                 <Text style={styles.supportButtonText}>Send via Email</Text>
               </Pressable>
-              <Pressable style={styles.supportButton} onPress={handleSendLogsTelegram}>
+              <Pressable 
+                style={[styles.supportButton, focusedElement === 'send-telegram' && styles.buttonFocused]}
+                onPress={handleSendLogsTelegram}
+                onFocus={() => handleTVFocus('send-telegram', 'debug-support')}
+                onBlur={() => setFocusedElement(null)}
+              >
                 <Ionicons name="paper-plane" size={20} color={theme.colors.text} />
                 <Text style={styles.supportButtonText}>Send to Telegram</Text>
               </Pressable>

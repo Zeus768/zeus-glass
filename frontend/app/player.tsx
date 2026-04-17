@@ -72,6 +72,9 @@ export default function PlayerScreen() {
   
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // URL in lowercase - available for use throughout the component (e.g., ad-blocking, filtering)
+  const urlLower = url?.toLowerCase() || '';
+
   // Available subtitle languages
   const availableLanguages = [
     { code: 'en', name: 'English' },
@@ -287,9 +290,9 @@ export default function PlayerScreen() {
   }, []);
 
   useEffect(() => {
-    // Determine if this is an embed URL
+    // Determine if this is an embed URL (uses component-level urlLower)
     const embedPatterns = ['vidsrc', 'embed', 'flixmomo', 'cineby', 'hydrahd', 'yflix', 'autoembed', 'smashystream', '2embed', 'multiembed'];
-    const isEmbedUrl = type === 'embed' || embedPatterns.some(p => url?.toLowerCase().includes(p));
+    const isEmbedUrl = type === 'embed' || embedPatterns.some(p => urlLower.includes(p));
     setIsEmbed(isEmbedUrl);
 
     // Enter immersive fullscreen mode
