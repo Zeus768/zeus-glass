@@ -90,9 +90,22 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - TV UI Scaling, App Branding v1.5.0
 
 ## Pending Tasks
-- P3: Settings page scrolling fix (web-only)
+- P2: FlashList performance optimization for TV carousels
+- P2: Link Snooper for free scraper adult content filtering (backend + frontend)
+- P2: Settings page refactoring (>2600 lines -> sub-components)
 - P3: IMDB Login integration
 - P3: GitLab CI/CD setup
+
+## Bug Fixes (2026-04-17)
+
+### TV D-pad Navigation Fix (P0) - FIXED
+- Root cause: Sections below Zeus Vault (VPN, Scrapers, Content Filter, Parental, Player Settings, Debug) did NOT call `scrollToFocused` when focused via D-pad. Also no `onLayout` tracking on their containers.
+- Fix: Modified `AccountSection` component to accept `sectionKey` and auto-track Y-position via `onLayout`. Changed ALL `onFocus` handlers from `setFocusedElement()` to `handleTVFocus(elementKey, sectionKey)` which both sets state AND programmatically scrolls the ScrollView. 17 focusable elements now properly trigger scroll.
+- Also added missing `Platform` import from react-native.
+
+### Player urlLower Build Error Fix (P1) - FIXED
+- Root cause: User's local ad-blocking code declares `const urlLower`, which collides with inline `url?.toLowerCase()` usage.
+- Fix: Declared `const urlLower = url?.toLowerCase() || ''` once at component level (line ~75), referenced in useEffect. User's code can now use `urlLower` without redeclaring.
 
 ## Test Accounts
 - Xtreme Codes: trex-iptv.com:8080
