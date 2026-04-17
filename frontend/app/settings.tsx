@@ -428,6 +428,22 @@ export default function SettingsScreen() {
     await errorLogService.sendLogsViaTelegram(showErrorsOnly);
   };
 
+  const handleUploadToCloud = async () => {
+    setFocusedElement('uploading-logs');
+    try {
+      const result = await errorLogService.uploadToCloud(showErrorsOnly);
+      if (result.success) {
+        Alert.alert('Uploaded', result.message + '\n\nView at: Settings > Debug > Log Dashboard');
+      } else {
+        Alert.alert('Upload Failed', result.message);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to upload logs');
+    } finally {
+      setFocusedElement(null);
+    }
+  };
+
   const handleCopyLogs = () => {
     const logsText = errorLogService.getLogsAsText(showErrorsOnly);
     Clipboard.setString(logsText);
@@ -1336,6 +1352,18 @@ export default function SettingsScreen() {
 
             <View style={styles.supportActions}>
               <Pressable 
+                style={[styles.supportButton, styles.supportButtonPrimary, focusedElement === 'upload-cloud' && styles.buttonFocused]}
+                onPress={handleUploadToCloud}
+                onFocus={() => handleTVFocus('upload-cloud', 'debug-support')}
+                onBlur={() => setFocusedElement(null)}
+                data-testid="upload-cloud-btn"
+              >
+                <Ionicons name={focusedElement === 'uploading-logs' ? 'hourglass' : 'cloud-upload'} size={20} color="#000" />
+                <Text style={[styles.supportButtonText, { color: '#000', fontWeight: '600' }]}>
+                  {focusedElement === 'uploading-logs' ? 'Uploading...' : 'Upload to Cloud'}
+                </Text>
+              </Pressable>
+              <Pressable 
                 style={[styles.supportButton, focusedElement === 'send-email' && styles.buttonFocused]}
                 onPress={handleSendLogsEmail}
                 onFocus={() => handleTVFocus('send-email', 'debug-support')}
@@ -1352,6 +1380,16 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="paper-plane" size={20} color={theme.colors.text} />
                 <Text style={styles.supportButtonText}>Send to Telegram</Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.supportButton, focusedElement === 'copy-logs' && styles.buttonFocused]}
+                onPress={handleCopyLogs}
+                onFocus={() => handleTVFocus('copy-logs', 'debug-support')}
+                onBlur={() => setFocusedElement(null)}
+                data-testid="copy-logs-btn"
+              >
+                <Ionicons name="copy" size={20} color={theme.colors.text} />
+                <Text style={styles.supportButtonText}>Copy Logs</Text>
               </Pressable>
             </View>
 
@@ -2028,18 +2066,24 @@ const styles = StyleSheet.create({
   },
   supportActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
   supportButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.surfaceLight,
     paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     gap: theme.spacing.sm,
+    minWidth: '45%',
+    flex: 1,
+  },
+  supportButtonPrimary: {
+    backgroundColor: theme.colors.primary,
   },
   supportButtonText: {
     fontSize: theme.fontSize.sm,

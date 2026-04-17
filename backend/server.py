@@ -581,6 +581,248 @@ async def proxy_test(proxy_url: str):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+# ============================================
+# ERROR LOG UPLOAD & DASHBOARD
+# Stores device logs in MongoDB for remote debugging
+# ============================================
+class LogEntryModel(BaseModel):
+    id: str
+    timestamp: str
+    level: str
+    message: str
+    context: Optional[str] = None
+    stack: Optional[str] = None
+    deviceInfo: Optional[dict] = None
+
+class LogUploadRequest(BaseModel):
+    device_id: str
+    device_name: Optional[str] = None
+    platform: Optional[str] = None
+    app_version: Optional[str] = None
+    logs: List[LogEntryModel]
+
+@api_router.post("/logs/upload")
+async def upload_logs(request: LogUploadRequest):
+    """Upload device logs to the cloud for remote debugging"""
+    try:
+        doc = {
+            "device_id": request.device_id,
+            "device_name": request.device_name or "Unknown",
+            "platform": request.platform or "unknown",
+            "app_version": request.app_version or "unknown",
+            "uploaded_at": datetime.utcnow().isoformat(),
+            "log_count": len(request.logs),
+            "logs": [l.dict() for l in request.logs],
+        }
+        await db.error_logs.insert_one(doc)
+        return {"success": True, "message": f"Uploaded {len(request.logs)} logs", "log_count": len(request.logs)}
+    except Exception as e:
+        logger.error(f"Log upload error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/logs")
+async def get_logs(limit: int = 20, device_id: Optional[str] = None, level: Optional[str] = None):
+    """Retrieve uploaded logs from all devices"""
+    try:
+        query = {}
+        if device_id:
+            query["device_id"] = device_id
+        
+        uploads = await db.error_logs.find(query, {"_id": 0}).sort("uploaded_at", -1).to_list(limit)
+        
+        # If filtering by level, filter the individual log entries
+        if level:
+            for upload in uploads:
+                upload["logs"] = [l for l in upload["logs"] if l["level"] == level]
+                upload["log_count"] = len(upload["logs"])
+        
+        total = await db.error_logs.count_documents(query)
+        return {"success": True, "total": total, "showing": len(uploads), "uploads": uploads}
+    except Exception as e:
+        logger.error(f"Log retrieval error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/logs/clear")
+async def clear_logs():
+    """Clear all stored logs"""
+    try:
+        result = await db.error_logs.delete_many({})
+        return {"success": True, "deleted": result.deleted_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+from fastapi.responses import HTMLResponse
+
+@api_router.get("/logs/dashboard", response_class=HTMLResponse)
+async def logs_dashboard():
+    """Web dashboard to view all uploaded error logs"""
+    html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zeus Glass - Error Log Dashboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e17;color:#e0e6ed;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+h1{color:#00d4ff;font-size:24px}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #1a2235;background:#111827;color:#e0e6ed;cursor:pointer;font-size:13px;transition:all .2s}
+.btn:hover{background:#1e293b;border-color:#00d4ff}
+.btn.danger{border-color:#ef4444;color:#ef4444}
+.btn.danger:hover{background:#7f1d1d}
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+select,input{padding:8px 12px;border-radius:8px;border:1px solid #1a2235;background:#111827;color:#e0e6ed;font-size:13px}
+.upload-card{background:#111827;border:1px solid #1a2235;border-radius:12px;margin-bottom:16px;overflow:hidden}
+.upload-header{padding:14px 18px;background:#0d1321;border-bottom:1px solid #1a2235;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.device-name{font-weight:600;color:#00d4ff;font-size:15px}
+.upload-meta{font-size:12px;color:#6b7280;display:flex;gap:12px;flex-wrap:wrap}
+.upload-meta span{display:flex;align-items:center;gap:4px}
+.badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge.error{background:#7f1d1d;color:#fca5a5}
+.badge.warn{background:#78350f;color:#fcd34d}
+.badge.info{background:#1e3a5f;color:#93c5fd}
+.badge.debug{background:#1a2235;color:#9ca3af}
+.log-entry{padding:10px 18px;border-bottom:1px solid #0d1321;font-size:13px;display:grid;grid-template-columns:70px 90px 1fr;gap:8px;align-items:start}
+.log-entry:hover{background:#0d1321}
+.log-time{color:#6b7280;font-size:11px;font-family:monospace}
+.log-context{color:#8b5cf6;font-size:12px}
+.log-message{color:#e0e6ed;word-break:break-word}
+.log-stack{color:#9ca3af;font-size:11px;font-family:monospace;white-space:pre-wrap;margin-top:4px;max-height:120px;overflow-y:auto;background:#0a0e17;padding:6px;border-radius:4px}
+.empty{text-align:center;padding:60px;color:#6b7280}
+.stats{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.stat{background:#111827;border:1px solid #1a2235;border-radius:10px;padding:14px 20px;min-width:140px}
+.stat-value{font-size:28px;font-weight:700;color:#00d4ff}
+.stat-label{font-size:12px;color:#6b7280;margin-top:2px}
+.stat.errors .stat-value{color:#ef4444}
+.loading{text-align:center;padding:40px;color:#6b7280}
+.toggle-stack{cursor:pointer;color:#00d4ff;font-size:11px;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Zeus Glass Log Dashboard</h1>
+  <div class="controls">
+    <button class="btn" onclick="loadLogs()">Refresh</button>
+    <button class="btn" onclick="exportLogs()">Export JSON</button>
+    <button class="btn danger" onclick="clearAll()">Clear All</button>
+  </div>
+</div>
+<div class="stats" id="stats"></div>
+<div class="filters">
+  <select id="levelFilter" onchange="loadLogs()">
+    <option value="">All Levels</option>
+    <option value="error">Errors Only</option>
+    <option value="warn">Warnings</option>
+    <option value="info">Info</option>
+    <option value="debug">Debug</option>
+  </select>
+  <select id="limitFilter" onchange="loadLogs()">
+    <option value="20">Last 20 uploads</option>
+    <option value="50">Last 50</option>
+    <option value="100">Last 100</option>
+  </select>
+  <input type="text" id="searchFilter" placeholder="Search messages..." oninput="filterLocally()">
+</div>
+<div id="content"><div class="loading">Loading logs...</div></div>
+
+<script>
+let allData = [];
+const API = window.location.origin + '/api';
+
+async function loadLogs() {
+  const level = document.getElementById('levelFilter').value;
+  const limit = document.getElementById('limitFilter').value;
+  let url = API + '/logs?limit=' + limit;
+  if (level) url += '&level=' + level;
+  
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    allData = data.uploads || [];
+    renderStats(data);
+    renderLogs(allData);
+  } catch(e) {
+    document.getElementById('content').innerHTML = '<div class="empty">Failed to load logs: ' + e.message + '</div>';
+  }
+}
+
+function renderStats(data) {
+  let totalErrors = 0, totalWarns = 0, totalLogs = 0, devices = new Set();
+  allData.forEach(u => {
+    devices.add(u.device_id);
+    u.logs.forEach(l => {
+      totalLogs++;
+      if(l.level === 'error') totalErrors++;
+      if(l.level === 'warn') totalWarns++;
+    });
+  });
+  document.getElementById('stats').innerHTML =
+    '<div class="stat"><div class="stat-value">' + data.total + '</div><div class="stat-label">Total Uploads</div></div>' +
+    '<div class="stat"><div class="stat-value">' + devices.size + '</div><div class="stat-label">Devices</div></div>' +
+    '<div class="stat errors"><div class="stat-value">' + totalErrors + '</div><div class="stat-label">Errors</div></div>' +
+    '<div class="stat"><div class="stat-value">' + totalWarns + '</div><div class="stat-label">Warnings</div></div>' +
+    '<div class="stat"><div class="stat-value">' + totalLogs + '</div><div class="stat-label">Total Entries</div></div>';
+}
+
+function renderLogs(uploads) {
+  if(!uploads.length) {
+    document.getElementById('content').innerHTML = '<div class="empty">No logs uploaded yet. Logs will appear here when devices upload them.</div>';
+    return;
+  }
+  let html = '';
+  uploads.forEach(u => {
+    const time = new Date(u.uploaded_at).toLocaleString();
+    html += '<div class="upload-card">';
+    html += '<div class="upload-header"><div><span class="device-name">' + (u.device_name || u.device_id) + '</span></div>';
+    html += '<div class="upload-meta"><span>' + time + '</span><span>' + u.platform + '</span><span>v' + u.app_version + '</span><span>' + u.log_count + ' entries</span></div></div>';
+    u.logs.forEach((l, i) => {
+      const t = new Date(l.timestamp).toLocaleTimeString();
+      html += '<div class="log-entry"><span class="badge ' + l.level + '">' + l.level.toUpperCase() + '</span>';
+      html += '<span class="log-context">' + (l.context || '-') + '</span>';
+      html += '<div><span class="log-message">' + escapeHtml(l.message) + '</span>';
+      if(l.stack) html += '<div class="toggle-stack" onclick="this.nextSibling.style.display=this.nextSibling.style.display===\'none\'?\'block\':\'none\'">Show Stack</div><div class="log-stack" style="display:none">' + escapeHtml(l.stack) + '</div>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('content').innerHTML = html;
+}
+
+function filterLocally() {
+  const q = document.getElementById('searchFilter').value.toLowerCase();
+  if(!q) { renderLogs(allData); return; }
+  const filtered = allData.map(u => ({
+    ...u,
+    logs: u.logs.filter(l => l.message.toLowerCase().includes(q) || (l.context||'').toLowerCase().includes(q)),
+    log_count: undefined
+  })).map(u => ({...u, log_count: u.logs.length})).filter(u => u.logs.length > 0);
+  renderLogs(filtered);
+}
+
+function escapeHtml(s) { const d=document.createElement('div');d.textContent=s;return d.innerHTML; }
+
+async function clearAll() {
+  if(!confirm('Delete ALL stored logs? This cannot be undone.')) return;
+  await fetch(API + '/logs/clear', {method:'DELETE'});
+  loadLogs();
+}
+
+function exportLogs() {
+  const blob = new Blob([JSON.stringify(allData, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'zeus-glass-logs-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+loadLogs();
+</script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

@@ -18,11 +18,38 @@ export interface LogEntry {
 }
 
 const STORAGE_KEY = '@zeus_glass_error_logs';
+const DEVICE_ID_KEY = '@zeus_glass_device_id';
 const MAX_LOGS = 500;
 
 // Support contact info
 const SUPPORT_EMAIL = 'thealphaddon@gmail.com';
-const TELEGRAM_BOT = 'https://t.me/zeusglasssupport'; // User can create this bot
+const TELEGRAM_BOT = 'https://t.me/zeusglasssupport';
+
+// Get backend URL
+const getBackendUrl = (): string => {
+  return process.env.EXPO_PUBLIC_BACKEND_URL || '';
+};
+
+// Generate or retrieve a persistent device ID
+const getDeviceId = async (): Promise<string> => {
+  try {
+    let deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
+    if (!deviceId) {
+      deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      await AsyncStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
+    return deviceId;
+  } catch {
+    return `device_${Date.now()}`;
+  }
+};
+
+const getDeviceName = (): string => {
+  if (Platform.isTV) {
+    return Platform.OS === 'android' ? 'Android TV / Fire TV' : 'TV Device';
+  }
+  return Platform.OS === 'android' ? 'Android Phone' : Platform.OS === 'ios' ? 'iPhone' : 'Web Browser';
+};
 
 export const errorLogService = {
   logs: [] as LogEntry[],
@@ -204,6 +231,46 @@ export const errorLogService = {
   getLogsAsText: (errorsOnly: boolean = false): string => {
     const logs = errorsOnly ? errorLogService.getErrors() : errorLogService.logs;
     return errorLogService.formatLogsForExport(logs);
+  },
+
+  // Upload logs to cloud backend (works on ALL devices including Fire TV)
+  uploadToCloud: async (errorsOnly: boolean = false): Promise<{ success: boolean; message: string }> => {
+    try {
+      const backendUrl = getBackendUrl();
+      if (!backendUrl) {
+        return { success: false, message: 'Backend URL not configured' };
+      }
+
+      const deviceId = await getDeviceId();
+      const logs = errorsOnly ? errorLogService.getErrors() : errorLogService.logs;
+      
+      if (logs.length === 0) {
+        return { success: false, message: 'No logs to upload' };
+      }
+
+      const response = await fetch(`${backendUrl}/api/logs/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device_id: deviceId,
+          device_name: getDeviceName(),
+          platform: `${Platform.OS}${Platform.isTV ? '-tv' : ''} ${Platform.Version || ''}`.trim(),
+          app_version: '1.5.0',
+          logs: logs.slice(0, 200), // Cap at 200 entries per upload
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        return { success: true, message: `Uploaded ${data.log_count} logs to cloud` };
+      } else {
+        return { success: false, message: data.detail || 'Upload failed' };
+      }
+    } catch (error: any) {
+      console.error('[ErrorLog] Cloud upload error:', error);
+      return { success: false, message: error.message || 'Network error' };
+    }
   },
 };
 
