@@ -99,6 +99,7 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 ### Cloud Log Upload System (2026-04-17)
 - **Backend**: `POST /api/logs/upload` stores device logs in MongoDB, `GET /api/logs` retrieves them, `GET /api/logs/dashboard` web viewer, `DELETE /api/logs/clear`
 - **Frontend**: "Upload to Cloud" button in Settings > Debug & Support section - works on ALL devices including Fire TV
+- **Auto-upload on startup**: Silently uploads error logs to cloud every time the app starts (throttled to once per 5 minutes). No user action required on Fire TV.
 - **Dashboard**: Web-based log viewer at `/api/logs/dashboard` with stats, filters, search, export JSON
 - Keeps existing email/Telegram buttons for mobile devices
 - Each device gets a persistent unique ID for tracking

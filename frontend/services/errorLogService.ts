@@ -64,6 +64,32 @@ export const errorLogService = {
     } catch (error) {
       console.error('Error loading logs:', error);
     }
+
+    // Auto-upload errors to cloud on startup (silent, non-blocking)
+    errorLogService.autoUploadOnStartup();
+  },
+
+  // Silently upload any error logs to cloud on app startup
+  autoUploadOnStartup: async (): Promise<void> => {
+    try {
+      const errors = errorLogService.getErrors();
+      if (errors.length === 0) return;
+
+      const lastAutoUpload = await AsyncStorage.getItem('@zeus_last_auto_upload');
+      const now = Date.now();
+
+      // Throttle: only auto-upload once per 5 minutes to avoid spam
+      if (lastAutoUpload && now - parseInt(lastAutoUpload) < 5 * 60 * 1000) return;
+
+      const result = await errorLogService.uploadToCloud(true);
+      if (result.success) {
+        await AsyncStorage.setItem('@zeus_last_auto_upload', now.toString());
+        console.log(`[ErrorLog] Auto-uploaded ${errors.length} errors to cloud`);
+      }
+    } catch (e) {
+      // Silent fail - don't disrupt app startup
+      console.log('[ErrorLog] Auto-upload skipped:', e);
+    }
   },
 
   // Add a log entry
