@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import {
   Linking,
   Share,
   Platform,
+  BackHandler,
+  findNodeHandle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
@@ -21,6 +23,7 @@ import { BlurView } from 'expo-blur';
 import { theme, isTV } from '../constants/theme';
 import { QRAuthModal } from '../components/QRAuthModal';
 import { useAuthStore } from '../store/authStore';
+import { useFocusEffect } from 'expo-router';
 import { iptvService } from '../services/iptv';
 import { errorLogService, LogEntry } from '../services/errorLogService';
 import { parentalControlService, ParentalControlSettings } from '../services/parentalControlService';
@@ -170,6 +173,22 @@ export default function SettingsScreen() {
       setContentFilterSettings(contentFilterService.getSettings());
     });
   }, []);
+
+  // Prevent accidental app exit on TV when pressing Back from settings
+  // On Android TV, D-pad down at bottom of visible area can trigger back navigation
+  useFocusEffect(
+    useCallback(() => {
+      if (!Platform.isTV) return;
+      
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        // Consume the back press - don't exit the app from settings
+        // User must use the Exit button in header to exit
+        return true;
+      });
+      
+      return () => backHandler.remove();
+    }, [])
+  );
 
   // Zeus Vault functions
   const handleSaveVault = async () => {

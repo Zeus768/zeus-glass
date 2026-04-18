@@ -96,6 +96,12 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - P3: IMDB Login integration
 - P3: GitLab CI/CD setup
 
+### TV Navigation Exit Crash Fix (2026-04-18)
+- **Root cause**: On Android TV (Mecool, Firestick), D-pad navigation past the last visible element in Settings ScrollView triggered a system "back" event, which Expo Router interpreted as back navigation from a root tab → app exit
+- **Fix 1**: Global BackHandler in `_layout.tsx` consumes back press on TV devices (returns true). App can ONLY be exited via the Exit button.
+- **Fix 2**: Exit button now shows confirmation dialog ("Are you sure?") instead of instant `BackHandler.exitApp()`
+- **Fix 3**: Settings page has its own BackHandler via `useFocusEffect` as additional safety
+
 ### Cloud Log Upload System (2026-04-17)
 - **Backend**: `POST /api/logs/upload` stores device logs in MongoDB, `GET /api/logs` retrieves them, `GET /api/logs/dashboard` web viewer, `DELETE /api/logs/clear`
 - **Frontend**: "Upload to Cloud" button in Settings > Debug & Support section - works on ALL devices including Fire TV

@@ -18,6 +18,7 @@ import {
   Linking, 
   Dimensions,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 
@@ -385,6 +386,21 @@ export default function TabLayout() {
     const unsub = playerState.subscribe((active) => setIsPlayerActive(active));
     return unsub;
   }, []);
+
+  // Prevent accidental app exit on TV devices
+  // On Android TV (Mecool, Firestick, Shield), pressing Back on a tab screen
+  // would immediately exit. Now we intercept and require the Exit button.
+  useEffect(() => {
+    if (!Platform.isTV) return;
+    
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // On TV, consume back press on main tab screens to prevent accidental exit
+      // The player and live-tv screens have their own back handlers
+      return true;
+    });
+    
+    return () => backHandler.remove();
+  }, []);
   
   const pathname = usePathname();
   const segments = useSegments();
@@ -402,7 +418,16 @@ export default function TabLayout() {
             {Platform.isTV && (
               <FocusableButton 
                 style={styles.exitBtn} 
-                onPress={() => BackHandler.exitApp()}
+                onPress={() => {
+                  Alert.alert(
+                    'Exit Zeus Glass',
+                    'Are you sure you want to exit?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Exit', style: 'destructive', onPress: () => BackHandler.exitApp() },
+                    ]
+                  );
+                }}
                 testID="exit-app-btn"
               >
                 <Ionicons name="power" size={isTV ? 16 : 16} color="#FF4444" />
