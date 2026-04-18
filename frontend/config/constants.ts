@@ -24,6 +24,10 @@ export const ALLDEBRID_CLIENT_ID = 'zeus-glass-app';
 export const PREMIUMIZE_BASE_URL = 'https://www.premiumize.me/api';
 export const PREMIUMIZE_CLIENT_ID = 'zeus-glass-app';
 
+// TorBox
+export const TORBOX_BASE_URL = 'https://api.torbox.app';
+export const TORBOX_AGENT = 'zeus-glass';
+
 // App Configuration
 export const APP_NAME = 'Zeus Glass';
 export const APP_SCHEME = 'zeusglass';
@@ -42,6 +46,7 @@ export const STORAGE_KEYS = {
   REAL_DEBRID_TOKEN: 'real_debrid_token',
   ALLDEBRID_TOKEN: 'alldebrid_token',
   PREMIUMIZE_TOKEN: 'premiumize_token',
+  TORBOX_TOKEN: 'torbox_token',
   IPTV_CONFIG: 'iptv_config',
   FAVORITES: 'favorites',
   CONTINUE_WATCHING: 'continue_watching',

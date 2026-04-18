@@ -849,6 +849,130 @@ export const premiumizeService = {
 };
 
 // ============================================
+// TORBOX SERVICE
+// Device Code Flow (RFC 8628)
+// ============================================
+export const torboxService = {
+  getDeviceCode: async (): Promise<{
+    device_code: string;
+    user_code: string;
+    verification_url: string;
+    expires_in: number;
+    interval: number;
+  }> => {
+    console.log('[TorBox] Getting device code...');
+    const useProxy = shouldUseProxy();
+    
+    try {
+      let response;
+      
+      if (useProxy) {
+        response = await axios.post(`${getBackendUrl()}/api/debrid/torbox/device-start`);
+      } else {
+        response = await axios.post('https://api.torbox.app/v1/api/user/auth/device/start');
+      }
+      
+      const data = response.data?.data || response.data;
+      return {
+        device_code: data.device_code,
+        user_code: data.user_code,
+        verification_url: data.verification_url || 'https://torbox.app/devices',
+        expires_in: data.expires_in || 600,
+        interval: data.interval || 5,
+      };
+    } catch (error: any) {
+      errorLogService.error('TorBox device code failed: ' + error.message, 'TorBox');
+      throw error;
+    }
+  },
+
+  pollForToken: async (deviceCode: string): Promise<{ access_token: string } | null> => {
+    const useProxy = shouldUseProxy();
+    
+    try {
+      let response;
+      
+      if (useProxy) {
+        response = await axios.post(`${getBackendUrl()}/api/debrid/torbox/device-token?device_code=${encodeURIComponent(deviceCode)}`);
+      } else {
+        response = await axios.post('https://api.torbox.app/v1/api/user/auth/device/token', {
+          device_code: deviceCode,
+        });
+      }
+      
+      const data = response.data?.data || response.data;
+      
+      if (data?.access_token || data?.token) {
+        return { access_token: data.access_token || data.token };
+      }
+      
+      // Still pending
+      return null;
+    } catch (error: any) {
+      // 400 = still waiting, not an error
+      if (error.response?.status === 400 || error.response?.data?.status === 'pending') {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  saveToken: async (token: string): Promise<void> => {
+    await storage.setItem(STORAGE_KEYS.TORBOX_TOKEN, token);
+    console.log('[TorBox] Token saved');
+  },
+
+  getToken: async (): Promise<string | null> => {
+    return await storage.getItem(STORAGE_KEYS.TORBOX_TOKEN);
+  },
+
+  logout: async (): Promise<void> => {
+    await storage.removeItem(STORAGE_KEYS.TORBOX_TOKEN);
+    console.log('[TorBox] Logged out');
+  },
+
+  getAccountInfo: async (): Promise<DebridAccount | null> => {
+    try {
+      const token = await torboxService.getToken();
+      if (!token) return null;
+
+      const useProxy = shouldUseProxy();
+      let response;
+      
+      if (useProxy) {
+        response = await axios.get(`${getBackendUrl()}/api/debrid/torbox/account-info?token=${encodeURIComponent(token)}`);
+      } else {
+        response = await axios.get('https://api.torbox.app/v1/api/user/me', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+      }
+
+      const data = response.data?.data || response.data;
+      
+      if (!data) return null;
+
+      const expiryDate = data.premium_expires_at || data.plan_expiration || '';
+      const daysLeft = expiryDate ? Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+
+      return {
+        username: data.email || data.username || 'TorBox User',
+        email: data.email || '',
+        expiryDate: expiryDate,
+        daysLeft: Math.max(0, daysLeft),
+        type: data.plan || data.premium ? 'premium' : 'free',
+      };
+    } catch (error) {
+      console.error('[TorBox] Error fetching account:', error);
+      return null;
+    }
+  },
+
+  getStreamLinks: async (imdbId: string, type: 'movie' | 'tv'): Promise<StreamLink[]> => {
+    return [];
+  },
+};
+
+// ============================================
 // DEBRID CACHE SEARCH SERVICE
 // ============================================
 export const debridCacheService = {

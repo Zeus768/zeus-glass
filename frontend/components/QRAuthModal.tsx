@@ -5,7 +5,7 @@ import { BlurView } from 'expo-blur';
 import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
-import { realDebridService, allDebridService, premiumizeService } from '../services/debrid';
+import { realDebridService, allDebridService, premiumizeService, torboxService } from '../services/debrid';
 import { traktService } from '../services/trakt';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -15,7 +15,7 @@ const isSmallScreen = SCREEN_WIDTH < 400;
 // TV modal scale factor - reduce by ~50%
 const tvScale = 0.6;
 
-type ServiceType = 'real-debrid' | 'alldebrid' | 'premiumize' | 'trakt';
+type ServiceType = 'real-debrid' | 'alldebrid' | 'premiumize' | 'torbox' | 'trakt';
 
 interface QRAuthModalProps {
   visible: boolean;
@@ -48,6 +48,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
     'real-debrid': 'Real-Debrid',
     'alldebrid': 'AllDebrid',
     'premiumize': 'Premiumize',
+    'torbox': 'TorBox',
     'trakt': 'Trakt',
   };
 
@@ -103,6 +104,9 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           break;
         case 'premiumize':
           codeData = await premiumizeService.getDeviceCode();
+          break;
+        case 'torbox':
+          codeData = await torboxService.getDeviceCode();
           break;
         case 'trakt':
           codeData = await traktService.getDeviceCode();
@@ -178,6 +182,21 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
               setPollStatus('Authorization successful! Saving...');
               console.log('[QRAuthModal] Trakt auth successful!');
               await traktService.saveToken(tokenData);
+              clearInterval(pollInterval);
+              setPollIntervalId(null);
+              setPolling(false);
+              onSuccess();
+              handleClose();
+            }
+            break;
+
+          case 'torbox':
+            setPollStatus(`Checking authorization... (attempt ${pollCount + 1})`);
+            tokenData = await torboxService.pollForToken(code);
+            if (tokenData && tokenData.access_token) {
+              setPollStatus('Authorization successful! Saving...');
+              console.log('[QRAuthModal] TorBox auth successful!');
+              await torboxService.saveToken(tokenData.access_token);
               clearInterval(pollInterval);
               setPollIntervalId(null);
               setPolling(false);

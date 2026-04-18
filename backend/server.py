@@ -425,6 +425,88 @@ async def get_premiumize_account_info(apikey: str):
 
 
 # ============================================
+# TORBOX PROXY - Device Code Flow
+# ============================================
+
+@api_router.post("/debrid/torbox/device-start")
+async def torbox_device_start():
+    """Start TorBox device code auth flow"""
+    try:
+        async with httpx.AsyncClient() as client:
+            # TorBox uses GET for device code start
+            response = await client.get(
+                "https://api.torbox.app/v1/api/user/auth/device/start",
+                timeout=15.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            # Transform TorBox response to standard format
+            if data.get('success') and data.get('data'):
+                inner = data['data']
+                return {
+                    'data': {
+                        'device_code': inner.get('device_code'),
+                        'user_code': inner.get('code'),  # TorBox uses 'code' not 'user_code'
+                        'verification_url': inner.get('verification_url') or inner.get('friendly_verification_url'),
+                        'expires_in': 600,  # Default 10 minutes
+                        'interval': inner.get('interval', 5),
+                    }
+                }
+            return data
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"TorBox device start error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/debrid/torbox/device-token")
+async def torbox_device_token(device_code: str):
+    """Poll for TorBox device token"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.torbox.app/v1/api/user/auth/device/token",
+                json={"device_code": device_code},
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        # 400 means still waiting - not an error
+        if e.response.status_code == 400:
+            return {"status": "pending"}
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"TorBox device token error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/debrid/torbox/account-info")
+async def torbox_account_info(token: str):
+    """Get TorBox account info"""
+    try:
+        # Handle empty token gracefully
+        if not token or not token.strip():
+            raise HTTPException(status_code=400, detail="Token is required")
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.torbox.app/v1/api/user/me",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"TorBox account info error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
 # TORRENTIO PROXY - Bypass CORS for web clients
 # ============================================
 

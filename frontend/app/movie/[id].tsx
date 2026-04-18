@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert, Linking } from 'react-native';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert, Linking, Platform, BackHandler } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../../constants/theme';
 import { tmdbService } from '../../services/tmdb';
@@ -49,6 +49,22 @@ export default function MovieDetailScreen() {
   
   // One-click play
   const [oneClickEnabled, setOneClickEnabled] = useState(false);
+
+  // TV Back button handler - navigate back to previous screen
+  useFocusEffect(
+    useCallback(() => {
+      if (!Platform.isTV) return;
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (showLinksModal) {
+          setShowLinksModal(false);
+          return true;
+        }
+        router.back();
+        return true;
+      });
+      return () => backHandler.remove();
+    }, [showLinksModal])
+  );
 
   // Search progress state
   interface SearchProgress {

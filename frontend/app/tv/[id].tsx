@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert, FlatList } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert, FlatList, Platform, BackHandler } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../../constants/theme';
 import { tmdbService } from '../../services/tmdb';
@@ -51,6 +51,22 @@ export default function TVShowDetailScreen() {
   const [showProgress, setShowProgress] = useState<{ completed: number; aired: number } | null>(null);
   const [playerChoiceVisible, setPlayerChoiceVisible] = useState(false);
   const [pendingPlayerStream, setPendingPlayerStream] = useState<{ url: string; title: string } | null>(null);
+
+  // TV Back button handler - navigate back to previous screen
+  useFocusEffect(
+    useCallback(() => {
+      if (!Platform.isTV) return;
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (showLinksModal) {
+          setShowLinksModal(false);
+          return true;
+        }
+        router.back();
+        return true;
+      });
+      return () => backHandler.remove();
+    }, [showLinksModal])
+  );
 
   useEffect(() => {
     if (id) {

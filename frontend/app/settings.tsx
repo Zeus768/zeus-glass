@@ -36,7 +36,7 @@ import { contentFilterService, ContentFilterSettings } from '../services/content
 import { formatDistanceToNow, format } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type ServiceType = 'real-debrid' | 'alldebrid' | 'premiumize' | 'trakt';
+type ServiceType = 'real-debrid' | 'alldebrid' | 'premiumize' | 'torbox' | 'trakt';
 
 export default function SettingsScreen() {
   const {
@@ -51,6 +51,9 @@ export default function SettingsScreen() {
     loadAllDebridAccount,
     loadPremiumizeAccount,
     loadIPTVAccount,
+    loadTorboxAccount,
+    torboxAccount,
+    logoutTorbox,
     logoutTrakt,
     logoutRealDebrid,
     logoutAllDebrid,
@@ -392,6 +395,9 @@ export default function SettingsScreen() {
         break;
       case 'premiumize':
         loadPremiumizeAccount();
+        break;
+      case 'torbox':
+        loadTorboxAccount();
         break;
     }
   };
@@ -766,6 +772,13 @@ export default function SettingsScreen() {
             onLogout={logoutPremiumize}
           />
           <AccountCard
+            title="TorBox"
+            icon="cube"
+            account={torboxAccount}
+            onLogin={() => handleQRAuth('torbox')}
+            onLogout={logoutTorbox}
+          />
+          <AccountCard
             title="Premium IPTV"
             icon="tv"
             account={iptvAccount}
@@ -784,7 +797,8 @@ export default function SettingsScreen() {
                 <Text style={styles.accountLabel}>Provider</Text>
                 <Text style={styles.accountValue}>
                   {torrentioConfig.includes('realdebrid') ? 'Real-Debrid' : 
-                   torrentioConfig.includes('alldebrid') ? 'AllDebrid' : 'Premiumize'}
+                   torrentioConfig.includes('alldebrid') ? 'AllDebrid' : 
+                   torrentioConfig.includes('torbox') ? 'TorBox' : 'Premiumize'}
                 </Text>
                 <Text style={[styles.accountLabel, { marginTop: 8 }]}>Status</Text>
                 <Text style={[styles.accountValue, { color: theme.colors.success }]}>Configured</Text>

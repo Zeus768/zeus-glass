@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { DebridAccount, TraktUser, IPTVConfig } from '../types';
-import { realDebridService, allDebridService, premiumizeService } from '../services/debrid';
+import { realDebridService, allDebridService, premiumizeService, torboxService } from '../services/debrid';
 import { traktService } from '../services/trakt';
 import { iptvService } from '../services/iptv';
 import { notificationService } from '../services/notifications';
@@ -22,6 +22,10 @@ interface AuthState {
   premiumizeAccount: DebridAccount | null;
   premiumizeLoading: boolean;
   
+  // TorBox
+  torboxAccount: DebridAccount | null;
+  torboxLoading: boolean;
+  
   // IPTV
   iptvConfig: IPTVConfig | null;
   iptvAccount: { username: string; expiryDate: string; daysLeft: number } | null;
@@ -33,12 +37,14 @@ interface AuthState {
   loadRealDebridAccount: () => Promise<void>;
   loadAllDebridAccount: () => Promise<void>;
   loadPremiumizeAccount: () => Promise<void>;
+  loadTorboxAccount: () => Promise<void>;
   loadIPTVAccount: () => Promise<void>;
   checkAllExpiryWarnings: () => Promise<void>;
   logoutTrakt: () => Promise<void>;
   logoutRealDebrid: () => Promise<void>;
   logoutAllDebrid: () => Promise<void>;
   logoutPremiumize: () => Promise<void>;
+  logoutTorbox: () => Promise<void>;
   logoutIPTV: () => Promise<void>;
 }
 
@@ -51,6 +57,8 @@ export const useAuthStore = create<AuthState>((set, get) => (({
   allDebridLoading: false,
   premiumizeAccount: null,
   premiumizeLoading: false,
+  torboxAccount: null,
+  torboxLoading: false,
   iptvConfig: null,
   iptvAccount: null,
   iptvLoading: false,
@@ -62,6 +70,7 @@ export const useAuthStore = create<AuthState>((set, get) => (({
       store.loadRealDebridAccount(),
       store.loadAllDebridAccount(),
       store.loadPremiumizeAccount(),
+      store.loadTorboxAccount(),
       store.loadIPTVAccount(),
     ]);
     
@@ -160,6 +169,18 @@ export const useAuthStore = create<AuthState>((set, get) => (({
     }
   },
 
+  loadTorboxAccount: async () => {
+    set({ torboxLoading: true });
+    try {
+      const account = await torboxService.getAccountInfo();
+      set({ torboxAccount: account });
+    } catch (error) {
+      console.error('Error loading TorBox account:', error);
+    } finally {
+      set({ torboxLoading: false });
+    }
+  },
+
   loadIPTVAccount: async () => {
     set({ iptvLoading: true });
     try {
@@ -191,6 +212,11 @@ export const useAuthStore = create<AuthState>((set, get) => (({
   logoutPremiumize: async () => {
     await premiumizeService.logout();
     set({ premiumizeAccount: null });
+  },
+
+  logoutTorbox: async () => {
+    await torboxService.logout();
+    set({ torboxAccount: null });
   },
 
   logoutIPTV: async () => {
