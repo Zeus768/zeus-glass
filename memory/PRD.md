@@ -96,6 +96,19 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - P3: IMDB Login integration
 - P3: GitLab CI/CD setup
 
+### TorBox Debrid Integration (2026-04-18)
+- Full device code auth flow (RFC 8628) via QR code modal
+- Backend proxy endpoints: device-start, device-token, account-info
+- Frontend: AccountCard in Settings, QRAuthModal support, authStore integration
+- Displays account info (email, plan type, expiry) when connected
+
+### TV Navigation & Back Button Fix (2026-04-18)
+- **Global BackHandler** in `_layout.tsx`: Prevents accidental app exit on ALL tab screens on Android TV
+- **Detail screens**: `movie/[id].tsx` and `tv/[id].tsx` have `useFocusEffect` BackHandler that calls `router.back()` and dismisses modals first
+- **Settings screen**: Own BackHandler via `useFocusEffect` as additional safety
+- **Exit App button**: Now shows confirmation dialog ("Are you sure?") instead of instant exit
+- Covers: Mecool, Firestick 4K, NVIDIA Shield TV
+
 ### TV Navigation Exit Crash Fix (2026-04-18)
 - **Root cause**: On Android TV (Mecool, Firestick), D-pad navigation past the last visible element in Settings ScrollView triggered a system "back" event, which Expo Router interpreted as back navigation from a root tab → app exit
 - **Fix 1**: Global BackHandler in `_layout.tsx` consumes back press on TV devices (returns true). App can ONLY be exited via the Exit button.
