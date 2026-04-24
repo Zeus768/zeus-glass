@@ -96,6 +96,11 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - P3: IMDB Login integration
 - P3: GitLab CI/CD setup
 
+### Settings TV Scroll Fix v3 (2026-04-18) - COMPLETE REWRITE
+- **Root cause identified**: Previous `handleTVFocus` approach failed because: (1) `onLayout.y` was relative to parent container, not ScrollView, giving wrong scroll coordinates; (2) Off-screen elements NEVER receive focus on Android TV, so the scroll handler never ran
+- **Fix**: Added `accessible={false}` to ALL container Views (ScrollView, sections, cards) so Android TV's focus finder can look THROUGH containers to find off-screen Pressable buttons. Added `removeClippedSubviews={false}` to keep off-screen elements in the view hierarchy. Replaced `trackSectionLayout`/`sectionYPositions` with `measureLayout` to get absolute positions relative to ScrollView.
+- Covers: Mecool KM9 Pro, Firestick 4K, NVIDIA Shield TV
+
 ### TorBox Debrid Integration (2026-04-18)
 - Full device code auth flow (RFC 8628) via QR code modal
 - Backend proxy endpoints: device-start, device-token, account-info

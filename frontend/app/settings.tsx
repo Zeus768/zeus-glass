@@ -543,9 +543,8 @@ export default function SettingsScreen() {
   };
 
   const AccountSection = ({ title, children, sectionKey }: { title: string; children: React.ReactNode; sectionKey?: string }) => {
-    const key = sectionKey || title.toLowerCase().replace(/\s+/g, '-');
     return (
-      <View style={styles.section} onLayout={trackSectionLayout(key)}>
+      <View style={styles.section} accessible={false}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {children}
       </View>
@@ -556,28 +555,36 @@ export default function SettingsScreen() {
   const [focusedCard, setFocusedCard] = useState<string | null>(null);
   const [focusedButton, setFocusedButton] = useState<string | null>(null);
 
-  // ScrollView ref and section position tracking for TV focus scrolling
+  // ScrollView ref for programmatic scrolling on TV
   const scrollViewRef = useRef<ScrollView>(null);
-  const sectionYPositions = useRef<{[key: string]: number}>({});
 
-  // Track the Y position of each focusable section
-  const trackSectionLayout = (key: string) => (event: any) => {
-    sectionYPositions.current[key] = event.nativeEvent.layout.y;
-  };
-
-  // Programmatically scroll to a section when it receives focus (critical for Fire TV)
-  const scrollToFocused = (key: string) => {
-    const y = sectionYPositions.current[key];
-    if (y !== undefined && scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: Math.max(0, y - 80), animated: true });
+  // Measure the focused element's position relative to the ScrollView and scroll to it.
+  // This fixes Android TV where off-screen elements don't auto-scroll into view.
+  const scrollToElement = useCallback((event: any) => {
+    if (!Platform.isTV || !scrollViewRef.current) return;
+    
+    // Use the native event target's layout to estimate position.
+    // Since onLayout Y is relative to parent, we need to measure the absolute position.
+    const target = event?.nativeEvent?.target;
+    if (target && scrollViewRef.current) {
+      try {
+        // measureLayout gives position relative to the ScrollView
+        const scrollNode = findNodeHandle(scrollViewRef.current);
+        if (scrollNode) {
+          target.measureLayout(
+            scrollNode,
+            (_x: number, y: number) => {
+              // Scroll so the element is near the top with some padding
+              scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 120), animated: true });
+            },
+            () => {} // error callback - silently ignore
+          );
+        }
+      } catch {
+        // Fallback: do nothing, native scroll may handle it
+      }
     }
-  };
-
-  // Combined focus handler: set state + scroll to element
-  const handleTVFocus = (elementKey: string, sectionKey?: string) => {
-    setFocusedElement(elementKey);
-    scrollToFocused(sectionKey || elementKey);
-  };
+  }, []);
 
   const AccountCard = ({
     title,
@@ -603,20 +610,20 @@ export default function SettingsScreen() {
           styles.accountCard,
           isCardFocused && styles.accountCardFocused,
         ]}
-        onLayout={trackSectionLayout(cardId)}
+        accessible={false}
       >
-        <View style={styles.accountHeader}>
-          <View style={styles.accountTitleContainer}>
+        <View style={styles.accountHeader} accessible={false}>
+          <View style={styles.accountTitleContainer} accessible={false}>
             <Ionicons name={icon as any} size={isTV ? 20 : 24} color={theme.colors.primary} />
             <Text style={styles.accountTitle}>{title}</Text>
           </View>
           {account ? (
             <Pressable 
               onPress={onLogout} 
-              onFocus={() => {
+              onFocus={(e) => {
                 setFocusedCard(cardId);
                 setFocusedButton(`${cardId}-logout`);
-                scrollToFocused(cardId);
+                scrollToElement(e);
               }}
               onBlur={() => {
                 setFocusedCard(null);
@@ -635,10 +642,10 @@ export default function SettingsScreen() {
           ) : (
             <Pressable 
               onPress={onLogin} 
-              onFocus={() => {
+              onFocus={(e) => {
                 setFocusedCard(cardId);
                 setFocusedButton(`${cardId}-login`);
-                scrollToFocused(cardId);
+                scrollToElement(e);
               }}
               onBlur={() => {
                 setFocusedCard(null);
@@ -735,11 +742,9 @@ export default function SettingsScreen() {
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={true}
-        {...(Platform.isTV && {
-          scrollEnabled: true,
-          keyboardDismissMode: 'none',
-          removeClippedSubviews: false,
-        })}
+        accessible={false}
+        removeClippedSubviews={false}
+        scrollEnabled={true}
       >
         {/* Accounts Section */}
         <AccountSection title="Accounts">
@@ -864,7 +869,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.vaultButton, styles.vaultButtonPrimary, focusedElement === 'vault-save' && styles.buttonFocused]}
                 onPress={handleSaveVault}
-                onFocus={() => handleTVFocus('vault-save', 'vault')}
+                onFocus={(e) => { setFocusedElement('vault-save'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
                 data-testid="vault-save-btn"
@@ -882,7 +887,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.vaultButton, focusedElement === 'vault-restore' && styles.buttonFocused]}
                 onPress={handleRestoreVault}
-                onFocus={() => handleTVFocus('vault-restore', 'vault')}
+                onFocus={(e) => { setFocusedElement('vault-restore'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
                 data-testid="vault-restore-btn"
@@ -894,7 +899,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.vaultButton, focusedElement === 'vault-export' && styles.buttonFocused]}
                 onPress={handleExportVault}
-                onFocus={() => handleTVFocus('vault-export', 'vault')}
+                onFocus={(e) => { setFocusedElement('vault-export'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 disabled={vaultLoading}
                 data-testid="vault-share-btn"
@@ -906,7 +911,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.vaultButton, focusedElement === 'vault-modal' && styles.buttonFocused]}
                 onPress={() => setVaultModalVisible(true)}
-                onFocus={() => handleTVFocus('vault-modal', 'vault')}
+                onFocus={(e) => { setFocusedElement('vault-modal'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 data-testid="vault-import-btn"
               >
@@ -982,7 +987,7 @@ export default function SettingsScreen() {
                         await proxyService.enableProxy(country.code);
                       }
                     }}
-                    onFocus={() => handleTVFocus(`vpn-${country.code}`, 'vpn-/-proxy')}
+                    onFocus={(e) => { setFocusedElement(`vpn-${country.code}`); scrollToElement(e); }}
                     onBlur={() => setFocusedElement(null)}
                     data-testid={`vpn-country-${country.code}`}
                   >
@@ -1047,7 +1052,7 @@ export default function SettingsScreen() {
                   setFocusedElement(null);
                 }
               }}
-              onFocus={() => handleTVFocus('speed-test', 'vpn-/-proxy')}
+              onFocus={(e) => { setFocusedElement('speed-test'); scrollToElement(e); }}
               onBlur={() => setFocusedElement(null)}
               data-testid="proxy-speed-test-btn"
             >
@@ -1086,7 +1091,7 @@ export default function SettingsScreen() {
                   focusedElement === 'check-scrapers' && styles.scraperCheckButtonFocused,
                 ]}
                 onPress={handleCheckScrapers}
-                onFocus={() => handleTVFocus('check-scrapers', 'scraper-status')}
+                onFocus={(e) => { setFocusedElement('check-scrapers'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 disabled={checkingScrapers}
                 data-testid="check-scrapers-btn"
@@ -1194,7 +1199,7 @@ export default function SettingsScreen() {
                   await contentFilterService.saveSettings({ blockAdultStreams: newVal });
                   setContentFilterSettings(contentFilterService.getSettings());
                 }}
-                onFocus={() => handleTVFocus('filter-adult-streams', 'content-filter')}
+                onFocus={(e) => { setFocusedElement('filter-adult-streams'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 data-testid="toggle-block-adult-streams"
               >
@@ -1220,7 +1225,7 @@ export default function SettingsScreen() {
                   await contentFilterService.saveSettings({ blockAdultCategories: newVal });
                   setContentFilterSettings(contentFilterService.getSettings());
                 }}
-                onFocus={() => handleTVFocus('filter-adult-categories', 'content-filter')}
+                onFocus={(e) => { setFocusedElement('filter-adult-categories'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 data-testid="toggle-block-adult-categories"
               >
@@ -1260,7 +1265,7 @@ export default function SettingsScreen() {
                   }
                   setParentalModalVisible(true);
                 }}
-                onFocus={() => handleTVFocus('parental-manage', 'parental-controls')}
+                onFocus={(e) => { setFocusedElement('parental-manage'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 data-testid="parental-enable-btn"
               >
@@ -1311,7 +1316,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={[styles.configureButton, focusedElement === 'subtitles' && styles.buttonFocused]}
                 onPress={() => setSubtitleModalVisible(true)}
-                onFocus={() => handleTVFocus('subtitles', 'player-settings')}
+                onFocus={(e) => { setFocusedElement('subtitles'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Text style={styles.configureButtonText}>Configure</Text>
@@ -1332,7 +1337,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={[styles.configureButton, focusedElement === 'opensubtitles' && styles.buttonFocused]}
                 onPress={() => setSubtitleModalVisible(true)}
-                onFocus={() => handleTVFocus('opensubtitles', 'player-settings')}
+                onFocus={(e) => { setFocusedElement('opensubtitles'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Text style={styles.configureButtonText}>Setup</Text>
@@ -1355,7 +1360,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={[styles.configureButton, focusedElement === 'oneclick' && styles.buttonFocused]}
                 onPress={() => setOneClickModalVisible(true)}
-                onFocus={() => handleTVFocus('oneclick', 'player-settings')}
+                onFocus={(e) => { setFocusedElement('oneclick'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Text style={styles.configureButtonText}>Configure</Text>
@@ -1370,7 +1375,7 @@ export default function SettingsScreen() {
             <Pressable 
               style={[styles.debugButton, focusedElement === 'error-logs' && styles.buttonFocused]}
               onPress={handleOpenLogs}
-              onFocus={() => handleTVFocus('error-logs', 'debug-support')}
+              onFocus={(e) => { setFocusedElement('error-logs'); scrollToElement(e); }}
               onBlur={() => setFocusedElement(null)}
             >
               <Ionicons name="bug" size={24} color={theme.colors.primary} />
@@ -1387,7 +1392,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.supportButton, styles.supportButtonPrimary, focusedElement === 'upload-cloud' && styles.buttonFocused]}
                 onPress={handleUploadToCloud}
-                onFocus={() => handleTVFocus('upload-cloud', 'debug-support')}
+                onFocus={(e) => { setFocusedElement('upload-cloud'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 data-testid="upload-cloud-btn"
               >
@@ -1399,7 +1404,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.supportButton, focusedElement === 'send-email' && styles.buttonFocused]}
                 onPress={handleSendLogsEmail}
-                onFocus={() => handleTVFocus('send-email', 'debug-support')}
+                onFocus={(e) => { setFocusedElement('send-email'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Ionicons name="mail" size={20} color={theme.colors.text} />
@@ -1408,7 +1413,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.supportButton, focusedElement === 'send-telegram' && styles.buttonFocused]}
                 onPress={handleSendLogsTelegram}
-                onFocus={() => handleTVFocus('send-telegram', 'debug-support')}
+                onFocus={(e) => { setFocusedElement('send-telegram'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Ionicons name="paper-plane" size={20} color={theme.colors.text} />
@@ -1417,7 +1422,7 @@ export default function SettingsScreen() {
               <Pressable 
                 style={[styles.supportButton, focusedElement === 'copy-logs' && styles.buttonFocused]}
                 onPress={handleCopyLogs}
-                onFocus={() => handleTVFocus('copy-logs', 'debug-support')}
+                onFocus={(e) => { setFocusedElement('copy-logs'); scrollToElement(e); }}
                 onBlur={() => setFocusedElement(null)}
                 data-testid="copy-logs-btn"
               >
