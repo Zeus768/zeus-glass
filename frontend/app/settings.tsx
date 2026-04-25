@@ -544,7 +544,7 @@ export default function SettingsScreen() {
 
   const AccountSection = ({ title, children, sectionKey }: { title: string; children: React.ReactNode; sectionKey?: string }) => {
     return (
-      <View style={styles.section} accessible={false}>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {children}
       </View>
@@ -610,10 +610,9 @@ export default function SettingsScreen() {
           styles.accountCard,
           isCardFocused && styles.accountCardFocused,
         ]}
-        accessible={false}
       >
-        <View style={styles.accountHeader} accessible={false}>
-          <View style={styles.accountTitleContainer} accessible={false}>
+        <View style={styles.accountHeader}>
+          <View style={styles.accountTitleContainer}>
             <Ionicons name={icon as any} size={isTV ? 20 : 24} color={theme.colors.primary} />
             <Text style={styles.accountTitle}>{title}</Text>
           </View>
@@ -742,7 +741,6 @@ export default function SettingsScreen() {
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={true}
-        accessible={false}
         removeClippedSubviews={false}
         scrollEnabled={true}
       >
