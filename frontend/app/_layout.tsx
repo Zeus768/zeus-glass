@@ -24,6 +24,37 @@ import { Image } from 'expo-image';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// Error Boundary to catch crashes on startup (especially Shield TV)
+class AppErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: string}> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: '' };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message };
+  }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[AppErrorBoundary] Crash caught:', error.message, errorInfo.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#0A0E27', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+          <Text style={{ color: '#FF4444', fontSize: 22, fontWeight: 'bold', marginBottom: 16 }}>Zeus Glass Error</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 16, textAlign: 'center', marginBottom: 24 }}>{this.state.error}</Text>
+          <Pressable 
+            onPress={() => this.setState({ hasError: false, error: '' })}
+            style={{ backgroundColor: '#00D9FF', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 8 }}
+          >
+            <Text style={{ color: '#000', fontSize: 16, fontWeight: '700' }}>Try Again</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Tab configuration
 const TABS = [
   { name: 'index', title: 'HOME', route: '/' },
@@ -407,6 +438,7 @@ export default function TabLayout() {
   const isPlayerScreen = isPlayerActive || segments[0] === 'player' || pathname === '/player' || pathname?.startsWith('/player');
 
   return (
+    <AppErrorBoundary>
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={isPlayerScreen ? '#000' : theme.colors.background} />
       
@@ -477,6 +509,7 @@ export default function TabLayout() {
       {/* Donation Modal */}
       <DonationModal visible={showDonation} onClose={() => setShowDonation(false)} />
     </View>
+    </AppErrorBoundary>
   );
 }
 

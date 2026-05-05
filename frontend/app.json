@@ -63,7 +63,8 @@
         }
       ],
       "./plugins/withAndroidTV",
-      "expo-pip"
+      "expo-pip",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

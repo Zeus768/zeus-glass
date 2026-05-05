@@ -1,36 +1,49 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// Configure notification behavior - wrapped in try/catch for TV devices
+// where expo-notifications may not be fully supported (Shield TV, Fire TV)
+try {
+  if (!Platform.isTV) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  }
+} catch (e) {
+  console.warn('[Notifications] Failed to set handler:', e);
+}
 
 export const notificationService = {
   // Request permissions
   requestPermissions: async (): Promise<boolean> => {
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#00D9FF',
-      });
-    }
+    if (Platform.isTV) return false; // TV devices don't support notifications
+    try {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#00D9FF',
+        });
+      }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      return finalStatus === 'granted';
+    } catch (e) {
+      console.warn('[Notifications] Permission request failed:', e);
+      return false;
     }
-    
-    return finalStatus === 'granted';
   },
 
   // Check account expiry and send notifications
@@ -39,6 +52,7 @@ export const notificationService = {
     expiryDate: string,
     daysLeft: number
   ): Promise<void> => {
+    if (Platform.isTV) return; // Skip on TV devices
     // Only notify if 10 days or less
     if (daysLeft <= 10 && daysLeft > 0) {
       await notificationService.sendExpiryWarning(serviceName, daysLeft);
