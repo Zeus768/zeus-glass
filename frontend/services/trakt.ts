@@ -157,10 +157,10 @@ export const traktService = {
   },
 
   // Watchlist (Movies the user wants to watch)
-  getWatchlistMovies: async (): Promise<any[]> => {
+  getWatchlistMovies: async (page: number = 1, limit: number = 20): Promise<any[]> => {
     try {
       const response = await traktApi.get('/sync/watchlist/movies', {
-        params: { extended: 'full' },
+        params: { extended: 'full', page, limit },
       });
       return response.data.map((item: any) => ({
         id: item.movie.ids.tmdb,
@@ -182,10 +182,10 @@ export const traktService = {
   },
 
   // Watchlist (TV Shows the user wants to watch)
-  getWatchlistShows: async (): Promise<any[]> => {
+  getWatchlistShows: async (page: number = 1, limit: number = 20): Promise<any[]> => {
     try {
       const response = await traktApi.get('/sync/watchlist/shows', {
-        params: { extended: 'full' },
+        params: { extended: 'full', page, limit },
       });
       return response.data.map((item: any) => ({
         id: item.show.ids.tmdb,
@@ -202,31 +202,6 @@ export const traktService = {
       }));
     } catch (error) {
       console.error('[Trakt] Error fetching watchlist shows:', error);
-      return [];
-    }
-  },
-
-  // User's Favorites (Collection)
-  getCollectionMovies: async (): Promise<any[]> => {
-    try {
-      const response = await traktApi.get('/sync/collection/movies', {
-        params: { extended: 'full' },
-      });
-      return response.data.map((item: any) => ({
-        id: item.movie.ids.tmdb,
-        title: item.movie.title,
-        year: item.movie.year,
-        overview: item.movie.overview,
-        rating: item.movie.rating,
-        poster_path: null,
-        backdrop_path: null,
-        trakt_id: item.movie.ids.trakt,
-        imdb_id: item.movie.ids.imdb,
-        collected_at: item.collected_at,
-        type: 'movie',
-      }));
-    } catch (error) {
-      console.error('[Trakt] Error fetching collection movies:', error);
       return [];
     }
   },
@@ -465,6 +440,294 @@ export const traktService = {
     } catch (e) {
       console.warn('[Trakt] Failed to get show recommendations:', e);
       return [];
+    }
+  },
+
+  // ============================================
+  // COLLECTION
+  // ============================================
+  getCollectionMovies: async (page: number = 1, limit: number = 20): Promise<any[]> => {
+    try {
+      const response = await traktApi.get('/sync/collection/movies', {
+        params: { page, limit, extended: 'full' },
+      });
+      return (response.data || []).map((item: any) => ({
+        id: item.movie?.ids?.tmdb,
+        title: item.movie?.title,
+        year: item.movie?.year,
+        overview: item.movie?.overview,
+        rating: item.movie?.rating,
+        imdb_id: item.movie?.ids?.imdb,
+        trakt_id: item.movie?.ids?.trakt,
+        type: 'movie',
+        collected_at: item.collected_at,
+      }));
+    } catch (e) {
+      console.warn('[Trakt] Failed to get collection movies:', e);
+      return [];
+    }
+  },
+
+  getCollectionShows: async (page: number = 1, limit: number = 20): Promise<any[]> => {
+    try {
+      const response = await traktApi.get('/sync/collection/shows', {
+        params: { page, limit, extended: 'full' },
+      });
+      return (response.data || []).map((item: any) => ({
+        id: item.show?.ids?.tmdb,
+        title: item.show?.title,
+        year: item.show?.year,
+        overview: item.show?.overview,
+        rating: item.show?.rating,
+        imdb_id: item.show?.ids?.imdb,
+        trakt_id: item.show?.ids?.trakt,
+        type: 'tv',
+        collected_at: item.collected_at,
+      }));
+    } catch (e) {
+      console.warn('[Trakt] Failed to get collection shows:', e);
+      return [];
+    }
+  },
+
+  addToCollection: async (type: 'movie' | 'show', tmdbId: number): Promise<boolean> => {
+    try {
+      await traktApi.post('/sync/collection', {
+        [type === 'movie' ? 'movies' : 'shows']: [{ ids: { tmdb: tmdbId } }],
+      });
+      return true;
+    } catch (e) {
+      console.warn('[Trakt] Failed to add to collection:', e);
+      return false;
+    }
+  },
+
+  removeFromCollection: async (type: 'movie' | 'show', tmdbId: number): Promise<boolean> => {
+    try {
+      await traktApi.post('/sync/collection/remove', {
+        [type === 'movie' ? 'movies' : 'shows']: [{ ids: { tmdb: tmdbId } }],
+      });
+      return true;
+    } catch (e) {
+      console.warn('[Trakt] Failed to remove from collection:', e);
+      return false;
+    }
+  },
+
+  // ============================================
+  // CUSTOM LISTS
+  // ============================================
+  getMyLists: async (): Promise<any[]> => {
+    try {
+      const response = await traktApi.get('/users/me/lists');
+      return (response.data || []).map((list: any) => ({
+        id: list.ids?.trakt || list.ids?.slug,
+        slug: list.ids?.slug,
+        name: list.name,
+        description: list.description,
+        itemCount: list.item_count,
+        privacy: list.privacy,
+        createdAt: list.created_at,
+        updatedAt: list.updated_at,
+      }));
+    } catch (e) {
+      console.warn('[Trakt] Failed to get my lists:', e);
+      return [];
+    }
+  },
+
+  getListItems: async (listId: string, page: number = 1, limit: number = 20): Promise<any[]> => {
+    try {
+      const response = await traktApi.get(`/users/me/lists/${listId}/items`, {
+        params: { page, limit, extended: 'full' },
+      });
+      return (response.data || []).map((item: any) => {
+        const media = item.movie || item.show;
+        return {
+          id: media?.ids?.tmdb,
+          title: media?.title || item.movie?.title || item.show?.title,
+          year: media?.year,
+          overview: media?.overview,
+          rating: media?.rating,
+          imdb_id: media?.ids?.imdb,
+          trakt_id: media?.ids?.trakt,
+          type: item.type === 'movie' ? 'movie' : 'tv',
+          listed_at: item.listed_at,
+          rank: item.rank,
+        };
+      });
+    } catch (e) {
+      console.warn('[Trakt] Failed to get list items:', e);
+      return [];
+    }
+  },
+
+  createList: async (name: string, description: string = '', privacy: string = 'private'): Promise<any> => {
+    try {
+      const response = await traktApi.post('/users/me/lists', {
+        name, description, privacy, display_numbers: true, allow_comments: true,
+      });
+      return response.data;
+    } catch (e) {
+      console.warn('[Trakt] Failed to create list:', e);
+      return null;
+    }
+  },
+
+  addToList: async (listId: string, type: 'movie' | 'show', tmdbId: number): Promise<boolean> => {
+    try {
+      await traktApi.post(`/users/me/lists/${listId}/items`, {
+        [type === 'movie' ? 'movies' : 'shows']: [{ ids: { tmdb: tmdbId } }],
+      });
+      return true;
+    } catch (e) {
+      console.warn('[Trakt] Failed to add to list:', e);
+      return false;
+    }
+  },
+
+  removeFromList: async (listId: string, type: 'movie' | 'show', tmdbId: number): Promise<boolean> => {
+    try {
+      await traktApi.post(`/users/me/lists/${listId}/items/remove`, {
+        [type === 'movie' ? 'movies' : 'shows']: [{ ids: { tmdb: tmdbId } }],
+      });
+      return true;
+    } catch (e) {
+      console.warn('[Trakt] Failed to remove from list:', e);
+      return false;
+    }
+  },
+
+  // ============================================
+  // RATINGS
+  // ============================================
+  rateItem: async (type: 'movie' | 'show', tmdbId: number, rating: number): Promise<boolean> => {
+    try {
+      await traktApi.post('/sync/ratings', {
+        [type === 'movie' ? 'movies' : 'shows']: [{ ids: { tmdb: tmdbId }, rating }],
+      });
+      return true;
+    } catch (e) {
+      console.warn('[Trakt] Failed to rate:', e);
+      return false;
+    }
+  },
+
+  removeRating: async (type: 'movie' | 'show', tmdbId: number): Promise<boolean> => {
+    try {
+      await traktApi.post('/sync/ratings/remove', {
+        [type === 'movie' ? 'movies' : 'shows']: [{ ids: { tmdb: tmdbId } }],
+      });
+      return true;
+    } catch (e) {
+      console.warn('[Trakt] Failed to remove rating:', e);
+      return false;
+    }
+  },
+
+  getRatedMovies: async (page: number = 1, limit: number = 20): Promise<any[]> => {
+    try {
+      const response = await traktApi.get('/sync/ratings/movies', {
+        params: { page, limit, extended: 'full' },
+      });
+      return (response.data || []).map((item: any) => ({
+        id: item.movie?.ids?.tmdb,
+        title: item.movie?.title,
+        year: item.movie?.year,
+        rating: item.rating,
+        imdb_id: item.movie?.ids?.imdb,
+        type: 'movie',
+        rated_at: item.rated_at,
+      }));
+    } catch (e) {
+      console.warn('[Trakt] Failed to get rated movies:', e);
+      return [];
+    }
+  },
+
+  // ============================================
+  // POPULAR / TRENDING LISTS
+  // ============================================
+  getPopularLists: async (page: number = 1, limit: number = 20): Promise<any[]> => {
+    try {
+      const response = await traktApi.get('/lists/popular', {
+        params: { page, limit },
+      });
+      return (response.data || []).map((item: any) => ({
+        id: item.ids?.trakt || item.ids?.slug,
+        slug: item.ids?.slug,
+        name: item.name,
+        description: item.description,
+        itemCount: item.item_count,
+        likes: item.likes,
+        user: item.user?.username,
+      }));
+    } catch (e) {
+      console.warn('[Trakt] Failed to get popular lists:', e);
+      return [];
+    }
+  },
+
+  getUserListItems: async (username: string, listId: string, page: number = 1, limit: number = 20): Promise<any[]> => {
+    try {
+      const response = await traktApi.get(`/users/${username}/lists/${listId}/items`, {
+        params: { page, limit, extended: 'full' },
+      });
+      return (response.data || []).map((item: any) => {
+        const media = item.movie || item.show;
+        return {
+          id: media?.ids?.tmdb,
+          title: media?.title,
+          year: media?.year,
+          overview: media?.overview,
+          rating: media?.rating,
+          imdb_id: media?.ids?.imdb,
+          type: item.type === 'movie' ? 'movie' : 'tv',
+        };
+      });
+    } catch (e) {
+      console.warn('[Trakt] Failed to get user list items:', e);
+      return [];
+    }
+  },
+
+  // ============================================
+  // HISTORY WITH PAGINATION
+  // ============================================
+  getHistory: async (type: 'movies' | 'shows', page: number = 1, limit: number = 20): Promise<any[]> => {
+    try {
+      const response = await traktApi.get(`/sync/history/${type}`, {
+        params: { page, limit, extended: 'full' },
+      });
+      return (response.data || []).map((item: any) => {
+        const media = item.movie || item.show;
+        return {
+          id: media?.ids?.tmdb,
+          title: media?.title,
+          year: media?.year,
+          overview: media?.overview,
+          rating: media?.rating,
+          imdb_id: media?.ids?.imdb,
+          type: item.type === 'movie' ? 'movie' : 'tv',
+          watched_at: item.watched_at,
+        };
+      });
+    } catch (e) {
+      console.warn('[Trakt] Failed to get history:', e);
+      return [];
+    }
+  },
+
+  // Remove from history
+  removeFromHistory: async (type: 'movie' | 'show', tmdbId: number): Promise<boolean> => {
+    try {
+      await traktApi.post('/sync/history/remove', {
+        [type === 'movie' ? 'movies' : 'shows']: [{ ids: { tmdb: tmdbId } }],
+      });
+      return true;
+    } catch (e) {
+      console.warn('[Trakt] Failed to remove from history:', e);
+      return false;
     }
   },
 };

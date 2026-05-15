@@ -96,6 +96,21 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - P3: IMDB Login integration
 - P3: GitLab CI/CD setup
 
+### Comet + Meteor Scrapers Added (2026-04-18)
+- Comet: Updated to `comet.feels.legal` (was elfhosted). Handles both direct URLs and infoHash magnet links.
+- Meteor: New scraper added at `meteorfortheweebs.midnightignite.me`. Stremio addon format.
+- Both added to `getAllSourcesWithProgress` for real-time scraping status.
+
+### Trakt Deep Integration (2026-04-18)
+- **Collection**: Add/remove movies & shows to personal collection with pagination
+- **Custom Lists**: Create lists, add/remove items, browse own lists and their items
+- **Ratings**: Rate movies/shows (1-10), remove ratings, get rated items
+- **Popular Lists**: Browse community popular lists, view items from any user's lists
+- **History with Pagination**: Full watch history with pagination
+- **Remove from History**: Remove items from watch history
+- **Watchlist/Collection/History tabs**: Added to Movies page category bar (shown when Trakt logged in)
+- All list methods support pagination for unlimited scrolling
+
 ### Settings Scroll & Exit Bug Fix (2026-04-18) - Stripped all programmatic scrolling
 - **Bug 1 (onn 4k pro)**: "Can't scroll past Real-Debrid, takes back to top" — Caused by `scrollToElement`/`measureLayout` fighting native ScrollView. `removeClippedSubviews={false}` lets Android TV's native focus-driven scroll work on its own.
 - **Bug 2 (onn pro box)**: "Tried to login to RD keeps asking to exit" — Global BackHandler was consuming ALL back presses including ones that should close modals. Now only consumes back on root tab screens.

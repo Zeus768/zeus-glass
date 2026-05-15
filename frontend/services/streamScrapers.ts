@@ -63,7 +63,13 @@ const SCRAPERS = {
   
   comet: {
     name: 'Comet',
-    baseUrl: 'https://comet.elfhosted.com',
+    baseUrl: 'https://comet.feels.legal',
+    type: 'torrent' as const,
+  },
+
+  meteor: {
+    name: 'Meteor',
+    baseUrl: 'https://meteorfortheweebs.midnightignite.me',
     type: 'torrent' as const,
   },
   
@@ -611,7 +617,7 @@ export const streamScraperService = {
     }
   },
 
-  // Comet scraper (another Stremio addon)
+  // Comet scraper (Stremio addon - comet.feels.legal)
   scrapeComet: async (type: 'movie' | 'series', imdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
     try {
       if (!imdbId || !imdbId.startsWith('tt')) return [];
@@ -623,19 +629,56 @@ export const streamScraperService = {
       url += '.json';
       
       const response = await proxiedGet(url, { 
-        timeout: 10000,
+        timeout: 15000,
         headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36' }
       });
       
       const streams = response.data?.streams || [];
-      return streams.map((stream: any) => ({
-        name: stream.title || stream.name || 'Comet',
-        url: `magnet:?xt=urn:btih:${stream.infoHash}`,
-        quality: extractQuality(stream.title || ''),
-        type: 'torrent' as const,
-        source: 'Comet',
-        size: extractSize(stream.title || ''),
-      })).filter((s: StreamSource) => s.url.includes('btih:'));
+      return streams.map((stream: any) => {
+        // Comet may return direct URLs or infoHashes
+        const streamUrl = stream.url || (stream.infoHash ? `magnet:?xt=urn:btih:${stream.infoHash}` : '');
+        return {
+          name: stream.title || stream.name || 'Comet',
+          url: streamUrl,
+          quality: extractQuality(stream.title || ''),
+          type: 'torrent' as const,
+          source: 'Comet',
+          size: extractSize(stream.title || ''),
+        };
+      }).filter((s: StreamSource) => s.url);
+    } catch {
+      return [];
+    }
+  },
+
+  // Meteor scraper (Stremio addon - meteorfortheweebs.midnightignite.me)
+  scrapeMeteor: async (type: 'movie' | 'series', imdbId: string, season?: number, episode?: number): Promise<StreamSource[]> => {
+    try {
+      if (!imdbId || !imdbId.startsWith('tt')) return [];
+      
+      let url = `${SCRAPERS.meteor.baseUrl}/stream/${type}/${imdbId}`;
+      if (type === 'series' && season !== undefined && episode !== undefined) {
+        url += `:${season}:${episode}`;
+      }
+      url += '.json';
+      
+      const response = await proxiedGet(url, { 
+        timeout: 15000,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36' }
+      });
+      
+      const streams = response.data?.streams || [];
+      return streams.map((stream: any) => {
+        const streamUrl = stream.url || (stream.infoHash ? `magnet:?xt=urn:btih:${stream.infoHash}` : '');
+        return {
+          name: stream.title || stream.name || 'Meteor',
+          url: streamUrl,
+          quality: extractQuality(stream.title || ''),
+          type: 'torrent' as const,
+          source: 'Meteor',
+          size: extractSize(stream.title || ''),
+        };
+      }).filter((s: StreamSource) => s.url);
     } catch {
       return [];
     }
@@ -697,6 +740,10 @@ export const streamScraperService = {
       { name: 'Comet', fn: async () => {
         if (!imdbId) return [];
         return streamScraperService.scrapeComet(type === 'tv' ? 'series' : 'movie', imdbId, season, episode);
+      }},
+      { name: 'Meteor', fn: async () => {
+        if (!imdbId) return [];
+        return streamScraperService.scrapeMeteor(type === 'tv' ? 'series' : 'movie', imdbId, season, episode);
       }},
       { name: 'VidSrc', fn: () => streamScraperService.scrapeVidSrc(type, tmdbId, season, episode) },
       { name: 'VidSrc Pro', fn: () => streamScraperService.scrapeVidSrcPro(type, tmdbId, season, episode) },
