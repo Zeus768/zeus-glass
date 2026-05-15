@@ -418,23 +418,27 @@ export default function TabLayout() {
     return unsub;
   }, []);
 
+  const pathname = usePathname();
+  const segments = useSegments();
+
   // Prevent accidental app exit on TV devices
-  // On Android TV (Mecool, Firestick, Shield), pressing Back on a tab screen
-  // would immediately exit. Now we intercept and require the Exit button.
+  // Only intercept back press when NO modal is open and we're on a root tab
   useEffect(() => {
     if (!Platform.isTV) return;
     
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // On TV, consume back press on main tab screens to prevent accidental exit
-      // The player and live-tv screens have their own back handlers
-      return true;
+      // Let detail screens and modals handle their own back press
+      // Only consume back on root tab screens to prevent accidental exit
+      const isOnRootTab = !pathname?.includes('/movie/') && !pathname?.includes('/tv/') && !pathname?.includes('/player');
+      if (isOnRootTab) {
+        return true; // Consume - must use Exit button
+      }
+      return false; // Let it through for detail screens
     });
     
     return () => backHandler.remove();
-  }, []);
+  }, [pathname]);
   
-  const pathname = usePathname();
-  const segments = useSegments();
   const isPlayerScreen = isPlayerActive || segments[0] === 'player' || pathname === '/player' || pathname?.startsWith('/player');
 
   return (

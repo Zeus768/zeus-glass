@@ -96,6 +96,12 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - P3: IMDB Login integration
 - P3: GitLab CI/CD setup
 
+### Settings Scroll & Exit Bug Fix (2026-04-18) - Stripped all programmatic scrolling
+- **Bug 1 (onn 4k pro)**: "Can't scroll past Real-Debrid, takes back to top" — Caused by `scrollToElement`/`measureLayout` fighting native ScrollView. `removeClippedSubviews={false}` lets Android TV's native focus-driven scroll work on its own.
+- **Bug 2 (onn pro box)**: "Tried to login to RD keeps asking to exit" — Global BackHandler was consuming ALL back presses including ones that should close modals. Now only consumes back on root tab screens.
+- **Crash fix**: `pathname` variable was used before `usePathname()` hook declaration (TDZ error). Reordered hooks.
+- **Approach**: REMOVED all programmatic scroll logic (`scrollToElement`, `measureLayout`, `findNodeHandle`, `trackSectionLayout`, `sectionYPositions`). Trust native Android TV ScrollView entirely.
+
 ### Shield TV Startup Crash Fix (2026-04-18)
 - **Root cause**: `expo-notifications` `setNotificationHandler()` ran at module-level import time (line 5 of notifications.ts). On NVIDIA Shield TV, this API crashes immediately because TV devices lack full notification support. Since authStore imports notifications.ts, and _layout.tsx imports authStore, the crash happened before the app could even render.
 - **Fix 1**: Wrapped `setNotificationHandler()` in try-catch + `Platform.isTV` guard — skips entirely on TV devices
