@@ -101,6 +101,12 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - Meteor: New scraper added at `meteorfortheweebs.midnightignite.me`. Stremio addon format.
 - Both added to `getAllSourcesWithProgress` for real-time scraping status.
 
+### Cloud Tab for Debrid Cached Items (2026-04-18)
+- "Cloud" tab added to Movies category bar - shows Real-Debrid and TorBox cloud/cached torrents
+- Backend endpoints: `GET /api/debrid/real-debrid/cloud`, `GET /api/debrid/torbox/cloud`
+- Displays filename, status, size for each cached item
+- Supports pagination for infinite scrolling
+
 ### Trakt Deep Integration (2026-04-18)
 - **Collection**: Add/remove movies & shows to personal collection with pagination
 - **Custom Lists**: Create lists, add/remove items, browse own lists and their items

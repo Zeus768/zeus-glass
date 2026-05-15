@@ -300,6 +300,53 @@ async def check_premiumize_cache(hashes: str, apikey: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================
+# DEBRID CLOUD - List user's cached/cloud torrents
+# ============================================
+
+@api_router.get("/debrid/real-debrid/cloud")
+async def get_rd_cloud(token: str, page: int = 1, limit: int = 50):
+    """Get Real-Debrid user's cloud torrents"""
+    try:
+        if not token:
+            raise HTTPException(status_code=400, detail="Token required")
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.real-debrid.com/rest/1.0/torrents",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"offset": (page - 1) * limit, "limit": limit},
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"RD Cloud error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/debrid/torbox/cloud")
+async def get_torbox_cloud(token: str, page: int = 1, limit: int = 50):
+    """Get TorBox user's cloud items"""
+    try:
+        if not token:
+            raise HTTPException(status_code=400, detail="Token required")
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.torbox.app/v1/api/torrents/mylist",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"offset": (page - 1) * limit, "limit": limit},
+                timeout=15.0
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"TorBox Cloud error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
 # DEBRID AUTHENTICATION PROXY ENDPOINTS
 # These endpoints proxy Debrid auth requests to avoid CORS issues on web
 # ============================================

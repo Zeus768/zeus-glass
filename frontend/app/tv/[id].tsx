@@ -12,6 +12,7 @@ import { useContentStore } from '../../store/contentStore';
 import { TVShow, CachedTorrent, Season, Episode } from '../../types';
 import { errorLogService } from '../../services/errorLogService';
 import { traktService } from '../../services/trakt';
+import { useAuthStore } from '../../store/authStore';
 import { PlayerChoice } from '../../components/PlayerChoice';
 import { DebridDownloadDialog } from '../../components/DebridDownloadDialog';
 
@@ -42,6 +43,11 @@ export default function TVShowDetailScreen() {
   // Focus states
   const [focusedSeason, setFocusedSeason] = useState<number | null>(null);
   const [focusedEpisode, setFocusedEpisode] = useState<number | null>(null);
+
+  // Trakt state
+  const { traktUser } = useAuthStore();
+  const [inWatchlist, setInWatchlist] = useState(false);
+  const [traktLoading, setTraktLoading] = useState(false);
   const [focusedStream, setFocusedStream] = useState<string | null>(null);
   const [nextUpEpisode, setNextUpEpisode] = useState<{ season: number; number: number; title: string } | null>(null);
   
@@ -92,10 +98,33 @@ export default function TVShowDetailScreen() {
         const firstSeason = showData.seasons.find(s => s.season_number > 0) || showData.seasons[0];
         setSelectedSeason(firstSeason.season_number);
       }
+      
+      // Check Trakt watchlist status
+      if (traktUser && showData?.id) {
+        traktService.isInWatchlist('show', showData.id).then(setInWatchlist).catch(() => {});
+      }
     } catch (error) {
       console.error('Error loading TV show details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleWatchlist = async () => {
+    if (!tvShow?.id || traktLoading) return;
+    setTraktLoading(true);
+    try {
+      if (inWatchlist) {
+        await traktService.removeFromWatchlist('show', tvShow.id);
+        setInWatchlist(false);
+      } else {
+        await traktService.addToWatchlist('show', tvShow.id);
+        setInWatchlist(true);
+      }
+    } catch (e) {
+      console.warn('[Trakt] Watchlist toggle failed:', e);
+    } finally {
+      setTraktLoading(false);
     }
   };
 
@@ -321,6 +350,18 @@ export default function TVShowDetailScreen() {
                   {isFavorite(tvShow.id) ? 'Remove from Favorites' : 'Add to Favorites'}
                 </Text>
               </Pressable>
+              {traktUser && (
+                <Pressable 
+                  style={[styles.favButton, inWatchlist && { borderColor: theme.colors.primary }]}
+                  onPress={toggleWatchlist}
+                  data-testid="trakt-watchlist-btn"
+                >
+                  <Ionicons name={inWatchlist ? 'bookmark' : 'bookmark-outline'} size={24} color={inWatchlist ? theme.colors.primary : theme.colors.text} />
+                  <Text style={[styles.favButtonText, inWatchlist && { color: theme.colors.primary }]}>
+                    {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </View>
 

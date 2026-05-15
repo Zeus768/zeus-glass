@@ -8,6 +8,8 @@ import { theme, isTV } from '../../constants/theme';
 import { tmdbService } from '../../services/tmdb';
 import { debridCacheService, realDebridService } from '../../services/debrid';
 import { streamScraperService, StreamSource } from '../../services/streamScrapers';
+import { traktService } from '../../services/trakt';
+import { useAuthStore } from '../../store/authStore';
 import { streamFilterService, FilterableStream, StreamFilterSettings } from '../../services/streamFilterService';
 import { resolveUrlService } from '../../services/resolveUrl';
 import { iptvService } from '../../services/iptv';
@@ -49,6 +51,12 @@ export default function MovieDetailScreen() {
   
   // One-click play
   const [oneClickEnabled, setOneClickEnabled] = useState(false);
+
+  // Trakt state
+  const { traktUser } = useAuthStore();
+  const [inWatchlist, setInWatchlist] = useState(false);
+  const [inCollection, setInCollection] = useState(false);
+  const [traktLoading, setTraktLoading] = useState(false);
 
   // TV Back button handler - navigate back to previous screen
   useFocusEffect(
@@ -118,10 +126,51 @@ export default function MovieDetailScreen() {
     try {
       const movieData = await tmdbService.getMovieDetails(parseInt(id));
       setMovie(movieData);
+      
+      // Check Trakt status
+      if (traktUser && movieData?.id) {
+        traktService.isInWatchlist('movie', movieData.id).then(setInWatchlist).catch(() => {});
+      }
     } catch (error) {
       console.error('Error loading movie details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleWatchlist = async () => {
+    if (!movie?.id || traktLoading) return;
+    setTraktLoading(true);
+    try {
+      if (inWatchlist) {
+        await traktService.removeFromWatchlist('movie', movie.id);
+        setInWatchlist(false);
+      } else {
+        await traktService.addToWatchlist('movie', movie.id);
+        setInWatchlist(true);
+      }
+    } catch (e) {
+      console.warn('[Trakt] Watchlist toggle failed:', e);
+    } finally {
+      setTraktLoading(false);
+    }
+  };
+
+  const toggleCollection = async () => {
+    if (!movie?.id || traktLoading) return;
+    setTraktLoading(true);
+    try {
+      if (inCollection) {
+        await traktService.removeFromCollection('movie', movie.id);
+        setInCollection(false);
+      } else {
+        await traktService.addToCollection('movie', movie.id);
+        setInCollection(true);
+      }
+    } catch (e) {
+      console.warn('[Trakt] Collection toggle failed:', e);
+    } finally {
+      setTraktLoading(false);
     }
   };
 
@@ -476,6 +525,24 @@ export default function MovieDetailScreen() {
             <Pressable style={styles.shareButton}>
               <Ionicons name="share-outline" size={24} color={theme.colors.text} />
             </Pressable>
+            {traktUser && (
+              <Pressable 
+                style={[styles.favoriteButton, inWatchlist && { backgroundColor: 'rgba(0, 217, 255, 0.2)' }]}
+                onPress={toggleWatchlist}
+                data-testid="trakt-watchlist-btn"
+              >
+                <Ionicons name={inWatchlist ? 'bookmark' : 'bookmark-outline'} size={24} color={inWatchlist ? theme.colors.primary : theme.colors.text} />
+              </Pressable>
+            )}
+            {traktUser && (
+              <Pressable 
+                style={[styles.favoriteButton, inCollection && { backgroundColor: 'rgba(0, 217, 255, 0.2)' }]}
+                onPress={toggleCollection}
+                data-testid="trakt-collection-btn"
+              >
+                <Ionicons name={inCollection ? 'library' : 'library-outline'} size={24} color={inCollection ? theme.colors.primary : theme.colors.text} />
+              </Pressable>
+            )}
             {!isTV && (
               <Pressable 
                 style={styles.castButton}

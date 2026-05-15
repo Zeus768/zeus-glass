@@ -4,8 +4,10 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
 import { tmdbService } from '../services/tmdb';
+import { traktService } from '../services/trakt';
 import { TVShow, Genre } from '../types';
 import { useRouter } from 'expo-router';
+import { useAuthStore } from '../store/authStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -25,7 +27,7 @@ export default function TVShowsScreen() {
   const router = useRouter();
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'trending' | 'top_rated'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'trending' | 'top_rated' | 'watchlist' | 'collection' | 'history'>('all');
   const [shows, setShows] = useState<TVShow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -33,6 +35,7 @@ export default function TVShowsScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [focusedGenreIndex, setFocusedGenreIndex] = useState<number | null>(null);
+  const { traktUser } = useAuthStore();
 
   useEffect(() => {
     loadGenres();
@@ -48,6 +51,12 @@ export default function TVShowsScreen() {
       loadTrendingShows(1, true);
     } else if (selectedCategory === 'top_rated') {
       loadTopRatedShows(1, true);
+    } else if (selectedCategory === 'watchlist') {
+      loadWatchlistShows(1, true);
+    } else if (selectedCategory === 'collection') {
+      loadCollectionShows(1, true);
+    } else if (selectedCategory === 'history') {
+      loadHistoryShows(1, true);
     } else {
       loadShows(1, true);
     }
@@ -147,6 +156,48 @@ export default function TVShowsScreen() {
     }
   };
 
+  // Trakt Loaders - fetch items then resolve TMDB poster data
+  const loadTraktItems = async (fetcher: (page: number) => Promise<any[]>, pageNum: number = 1, reset: boolean = false) => {
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+    
+    try {
+      const items = await fetcher(pageNum);
+      if (items.length < 20) setHasMore(false);
+      
+      const resolved = await Promise.all(
+        items.filter((i: any) => i.id).map(async (item: any) => {
+          try {
+            const tmdbData = await tmdbService.getTVShowDetails(item.id);
+            return { ...tmdbData, id: item.id } as TVShow;
+          } catch {
+            return { id: item.id, name: item.title || item.name, poster_path: null, backdrop_path: null, overview: item.overview || '', vote_average: item.rating || 0 } as any;
+          }
+        })
+      );
+      
+      if (reset) {
+        setShows(resolved.filter(Boolean));
+      } else {
+        setShows(prev => [...prev, ...resolved.filter(Boolean)]);
+      }
+    } catch (error) {
+      console.error('Error loading Trakt items:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadWatchlistShows = (pageNum: number = 1, reset: boolean = false) =>
+    loadTraktItems((p) => traktService.getWatchlistShows(p), pageNum, reset);
+
+  const loadCollectionShows = (pageNum: number = 1, reset: boolean = false) =>
+    loadTraktItems((p) => traktService.getCollectionShows(p), pageNum, reset);
+
+  const loadHistoryShows = (pageNum: number = 1, reset: boolean = false) =>
+    loadTraktItems((p) => traktService.getHistory('shows', p), pageNum, reset);
+
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
     
@@ -159,6 +210,12 @@ export default function TVShowsScreen() {
       loadTrendingShows(nextPage, false);
     } else if (selectedCategory === 'top_rated') {
       loadTopRatedShows(nextPage, false);
+    } else if (selectedCategory === 'watchlist') {
+      loadWatchlistShows(nextPage, false);
+    } else if (selectedCategory === 'collection') {
+      loadCollectionShows(nextPage, false);
+    } else if (selectedCategory === 'history') {
+      loadHistoryShows(nextPage, false);
     } else {
       loadShows(nextPage, false);
     }
@@ -259,7 +316,7 @@ export default function TVShowsScreen() {
     );
   }, [selectedGenre, selectedCategory, focusedGenreIndex]);
 
-  const renderCategoryButton = useCallback((category: { key: 'trending' | 'top_rated'; label: string; icon: string }, index: number) => {
+  const renderCategoryButton = useCallback((category: { key: string; label: string; icon: string }, index: number) => {
     const isSelected = selectedCategory === category.key && selectedGenre === null;
     const isFocused = focusedGenreIndex === index;
     
@@ -301,7 +358,13 @@ export default function TVShowsScreen() {
         {renderGenreButton(null, 0)}
         {renderCategoryButton({ key: 'trending', label: 'Trending', icon: 'flame' }, 1)}
         {renderCategoryButton({ key: 'top_rated', label: 'Top Rated', icon: 'star' }, 2)}
-        {genres.map((genre, index) => renderGenreButton(genre, index + 3))}
+        
+        {/* Trakt Categories */}
+        {traktUser && renderCategoryButton({ key: 'watchlist', label: 'Watchlist', icon: 'bookmark' }, 3)}
+        {traktUser && renderCategoryButton({ key: 'collection', label: 'Collection', icon: 'library' }, 4)}
+        {traktUser && renderCategoryButton({ key: 'history', label: 'History', icon: 'time' }, 5)}
+        
+        {genres.map((genre, index) => renderGenreButton(genre, index + 6))}
       </ScrollView>
 
       {loading ? (

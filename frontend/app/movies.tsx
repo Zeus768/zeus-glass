@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
 import { tmdbService } from '../services/tmdb';
 import { traktService } from '../services/trakt';
+import { realDebridService, torboxService } from '../services/debrid';
 import { Movie, Genre } from '../types';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
@@ -28,7 +29,7 @@ export default function MoviesScreen() {
   const router = useRouter();
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'trending' | 'top_rated' | 'watchlist' | 'collection' | 'history'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'trending' | 'top_rated' | 'watchlist' | 'collection' | 'history' | 'cloud'>('all');
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -200,6 +201,78 @@ export default function MoviesScreen() {
   const loadHistoryMovies = (pageNum: number = 1, reset: boolean = false) =>
     loadTraktItems((p) => traktService.getHistory('movies', p), pageNum, reset);
 
+  // Cloud loader - fetches RD/TorBox cloud items and tries to match them to TMDB
+  const loadCloudItems = async (pageNum: number = 1, reset: boolean = false) => {
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+    
+    try {
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const rdToken = await realDebridService.getToken();
+      const tbToken = await torboxService.getToken();
+      
+      let cloudItems: any[] = [];
+      
+      if (rdToken) {
+        try {
+          const res = await fetch(`${backendUrl}/api/debrid/real-debrid/cloud?token=${encodeURIComponent(rdToken)}&page=${pageNum}&limit=20`);
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            cloudItems = data.map((item: any) => ({
+              id: item.id,
+              filename: item.filename,
+              status: item.status,
+              bytes: item.bytes,
+              links: item.links,
+              source: 'Real-Debrid',
+            }));
+          }
+        } catch (e) { console.warn('[Cloud] RD fetch failed:', e); }
+      }
+      
+      if (tbToken && cloudItems.length < 10) {
+        try {
+          const res = await fetch(`${backendUrl}/api/debrid/torbox/cloud?token=${encodeURIComponent(tbToken)}&page=${pageNum}&limit=20`);
+          const data = await res.json();
+          const items = data?.data || [];
+          if (Array.isArray(items)) {
+            cloudItems.push(...items.map((item: any) => ({
+              id: item.id,
+              filename: item.name || item.filename,
+              status: item.download_finished ? 'downloaded' : item.download_state,
+              bytes: item.size,
+              source: 'TorBox',
+            })));
+          }
+        } catch (e) { console.warn('[Cloud] TorBox fetch failed:', e); }
+      }
+      
+      if (cloudItems.length < 20) setHasMore(false);
+      
+      // Convert cloud items to Movie-like objects for display
+      const movieItems = cloudItems.map((item: any, idx: number) => ({
+        id: -(pageNum * 100 + idx), // Negative ID to avoid TMDB collision
+        title: item.filename?.replace(/\./g, ' ')?.replace(/\[.*?\]/g, '')?.trim() || 'Unknown',
+        poster_path: null,
+        backdrop_path: null,
+        overview: `${item.source} | ${item.status || 'ready'} | ${item.bytes ? (item.bytes / 1073741824).toFixed(1) + ' GB' : ''}`,
+        vote_average: 0,
+        _cloudItem: item, // Store original for playback
+      } as any));
+      
+      if (reset) {
+        setMovies(movieItems);
+      } else {
+        setMovies(prev => [...prev, ...movieItems]);
+      }
+    } catch (error) {
+      console.error('Error loading cloud items:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
     
@@ -218,12 +291,14 @@ export default function MoviesScreen() {
       loadCollectionMovies(nextPage, false);
     } else if (selectedCategory === 'history') {
       loadHistoryMovies(nextPage, false);
+    } else if (selectedCategory === 'cloud') {
+      loadCloudItems(nextPage, false);
     } else {
       loadMovies(nextPage, false);
     }
   }, [page, loadingMore, hasMore, selectedGenre, selectedCategory]);
 
-  const handleCategorySelect = (category: 'all' | 'trending' | 'top_rated' | 'watchlist' | 'collection' | 'history') => {
+  const handleCategorySelect = (category: 'all' | 'trending' | 'top_rated' | 'watchlist' | 'collection' | 'history' | 'cloud') => {
     setSelectedGenre(null);
     setSelectedCategory(category);
   };
@@ -327,14 +402,14 @@ export default function MoviesScreen() {
     );
   }, [selectedGenre, selectedCategory, focusedGenreIndex]);
 
-  const renderCategoryButton = useCallback((category: { key: 'trending' | 'top_rated'; label: string; icon: string }, index: number) => {
+  const renderCategoryButton = useCallback((category: { key: string; label: string; icon: string }, index: number) => {
     const isSelected = selectedCategory === category.key && selectedGenre === null;
     const isFocused = focusedGenreIndex === index;
     
     return (
       <Pressable
         key={category.key}
-        onPress={() => handleCategorySelect(category.key)}
+        onPress={() => handleCategorySelect(category.key as any)}
         onFocus={() => setFocusedGenreIndex(index)}
         onBlur={() => setFocusedGenreIndex(null)}
         style={[
@@ -375,6 +450,9 @@ export default function MoviesScreen() {
         {traktUser && renderCategoryButton({ key: 'watchlist', label: 'Watchlist', icon: 'bookmark' }, 3)}
         {traktUser && renderCategoryButton({ key: 'collection', label: 'Collection', icon: 'library' }, 4)}
         {traktUser && renderCategoryButton({ key: 'history', label: 'History', icon: 'time' }, 5)}
+        
+        {/* Cloud - shows debrid cached items */}
+        {renderCategoryButton({ key: 'cloud', label: 'Cloud', icon: 'cloud' }, 6)}
         
         {/* Franchises Button */}
         <Pressable
