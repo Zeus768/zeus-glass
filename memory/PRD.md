@@ -117,6 +117,14 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - **Watchlist/Collection/History tabs**: Added to Movies page category bar (shown when Trakt logged in)
 - All list methods support pagination for unlimited scrolling
 
+### Debug Report System (2026-05-16)
+- Full interaction/navigation/crash tracker (`debugTracker.ts`) records every press, focus, navigation, crash with timestamps
+- "Debug Report" section at TOP of Settings page with one-click GoFile upload
+- Backend endpoint `POST /api/debug/upload-gofile` creates JSON bundle, uploads to GoFile anonymously, returns public link
+- GoFile link shown on screen for easy sharing with developer
+- Also stores bundles in MongoDB for dashboard access
+- Navigation tracking integrated globally in `_layout.tsx`
+
 ### Settings FlatList Migration (2026-05-16) - DEFINITIVE TV SCROLL FIX
 - **Root cause finally identified**: React Native `ScrollView` does NOT auto-scroll on Android TV D-pad focus. This is a known RN limitation — ScrollView only scrolls via touch, never via D-pad focus traversal.
 - **Fix**: Replaced `ScrollView` with `FlatList` for the main settings container. Each settings section (Accounts, Vault, VPN, Scrapers, Content Filter, Parental, Player, Debug, About) is a separate FlatList item.

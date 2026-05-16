@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Tabs, usePathname, useRouter, useSegments } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import { useContentStore } from '../store/contentStore';
 import { playerState } from '../utils/playerState';
 import { initWatchedStore } from '../stores/useWatchedStore';
+import { debugTracker } from '../services/debugTracker';
 import { BackHandler } from 'react-native';
 import { 
   Platform, 
@@ -404,6 +405,10 @@ export default function TabLayout() {
       try {
         await initWatchedStore();
       } catch {}
+      // Initialize debug tracker
+      try {
+        await debugTracker.init();
+      } catch {}
     };
     init();
   }, []);
@@ -420,6 +425,15 @@ export default function TabLayout() {
 
   const pathname = usePathname();
   const segments = useSegments();
+  const prevPathname = useRef(pathname);
+
+  // Track navigation changes
+  useEffect(() => {
+    if (pathname !== prevPathname.current) {
+      debugTracker.trackNavigation(prevPathname.current || 'initial', pathname);
+      prevPathname.current = pathname;
+    }
+  }, [pathname]);
 
   // Prevent accidental app exit on TV devices
   // Only intercept back press when NO modal is open and we're on a root tab

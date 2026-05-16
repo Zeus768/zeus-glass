@@ -24,6 +24,7 @@ import { QRAuthModal } from '../components/QRAuthModal';
 import { useAuthStore } from '../store/authStore';
 import { iptvService } from '../services/iptv';
 import { errorLogService, LogEntry } from '../services/errorLogService';
+import { debugTracker } from '../services/debugTracker';
 import { parentalControlService, ParentalControlSettings } from '../services/parentalControlService';
 import { subtitleService, SubtitleSettings } from '../services/subtitleService';
 import { streamFilterService, OneClickPlaySettings } from '../services/streamFilterService';
@@ -71,6 +72,28 @@ export default function SettingsScreen() {
   const [logModalVisible, setLogModalVisible] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showErrorsOnly, setShowErrorsOnly] = useState(true);
+
+  // Debug bundle upload state
+  const [debugUploading, setDebugUploading] = useState(false);
+  const [debugGofileUrl, setDebugGofileUrl] = useState<string | null>(null);
+
+  const handleDebugUpload = async () => {
+    setDebugUploading(true);
+    setDebugGofileUrl(null);
+    try {
+      const result = await debugTracker.uploadDebugBundle();
+      if (result.gofileUrl) {
+        setDebugGofileUrl(result.gofileUrl);
+        Alert.alert('Debug Bundle Uploaded', `GoFile Link:\n${result.gofileUrl}\n\nShare this link with the developer.`);
+      } else {
+        Alert.alert('Upload Status', result.message);
+      }
+    } catch (e: any) {
+      Alert.alert('Upload Failed', e.message || 'Network error');
+    } finally {
+      setDebugUploading(false);
+    }
+  };
 
   // Parental control state
   const [parentalModalVisible, setParentalModalVisible] = useState(false);
@@ -687,6 +710,41 @@ export default function SettingsScreen() {
         trackColor={{ false: theme.colors.surfaceLight, true: theme.colors.primary }}
         thumbColor={theme.colors.text}
       />
+    </View>
+  );
+
+  const SectionDebugUpload = () => (
+    <View style={[styles.section, { borderColor: theme.colors.primary, borderWidth: 1, borderRadius: theme.borderRadius.lg, marginBottom: theme.spacing.md }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+        <Ionicons name="bug" size={isTV ? 20 : 24} color={theme.colors.primary} />
+        <Text style={[styles.sectionTitle, { marginLeft: 8, marginBottom: 0 }]}>Debug Report</Text>
+      </View>
+      <Text style={{ color: theme.colors.textSecondary, fontSize: isTV ? 11 : 13, marginBottom: theme.spacing.md }}>
+        Upload a full debug bundle with all clicks, navigation, crashes and errors to GoFile for developer analysis.
+        {Platform.isTV ? ' Shortcut: Hold UP + OK for 3 seconds.' : ''}
+      </Text>
+      <Pressable
+        style={[styles.debugButton, { backgroundColor: theme.colors.primary }, focusedElement === 'debug-upload' && styles.buttonFocused]}
+        onPress={handleDebugUpload}
+        onFocus={() => setFocusedElement('debug-upload')}
+        onBlur={() => setFocusedElement(null)}
+        data-testid="debug-upload-gofile-btn"
+      >
+        {debugUploading ? (
+          <ActivityIndicator size="small" color="#000" />
+        ) : (
+          <Ionicons name="cloud-upload" size={20} color="#000" />
+        )}
+        <Text style={{ color: '#000', fontWeight: '700', fontSize: isTV ? 12 : 14, marginLeft: 8 }}>
+          {debugUploading ? 'Uploading...' : 'Upload Debug Bundle to GoFile'}
+        </Text>
+      </Pressable>
+      {debugGofileUrl && (
+        <View style={{ marginTop: theme.spacing.sm, backgroundColor: 'rgba(0,217,255,0.1)', padding: theme.spacing.md, borderRadius: theme.borderRadius.md }}>
+          <Text style={{ color: theme.colors.primary, fontSize: isTV ? 11 : 13, fontWeight: '600' }}>GoFile Link:</Text>
+          <Text style={{ color: theme.colors.text, fontSize: isTV ? 10 : 12, marginTop: 4 }} selectable>{debugGofileUrl}</Text>
+        </View>
+      )}
     </View>
   );
 
@@ -1401,6 +1459,7 @@ export default function SettingsScreen() {
 
   // All section renderers for FlatList
   const sectionRenderers: any = {
+    'debug-upload': SectionDebugUpload,
     accounts: SectionAccounts,
     vault: SectionVault,
     vpn: SectionVPN,
@@ -1412,7 +1471,7 @@ export default function SettingsScreen() {
     about: SectionAbout,
   };
 
-  const settingsSectionKeys = ['accounts', 'vault', 'vpn', 'scrapers', 'content-filter', 'parental', 'player', 'debug', 'about'];
+  const settingsSectionKeys = ['debug-upload', 'accounts', 'vault', 'vpn', 'scrapers', 'content-filter', 'parental', 'player', 'debug', 'about'];
 
   const renderSettingsItem = ({ item }: { item: string }) => {
     const Renderer = sectionRenderers[item];

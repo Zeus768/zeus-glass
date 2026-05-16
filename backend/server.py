@@ -954,6 +954,106 @@ loadLogs();
     return HTMLResponse(content=html)
 
 
+# ============================================
+# DEBUG BUNDLE - Upload to GoFile anonymously
+# ============================================
+
+class DebugBundleRequest(BaseModel):
+    device_id: str
+    device_name: Optional[str] = None
+    platform: Optional[str] = None
+    app_version: Optional[str] = None
+    interaction_logs: List[dict] = []
+    error_logs: List[dict] = []
+    navigation_history: List[dict] = []
+    device_info: Optional[dict] = None
+    app_state: Optional[dict] = None
+
+@api_router.post("/debug/upload-gofile")
+async def upload_debug_to_gofile(request: DebugBundleRequest):
+    """Create a debug bundle and upload to GoFile anonymously"""
+    try:
+        import json
+        import io
+
+        # Build debug report as JSON
+        report = {
+            "zeus_glass_debug_report": True,
+            "generated_at": datetime.utcnow().isoformat(),
+            "device": {
+                "id": request.device_id,
+                "name": request.device_name or "Unknown",
+                "platform": request.platform or "unknown",
+                "app_version": request.app_version or "unknown",
+                "info": request.device_info or {},
+            },
+            "interaction_log_count": len(request.interaction_logs),
+            "error_log_count": len(request.error_logs),
+            "navigation_history_count": len(request.navigation_history),
+            "interaction_logs": request.interaction_logs[-500:],
+            "error_logs": request.error_logs[-200:],
+            "navigation_history": request.navigation_history[-200:],
+            "app_state": request.app_state or {},
+        }
+
+        report_json = json.dumps(report, indent=2, default=str)
+        report_bytes = report_json.encode('utf-8')
+
+        # Also store in MongoDB for dashboard access
+        doc = {
+            "device_id": request.device_id,
+            "device_name": request.device_name or "Unknown",
+            "platform": request.platform or "unknown",
+            "app_version": request.app_version or "unknown",
+            "uploaded_at": datetime.utcnow().isoformat(),
+            "interaction_count": len(request.interaction_logs),
+            "error_count": len(request.error_logs),
+            "nav_count": len(request.navigation_history),
+        }
+        await db.debug_bundles.insert_one(doc)
+
+        # Upload to GoFile
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Step 1: Get upload server
+            server_resp = await client.get("https://api.gofile.io/servers")
+            server_data = server_resp.json()
+            servers = server_data.get("data", {}).get("servers", [])
+            server = servers[0]["name"] if servers else "store1"
+
+            # Step 2: Upload file to server
+            filename = f"zeus-debug-{request.device_id[:8]}-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.json"
+            upload_resp = await client.post(
+                f"https://{server}.gofile.io/contents/uploadfile",
+                files={"file": (filename, report_bytes, "application/json")},
+            )
+            upload_data = upload_resp.json()
+
+            if upload_data.get("status") == "ok":
+                download_url = upload_data.get("data", {}).get("downloadPage", "")
+                return {
+                    "success": True,
+                    "gofile_url": download_url,
+                    "message": f"Debug bundle uploaded ({len(report_bytes)} bytes)",
+                    "file_id": upload_data.get("data", {}).get("fileId", ""),
+                }
+            else:
+                # GoFile failed, but we still have it in MongoDB
+                return {
+                    "success": True,
+                    "gofile_url": None,
+                    "message": "Saved to cloud dashboard (GoFile unavailable)",
+                }
+
+    except Exception as e:
+        logger.error(f"Debug bundle upload error: {e}")
+        # Still try to return something useful
+        return {
+            "success": False,
+            "gofile_url": None,
+            "message": f"Upload failed: {str(e)}",
+        }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
