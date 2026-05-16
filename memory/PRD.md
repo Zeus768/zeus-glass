@@ -117,6 +117,12 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - **Watchlist/Collection/History tabs**: Added to Movies page category bar (shown when Trakt logged in)
 - All list methods support pagination for unlimited scrolling
 
+### Settings FlatList Migration (2026-05-16) - DEFINITIVE TV SCROLL FIX
+- **Root cause finally identified**: React Native `ScrollView` does NOT auto-scroll on Android TV D-pad focus. This is a known RN limitation — ScrollView only scrolls via touch, never via D-pad focus traversal.
+- **Fix**: Replaced `ScrollView` with `FlatList` for the main settings container. Each settings section (Accounts, Vault, VPN, Scrapers, Content Filter, Parental, Player, Debug, About) is a separate FlatList item.
+- **Why FlatList works**: FlatList has built-in focus management that auto-scrolls items into view when they receive D-pad focus on Android TV.
+- Sections extracted into component functions: `SectionAccounts`, `SectionVault`, `SectionVPN`, `SectionScrapers`, `SectionContentFilter`, `SectionParental`, `SectionPlayer`, `SectionDebug`, `SectionAbout`
+
 ### Settings Scroll & Exit Bug Fix (2026-04-18) - Stripped all programmatic scrolling
 - **Bug 1 (onn 4k pro)**: "Can't scroll past Real-Debrid, takes back to top" — Caused by `scrollToElement`/`measureLayout` fighting native ScrollView. `removeClippedSubviews={false}` lets Android TV's native focus-driven scroll work on its own.
 - **Bug 2 (onn pro box)**: "Tried to login to RD keeps asking to exit" — Global BackHandler was consuming ALL back presses including ones that should close modals. Now only consumes back on root tab screens.

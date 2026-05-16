@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  FlatList,
   ScrollView,
   Pressable,
   TextInput,
@@ -536,12 +537,12 @@ export default function SettingsScreen() {
   const [focusedCard, setFocusedCard] = useState<string | null>(null);
   const [focusedButton, setFocusedButton] = useState<string | null>(null);
 
-  // ScrollView ref
-  const scrollViewRef = useRef<ScrollView>(null);
+  // FlatList ref for TV focus-driven scrolling
+  const flatListRef = useRef<FlatList>(null);
 
-  // NOTE: On Android TV, the native ScrollView auto-scrolls to focused children
-  // when removeClippedSubviews={false}. Do NOT add programmatic scrolling here —
-  // it fights the native behavior and causes scroll-to-top bugs on onn/Mecool boxes.
+  // NOTE: On Android TV, ScrollView does NOT scroll when D-pad focus moves to
+  // off-screen children. FlatList is the ONLY component that handles this correctly.
+  // Each settings section is a FlatList item so D-pad navigation auto-scrolls.
 
   const AccountCard = ({
     title,
@@ -689,18 +690,10 @@ export default function SettingsScreen() {
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled={true}
-        removeClippedSubviews={false}
-        scrollEnabled={true}
-      >
-        {/* Accounts Section */}
-        <AccountSection title="Accounts">
+  // Each settings section rendered as a standalone FlatList item.
+  // FlatList auto-scrolls to focused items on Android TV — ScrollView does NOT.
+  const SectionAccounts = () => (
+    <AccountSection title="Accounts">
           <AccountCard
             title="Trakt"
             icon="play-circle"
@@ -784,8 +777,9 @@ export default function SettingsScreen() {
             </View>
           </View>
         </AccountSection>
+  );
 
-        {/* Zeus Vault Section */}
+  const SectionVault = () => (
         <AccountSection title="Zeus Vault">
           <View style={styles.vaultCard}>
             <View style={styles.vaultHeader}>
@@ -874,8 +868,9 @@ export default function SettingsScreen() {
             </View>
           </View>
         </AccountSection>
+  );
 
-        {/* VPN / Proxy Section */}
+  const SectionVPN = () => (
         <AccountSection title="VPN / Proxy">
           <View style={styles.settingsCard}>
             <View style={styles.vpnHeader}>
@@ -1020,8 +1015,9 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
         </AccountSection>
+  );
 
-        {/* Scraper Status Section */}
+  const SectionScrapers = () => (
         <AccountSection title="Scraper Status" sectionKey="scraper-status">
           <View style={styles.settingsCard}>
             <View style={styles.scraperHeader}>
@@ -1119,9 +1115,9 @@ export default function SettingsScreen() {
             )}
           </View>
         </AccountSection>
+  );
 
-
-        {/* Content Filter Section */}
+  const SectionContentFilter = () => (
         <AccountSection title="Content Filter" sectionKey="content-filter">
           <View style={styles.settingsCard}>
             <View style={styles.scraperHeader}>
@@ -1199,8 +1195,9 @@ export default function SettingsScreen() {
             </View>
           </View>
         </AccountSection>
+  );
 
-        {/* Parental Controls Section */}
+  const SectionParental = () => (
         <AccountSection title="Parental Controls" sectionKey="parental-controls">
           <View style={styles.settingsCard}>
             <View style={styles.parentalHeader}>
@@ -1251,8 +1248,9 @@ export default function SettingsScreen() {
             )}
           </View>
         </AccountSection>
+  );
 
-        {/* Subtitles & Player Settings */}
+  const SectionPlayer = () => (
         <AccountSection title="Player Settings" sectionKey="player-settings">
           <View style={styles.settingsCard}>
             {/* Subtitle Settings */}
@@ -1321,8 +1319,9 @@ export default function SettingsScreen() {
             </View>
           </View>
         </AccountSection>
+  );
 
-        {/* Error Logs Section */}
+  const SectionDebug = () => (
         <AccountSection title="Debug & Support" sectionKey="debug-support">
           <View style={styles.settingsCard}>
             <Pressable 
@@ -1389,17 +1388,49 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </AccountSection>
+  );
 
-        {/* App Info */}
+  const SectionAbout = () => (
         <AccountSection title="About">
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>Zeus Glass v1.5.0</Text>
             <Text style={styles.infoSubtext}>Premium Streaming Platform</Text>
           </View>
         </AccountSection>
+  );
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+  // All section renderers for FlatList
+  const sectionRenderers: any = {
+    accounts: SectionAccounts,
+    vault: SectionVault,
+    vpn: SectionVPN,
+    scrapers: SectionScrapers,
+    'content-filter': SectionContentFilter,
+    parental: SectionParental,
+    player: SectionPlayer,
+    debug: SectionDebug,
+    about: SectionAbout,
+  };
+
+  const settingsSectionKeys = ['accounts', 'vault', 'vpn', 'scrapers', 'content-filter', 'parental', 'player', 'debug', 'about'];
+
+  const renderSettingsItem = ({ item }: { item: string }) => {
+    const Renderer = sectionRenderers[item];
+    return Renderer ? <Renderer /> : null;
+  };
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        ref={flatListRef}
+        data={settingsSectionKeys}
+        keyExtractor={(item) => item}
+        renderItem={renderSettingsItem}
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews={false}
+        ListFooterComponent={<View style={{ height: 100 }} />}
+      />
 
       {/* QR Auth Modal */}
       <QRAuthModal
