@@ -1045,22 +1045,21 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'flex-end',
+    backgroundColor: theme.colors.background,
   },
   modalContent: {
+    flex: 1,
     backgroundColor: theme.colors.background,
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
-    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: theme.spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 50 : theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
   },
   modalTitle: {
     flex: 1,
@@ -1108,6 +1107,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
   },
   modalScroll: {
+    flex: 1,
     padding: theme.spacing.lg,
   },
   linkCard: {

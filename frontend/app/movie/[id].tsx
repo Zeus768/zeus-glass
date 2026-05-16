@@ -1212,24 +1212,21 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'flex-end',
+    backgroundColor: theme.colors.background,
   },
   modalContent: {
+    flex: 1,
     backgroundColor: theme.colors.card,
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
-    maxHeight: SCREEN_HEIGHT * 0.8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: theme.spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 50 : theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
   },
   modalTitle: {
     fontSize: theme.fontSize.xl,
@@ -1246,6 +1243,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   modalScroll: {
+    flex: 1,
     padding: theme.spacing.lg,
   },
   qualitySection: {
