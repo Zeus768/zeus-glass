@@ -42,6 +42,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
   
   // Premiumize API key input
   const [premiumizeApiKey, setPremiumizeApiKey] = useState<string>('');
+  const [torboxApiKey, setTorboxApiKey] = useState<string>('');
   const [verifyingApiKey, setVerifyingApiKey] = useState<boolean>(false);
 
   const serviceNames = {
@@ -254,6 +255,124 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
     }
   };
 
+  // Handle TorBox API key submission
+  const handleTorboxApiKeySubmit = async () => {
+    if (!torboxApiKey.trim()) {
+      Alert.alert('Error', 'Please enter your TorBox API key');
+      return;
+    }
+
+    setVerifyingApiKey(true);
+    setPollStatus('Verifying TorBox API key...');
+
+    try {
+      // Save the token and verify it works
+      await torboxService.saveToken(torboxApiKey.trim());
+      const account = await torboxService.getAccountInfo();
+      
+      if (account) {
+        setPollStatus('API key verified! Connected as ' + account.username);
+        // Stop any active polling
+        if (pollIntervalId) {
+          clearInterval(pollIntervalId);
+          setPollIntervalId(null);
+          setPolling(false);
+        }
+        onSuccess();
+        handleClose();
+      } else {
+        await torboxService.logout();
+        setError('Invalid API key. Could not verify account.');
+        setPollStatus('');
+      }
+    } catch (err: any) {
+      await torboxService.logout();
+      setError(err.message || 'Failed to verify TorBox API key');
+      setPollStatus('');
+    } finally {
+      setVerifyingApiKey(false);
+    }
+  };
+
+  // Render TorBox content (device code QR + API key input)
+  const renderTorboxContent = () => (
+    <View style={[styles.content, isTV && styles.contentTV]}>
+      <Text style={[styles.instructions, isTV && styles.instructionsTV]}>
+        Option 1: Enter the code at the URL below, or scan the QR code.
+      </Text>
+
+      {/* Device Code Display */}
+      {userCode ? (
+        <View style={[styles.codeContainer, isTV && styles.codeContainerTV]}>
+          <Text style={[styles.codeLabel, isTV && styles.codeLabelTV]}>Enter this code:</Text>
+          <Text style={[styles.codeText, isTV && styles.codeTextTV]}>{userCode}</Text>
+        </View>
+      ) : null}
+
+      {/* Verification URL */}
+      <View style={[styles.urlContainer, isTV && styles.urlContainerTV]}>
+        <Text style={[styles.urlText, isTV && styles.urlTextTV]}>
+          {verificationUrl}
+        </Text>
+      </View>
+
+      {/* QR Code */}
+      {verificationUrl && !isTV ? (
+        <View style={styles.qrContainer}>
+          <QRCode
+            value={verificationUrl}
+            size={isSmallScreen ? 100 : 140}
+            backgroundColor="transparent"
+            color="#FFFFFF"
+          />
+        </View>
+      ) : null}
+
+      {/* Divider */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: isTV ? 12 : 16 }}>
+        <View style={{ flex: 1, height: 1, backgroundColor: theme.colors.border }} />
+        <Text style={{ color: theme.colors.textSecondary, marginHorizontal: 12, fontSize: isTV ? 12 : 14 }}>OR</Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: theme.colors.border }} />
+      </View>
+
+      {/* API Key Input */}
+      <Text style={[styles.instructions, isTV && styles.instructionsTV]}>
+        Option 2: Paste your TorBox API key directly (Settings {'>'} API Keys on torbox.app)
+      </Text>
+      <View style={styles.apiKeyInputContainer}>
+        <Text style={[styles.inputLabel, isTV && styles.inputLabelTV]}>TorBox API Key:</Text>
+        <TextInput
+          style={[styles.apiKeyInput, isTV && styles.apiKeyInputTV]}
+          placeholder="Paste your TorBox API key here"
+          placeholderTextColor={theme.colors.textMuted}
+          value={torboxApiKey}
+          onChangeText={setTorboxApiKey}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Pressable 
+          style={[styles.submitButton, isTV && styles.submitButtonTV, verifyingApiKey && styles.submitButtonDisabled]}
+          onPress={handleTorboxApiKeySubmit}
+          disabled={verifyingApiKey}
+        >
+          {verifyingApiKey ? (
+            <ActivityIndicator size="small" color="#000" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={isTV ? 24 : 20} color="#000" />
+              <Text style={[styles.submitButtonText, isTV && styles.submitButtonTextTV]}>Verify & Save</Text>
+            </>
+          )}
+        </Pressable>
+      </View>
+
+      {/* Poll Status */}
+      {pollStatus ? (
+        <Text style={[styles.statusText, isTV && styles.statusTextTV]}>{pollStatus}</Text>
+      ) : null}
+    </View>
+  );
+
   // Render Premiumize-specific content (API key input)
   const renderPremiumizeContent = () => (
     <View style={[styles.content, isTV && styles.contentTV]}>
@@ -425,6 +544,8 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
                 </View>
               ) : service === 'premiumize' ? (
                 renderPremiumizeContent()
+              ) : service === 'torbox' ? (
+                renderTorboxContent()
               ) : (
                 renderQRContent()
               )}

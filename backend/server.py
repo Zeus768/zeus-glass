@@ -494,9 +494,9 @@ async def torbox_device_start():
                 return {
                     'data': {
                         'device_code': inner.get('device_code'),
-                        'user_code': inner.get('code'),  # TorBox uses 'code' not 'user_code'
+                        'user_code': inner.get('user_code') or inner.get('code'),
                         'verification_url': inner.get('verification_url') or inner.get('friendly_verification_url'),
-                        'expires_in': 600,  # Default 10 minutes
+                        'expires_in': inner.get('expires_in', 600),
                         'interval': inner.get('interval', 5),
                     }
                 }

@@ -117,6 +117,12 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - **Watchlist/Collection/History tabs**: Added to Movies page category bar (shown when Trakt logged in)
 - All list methods support pagination for unlimited scrolling
 
+### TorBox API Key Direct Entry (2026-05-22)
+- TorBox QRAuthModal now supports BOTH device code flow AND direct API key paste
+- "Option 1: QR Code" and "Option 2: Paste API Key" with OR divider
+- `handleTorboxApiKeySubmit` verifies the key against TorBox API before saving
+- Backend `user_code` mapping fixed to try both `user_code` and `code` fields
+
 ### Debug Report System (2026-05-16)
 - Full interaction/navigation/crash tracker (`debugTracker.ts`) records every press, focus, navigation, crash with timestamps
 - "Debug Report" section at TOP of Settings page with one-click GoFile upload
