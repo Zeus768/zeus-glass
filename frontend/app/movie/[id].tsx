@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert, Linking, Platform, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert, Linking, Platform, BackHandler, FlatList } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -591,7 +591,34 @@ export default function MovieDetailScreen() {
               </Pressable>
             </View>
             
-            {/* Tab Switcher */}
+            {/* Quality Filter Tabs - Primary navigation */}
+            <View style={styles.qualityTabs}>
+              {['All', '4K', '1080p', '720p', '480p'].map((q) => {
+                const isActive = filterQuality === (q === 'All' ? null : q);
+                const count = q === 'All' 
+                  ? (activeTab === 'debrid' ? cachedTorrents.length : directStreams.length)
+                  : (activeTab === 'debrid' 
+                    ? cachedTorrents.filter(t => t.quality === q).length
+                    : directStreams.filter(s => s.quality === q).length);
+                return (
+                  <Pressable
+                    key={q}
+                    style={[styles.qualityTab, isActive && styles.qualityTabActive]}
+                    onPress={() => setFilterQuality(q === 'All' ? null : q)}
+                    data-testid={`quality-filter-${q}`}
+                  >
+                    <Text style={[styles.qualityTabText, isActive && styles.qualityTabTextActive]}>
+                      {q}
+                    </Text>
+                    <Text style={[styles.qualityTabCount, isActive && styles.qualityTabCountActive]}>
+                      {count}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Tab Switcher - Debrid / Direct / IPTV */}
             <View style={styles.tabSwitcher}>
               <Pressable 
                 style={[styles.tabButton, activeTab === 'debrid' && styles.tabButtonActive]}
@@ -624,33 +651,18 @@ export default function MovieDetailScreen() {
               )}
             </View>
             
-            {/* Filter Bar */}
+            {/* Filter & Sort - collapsible */}
             {!loadingLinks && (cachedTorrents.length > 0 || directStreams.length > 0) && (
               <View style={styles.filterBar}>
                 <Pressable 
                   style={[styles.filterButton, showFilters && styles.filterButtonActive]}
                   onPress={() => setShowFilters(!showFilters)}
                 >
-                  <Ionicons name="filter" size={16} color={showFilters ? '#000' : theme.colors.text} />
+                  <Ionicons name="options" size={16} color={showFilters ? '#000' : theme.colors.text} />
                   <Text style={[styles.filterButtonText, showFilters && styles.filterButtonTextActive]}>
-                    Filters
+                    Sort & Filter
                   </Text>
                 </Pressable>
-                
-                {/* Quick Quality Filters */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickFilters}>
-                  {['4K', '1080p', '720p'].map((q) => (
-                    <Pressable
-                      key={q}
-                      style={[styles.quickFilterChip, filterQuality === q && styles.quickFilterChipActive]}
-                      onPress={() => setFilterQuality(filterQuality === q ? null : q)}
-                    >
-                      <Text style={[styles.quickFilterText, filterQuality === q && styles.quickFilterTextActive]}>
-                        {q}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
               </View>
             )}
             
@@ -755,99 +767,110 @@ export default function MovieDetailScreen() {
                   </Text>
                 </View>
               ) : (
-                <ScrollView style={styles.modalScroll}>
-                  {/* Stats bar */}
-                  <View style={styles.statsBar}>
-                    <View style={styles.statItem}>
-                      <Ionicons name="flash" size={16} color={theme.colors.gold} />
-                      <Text style={styles.statText}>
-                        {cachedTorrents.filter(t => t.cached).length} Cached
-                      </Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Ionicons name="cloud-download" size={16} color={theme.colors.primary} />
-                      <Text style={styles.statText}>
-                        {cachedTorrents.filter(t => !t.cached).length} Available
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  {qualityOptions.map((quality) => (
-                    groupedTorrents[quality]?.length > 0 && (
-                      <View key={quality} style={styles.qualitySection}>
-                        <Text style={styles.qualityTitle}>{quality}</Text>
-                        {groupedTorrents[quality].map((torrent, index) => {
-                          const isSelected = selectedTorrent?.hash === torrent.hash;
-                          const isFocusedItem = focusedStream === `torrent-${torrent.hash}`;
-                          
-                          return (
-                            <Pressable 
-                              key={index} 
-                              style={[
-                                styles.linkCard,
-                                !torrent.cached && styles.linkCardUncached,
-                                isSelected && gettingStream && styles.linkCardActive,
-                                isFocusedItem && styles.linkCardFocused,
-                              ]}
-                              onPress={() => handlePlayTorrent(torrent)}
-                              onFocus={() => setFocusedStream(`torrent-${torrent.hash}`)}
-                              onBlur={() => setFocusedStream(null)}
-                              disabled={gettingStream}
-                              data-testid={`torrent-${torrent.hash?.substring(0, 8)}`}
-                            >
-                              <View style={styles.linkInfo}>
-                                {torrent.cached ? (
-                                  <View style={styles.cachedBadge}>
-                                    <Ionicons name="flash" size={12} color="#000" />
-                                    <Text style={styles.cachedText}>INSTANT</Text>
-                                  </View>
-                                ) : (
-                                  <View style={styles.torrentBadge}>
-                                    <Ionicons name="magnet" size={12} color={theme.colors.text} />
-                                    <Text style={styles.torrentText}>TORRENT</Text>
-                                  </View>
-                                )}
-                                <Text style={[
-                                  styles.linkSource, 
-                                  !torrent.cached && styles.linkSourceUncached,
-                                  isFocusedItem && styles.linkSourceFocused
-                                ]}>
-                                  {torrent.source.toUpperCase()}
-                                </Text>
-                                {torrent.size && (
-                                  <Text style={[
-                                    styles.linkSize, 
-                                    !torrent.cached && styles.linkSizeUncached,
-                                    isFocusedItem && styles.linkSizeFocused
-                                  ]}>
-                                    {torrent.size}
-                                  </Text>
-                                )}
-                                {torrent.seeders > 0 && (
-                                  <View style={styles.seedersContainer}>
-                                    <Ionicons name="people" size={14} color={torrent.cached ? theme.colors.success : theme.colors.textSecondary} />
-                                    <Text style={[styles.seedersText, !torrent.cached && styles.seedersTextUncached]}>
-                                      {torrent.seeders}
-                                    </Text>
-                                  </View>
-                                )}
-                              </View>
-                              {isSelected && gettingStream ? (
-                                <ActivityIndicator size="small" color={torrent.cached ? theme.colors.gold : theme.colors.primary} />
-                              ) : (
-                                <Ionicons 
-                                  name="play-circle" 
-                                  size={isTV ? 28 : 32} 
-                                  color={isFocusedItem ? '#000' : (torrent.cached ? theme.colors.gold : theme.colors.primary)} 
-                                />
-                              )}
-                            </Pressable>
-                          );
-                        })}
+                <FlatList
+                  style={styles.modalScroll}
+                  data={(() => {
+                    // Flatten all torrents into a single sorted list
+                    let allTorrents = [...cachedTorrents];
+                    // Apply quality filter
+                    if (filterQuality) {
+                      allTorrents = allTorrents.filter(t => t.quality === filterQuality);
+                    }
+                    // Apply size filter
+                    if (filterMinSize || filterMaxSize) {
+                      allTorrents = allTorrents.filter(t => {
+                        const sizeGB = parseFloat(t.size?.replace(/[^\d.]/g, '') || '0');
+                        if (filterMinSize && sizeGB < filterMinSize) return false;
+                        if (filterMaxSize && sizeGB > filterMaxSize) return false;
+                        return true;
+                      });
+                    }
+                    // Sort: cached first, then by quality
+                    const qualityOrder: Record<string, number> = { '4K': 0, '1080p': 1, '720p': 2, '480p': 3, 'Unknown': 4 };
+                    allTorrents.sort((a, b) => {
+                      if (a.cached && !b.cached) return -1;
+                      if (!a.cached && b.cached) return 1;
+                      return (qualityOrder[a.quality] || 4) - (qualityOrder[b.quality] || 4);
+                    });
+                    return allTorrents;
+                  })()}
+                  keyExtractor={(item, index) => `torrent-${item.hash}-${index}`}
+                  ListHeaderComponent={
+                    <View style={styles.statsBar}>
+                      <View style={styles.statItem}>
+                        <Ionicons name="flash" size={16} color={theme.colors.gold} />
+                        <Text style={styles.statText}>{cachedTorrents.filter(t => t.cached).length} Cached</Text>
                       </View>
-                    )
-                  ))}
-                </ScrollView>
+                      <View style={styles.statItem}>
+                        <Ionicons name="cloud-download" size={16} color={theme.colors.primary} />
+                        <Text style={styles.statText}>{cachedTorrents.filter(t => !t.cached).length} Available</Text>
+                      </View>
+                    </View>
+                  }
+                  renderItem={({ item: torrent }) => {
+                    const isSelected = selectedTorrent?.hash === torrent.hash;
+                    const isFocusedItem = focusedStream === `torrent-${torrent.hash}`;
+                    const qualityColors: Record<string, string> = { '4K': '#FFD700', '1080p': '#00D9FF', '720p': '#4CAF50', '480p': '#FF9800' };
+                    const qColor = qualityColors[torrent.quality] || theme.colors.textSecondary;
+                    
+                    return (
+                      <Pressable 
+                        style={[
+                          styles.linkCard,
+                          !torrent.cached && styles.linkCardUncached,
+                          isSelected && gettingStream && styles.linkCardActive,
+                          isFocusedItem && styles.linkCardFocused,
+                        ]}
+                        onPress={() => handlePlayTorrent(torrent)}
+                        onFocus={() => setFocusedStream(`torrent-${torrent.hash}`)}
+                        onBlur={() => setFocusedStream(null)}
+                        disabled={gettingStream}
+                        data-testid={`torrent-${torrent.hash?.substring(0, 8)}`}
+                      >
+                        {/* Quality Badge */}
+                        <View style={[styles.qualityBadge, { borderColor: qColor }]}>
+                          <Text style={[styles.qualityBadgeText, { color: qColor }]}>{torrent.quality || '?'}</Text>
+                        </View>
+                        
+                        <View style={[styles.linkInfo, { flex: 1 }]}>
+                          {torrent.cached ? (
+                            <View style={styles.cachedBadge}>
+                              <Ionicons name="flash" size={12} color="#000" />
+                              <Text style={styles.cachedText}>CACHED</Text>
+                            </View>
+                          ) : (
+                            <View style={styles.torrentBadge}>
+                              <Ionicons name="magnet" size={12} color={theme.colors.text} />
+                            </View>
+                          )}
+                          <Text style={[styles.linkSource, isFocusedItem && styles.linkSourceFocused]} numberOfLines={1}>
+                            {torrent.source.toUpperCase()}
+                          </Text>
+                          {torrent.size && (
+                            <Text style={[styles.linkSize, isFocusedItem && styles.linkSizeFocused]}>{torrent.size}</Text>
+                          )}
+                          {torrent.seeders > 0 && (
+                            <View style={styles.seedersContainer}>
+                              <Ionicons name="people" size={14} color={torrent.cached ? theme.colors.success : theme.colors.textSecondary} />
+                              <Text style={[styles.seedersText, !torrent.cached && styles.seedersTextUncached]}>{torrent.seeders}</Text>
+                            </View>
+                          )}
+                        </View>
+                        
+                        {isSelected && gettingStream ? (
+                          <ActivityIndicator size="small" color={torrent.cached ? theme.colors.gold : theme.colors.primary} />
+                        ) : (
+                          <Ionicons name="play-circle" size={isTV ? 28 : 32} color={isFocusedItem ? '#000' : (torrent.cached ? theme.colors.gold : theme.colors.primary)} />
+                        )}
+                      </Pressable>
+                    );
+                  }}
+                  ListEmptyComponent={
+                    <View style={styles.modalLoading}>
+                      <Text style={styles.loadingText}>No results for this filter</Text>
+                    </View>
+                  }
+                />
               )
             ) : (
               // Direct Streams Tab Content
@@ -1432,6 +1455,58 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.text,
     fontWeight: theme.fontWeight.medium,
+  },
+  // Quality Filter Tabs
+  qualityTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  qualityTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  qualityTabActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  qualityTabText: {
+    color: theme.colors.text,
+    fontSize: isTV ? 12 : 14,
+    fontWeight: '700',
+  },
+  qualityTabTextActive: {
+    color: '#000',
+  },
+  qualityTabCount: {
+    color: theme.colors.textSecondary,
+    fontSize: isTV ? 10 : 11,
+    marginTop: 2,
+  },
+  qualityTabCountActive: {
+    color: '#000',
+  },
+  qualityBadge: {
+    borderWidth: 2,
+    borderRadius: theme.borderRadius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginRight: 8,
+    minWidth: 44,
+    alignItems: 'center',
+  },
+  qualityBadgeText: {
+    fontSize: isTV ? 10 : 11,
+    fontWeight: '800',
   },
   // Tab Switcher Styles
   tabSwitcher: {
