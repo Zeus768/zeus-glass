@@ -36,6 +36,7 @@ export default function TVShowDetailScreen() {
   const [cachedTorrents, setCachedTorrents] = useState<CachedTorrent[]>([]);
   const [directStreams, setDirectStreams] = useState<StreamSource[]>([]);
   const [activeTab, setActiveTab] = useState<'debrid' | 'direct'>('debrid');
+  const [filterQuality, setFilterQuality] = useState<string | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
   const [gettingStream, setGettingStream] = useState(false);
   const [selectedTorrent, setSelectedTorrent] = useState<CachedTorrent | null>(null);
@@ -545,6 +546,28 @@ export default function TVShowDetailScreen() {
               </Pressable>
             </View>
             
+            {/* Quality Filter Tabs */}
+            <View style={styles.qualityTabs}>
+              {['All', '4K', '1080p', '720p', '480p'].map((q) => {
+                const isActive = filterQuality === (q === 'All' ? null : q);
+                const count = q === 'All' 
+                  ? (activeTab === 'debrid' ? cachedTorrents.length : directStreams.length)
+                  : (activeTab === 'debrid' 
+                    ? cachedTorrents.filter(t => t.quality === q).length
+                    : directStreams.filter(s => s.quality === q).length);
+                return (
+                  <Pressable
+                    key={q}
+                    style={[styles.qualityTab, isActive && styles.qualityTabActive]}
+                    onPress={() => setFilterQuality(q === 'All' ? null : q)}
+                  >
+                    <Text style={[styles.qualityTabText, isActive && styles.qualityTabTextActive]}>{q}</Text>
+                    <Text style={[styles.qualityTabCount, isActive && styles.qualityTabCountActive]}>{count}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             {/* Tab Switcher */}
             <View style={styles.tabSwitcher}>
               <Pressable 
@@ -580,14 +603,42 @@ export default function TVShowDetailScreen() {
                   <Text style={styles.noStreamsHint}>Try Direct streams or login to Real-Debrid</Text>
                 </View>
               ) : (
-                <ScrollView style={styles.modalScroll}>
-                  {cachedTorrents.map((torrent, index) => {
+                <FlatList
+                  style={styles.modalScroll}
+                  data={(() => {
+                    let allTorrents = [...cachedTorrents];
+                    if (filterQuality) {
+                      allTorrents = allTorrents.filter(t => t.quality === filterQuality);
+                    }
+                    const qualityOrder: Record<string, number> = { '4K': 0, '1080p': 1, '720p': 2, '480p': 3 };
+                    allTorrents.sort((a, b) => {
+                      if (a.cached && !b.cached) return -1;
+                      if (!a.cached && b.cached) return 1;
+                      return (qualityOrder[a.quality] || 4) - (qualityOrder[b.quality] || 4);
+                    });
+                    return allTorrents;
+                  })()}
+                  keyExtractor={(item, index) => `torrent-${item.hash}-${index}`}
+                  ListHeaderComponent={
+                    <View style={styles.statsBar}>
+                      <View style={styles.statItem}>
+                        <Ionicons name="flash" size={16} color={theme.colors.gold} />
+                        <Text style={styles.statText}>{cachedTorrents.filter(t => t.cached).length} Cached</Text>
+                      </View>
+                      <View style={styles.statItem}>
+                        <Ionicons name="cloud-download" size={16} color={theme.colors.primary} />
+                        <Text style={styles.statText}>{cachedTorrents.filter(t => !t.cached).length} Available</Text>
+                      </View>
+                    </View>
+                  }
+                  renderItem={({ item: torrent }) => {
                     const isFocused = focusedStream === `torrent-${torrent.hash}`;
                     const isSelected = selectedTorrent?.hash === torrent.hash;
+                    const qualityColors: Record<string, string> = { '4K': '#FFD700', '1080p': '#00D9FF', '720p': '#4CAF50', '480p': '#FF9800' };
+                    const qColor = qualityColors[torrent.quality] || theme.colors.textSecondary;
                     
                     return (
                       <Pressable 
-                        key={index} 
                         style={[
                           styles.linkCard, 
                           isSelected && gettingStream && styles.linkCardActive,
@@ -597,42 +648,41 @@ export default function TVShowDetailScreen() {
                         onFocus={() => setFocusedStream(`torrent-${torrent.hash}`)}
                         onBlur={() => setFocusedStream(null)}
                         disabled={gettingStream}
-                        data-testid={`torrent-${torrent.hash?.substring(0, 8)}`}
                       >
-                        <View style={styles.linkInfo}>
+                        {/* Quality Badge */}
+                        <View style={[styles.qualityBadge, { borderColor: qColor }]}>
+                          <Text style={[styles.qualityBadgeText, { color: qColor }]}>{torrent.quality || '?'}</Text>
+                        </View>
+                        
+                        <View style={[styles.linkInfo, { flex: 1 }]}>
                           <View style={torrent.cached ? styles.cachedBadge : styles.torrentBadge}>
                             <Ionicons name={torrent.cached ? "flash" : "magnet"} size={12} color={torrent.cached ? "#000" : theme.colors.text} />
                             <Text style={torrent.cached ? styles.cachedText : styles.torrentText}>
-                              {torrent.cached ? 'INSTANT' : 'TORRENT'}
+                              {torrent.cached ? 'CACHED' : 'TORRENT'}
                             </Text>
                           </View>
-                          <Text style={[styles.linkSource, isFocused && styles.linkSourceFocused]}>
+                          <Text style={[styles.linkSource, isFocused && styles.linkSourceFocused]} numberOfLines={1}>
                             {torrent.source.toUpperCase()}
                           </Text>
                           {torrent.size && (
-                            <Text style={[styles.linkSize, isFocused && styles.linkSizeFocused]}>
-                              {torrent.size}
-                            </Text>
-                          )}
-                          {torrent.quality && (
-                            <Text style={[styles.linkQuality, isFocused && styles.linkQualityFocused]}>
-                              {torrent.quality}
-                            </Text>
+                            <Text style={[styles.linkSize, isFocused && styles.linkSizeFocused]}>{torrent.size}</Text>
                           )}
                         </View>
+                        
                         {isSelected && gettingStream ? (
                           <ActivityIndicator size="small" color={theme.colors.gold} />
                         ) : (
-                          <Ionicons 
-                            name="play-circle" 
-                            size={isTV ? 28 : 32} 
-                            color={isFocused ? '#000' : (torrent.cached ? theme.colors.gold : theme.colors.primary)} 
-                          />
+                          <Ionicons name="play-circle" size={isTV ? 28 : 32} color={isFocused ? '#000' : (torrent.cached ? theme.colors.gold : theme.colors.primary)} />
                         )}
                       </Pressable>
                     );
-                  })}
-                </ScrollView>
+                  }}
+                  ListEmptyComponent={
+                    <View style={styles.modalLoading}>
+                      <Text style={styles.loadingText}>No results for this filter</Text>
+                    </View>
+                  }
+                />
               )
             ) : (
               directStreams.length === 0 ? (
@@ -1067,6 +1117,70 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
     marginRight: theme.spacing.md,
+  },
+  // Quality Filter Tabs
+  qualityTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  qualityTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  qualityTabActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  qualityTabText: {
+    color: theme.colors.text,
+    fontSize: isTV ? 12 : 14,
+    fontWeight: '700',
+  },
+  qualityTabTextActive: { color: '#000' },
+  qualityTabCount: {
+    color: theme.colors.textSecondary,
+    fontSize: isTV ? 10 : 11,
+    marginTop: 2,
+  },
+  qualityTabCountActive: { color: '#000' },
+  qualityBadge: {
+    borderWidth: 2,
+    borderRadius: theme.borderRadius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginRight: 8,
+    minWidth: 44,
+    alignItems: 'center',
+  },
+  qualityBadgeText: {
+    fontSize: isTV ? 10 : 11,
+    fontWeight: '800',
+  },
+  statsBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statText: {
+    color: theme.colors.textSecondary,
+    fontSize: isTV ? 11 : 12,
   },
   tabSwitcher: {
     flexDirection: 'row',
