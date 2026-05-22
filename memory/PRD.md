@@ -117,6 +117,13 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 - **Watchlist/Collection/History tabs**: Added to Movies page category bar (shown when Trakt logged in)
 - All list methods support pagination for unlimited scrolling
 
+### Native Backend URL Fix (2026-05-22)
+- **Root cause**: On native Android (TV/mobile), `getBackendUrl()` returned `''` (empty string) because it was designed for web where relative paths work via Kubernetes ingress. On native APKs, all API calls went to empty string, causing "Backend URL not configured", 405 errors, and failed auth flows.
+- **Fix**: All `getBackendUrl()` functions now return `process.env.EXPO_PUBLIC_BACKEND_URL` on native platforms, `''` on web only
+- Fixed in: `debrid.ts`, `debugTracker.ts`, `errorLogService.ts`, `proxiedFetch.ts`, `proxyService.ts`, `movies.tsx`, `settings.tsx`
+- Also fixed: `shouldUseProxy()` now always returns `true` — native needs proxy for CORS + correct HTTP methods
+- This fixes: TorBox 405 error, "Backend URL not configured" debug error, all debrid auth flows on native
+
 ### TorBox API Key Direct Entry (2026-05-22)
 - TorBox QRAuthModal now supports BOTH device code flow AND direct API key paste
 - "Option 1: QR Code" and "Option 2: Paste API Key" with OR divider

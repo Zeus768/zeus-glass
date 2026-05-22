@@ -12,21 +12,17 @@ import { DebridAccount, StreamLink, CachedTorrent } from '../types';
 import { errorLogService } from './errorLogService';
 import { proxiedGet, proxiedPost } from './proxiedFetch';
 
-// Get backend URL for proxy calls (web only)
+// Get backend URL for proxy calls
 const getBackendUrl = () => {
-  // Use relative path which will go through the Kubernetes ingress
-  return '';
+  // On web, relative path works through Kubernetes ingress
+  // On native (Android TV, mobile), we need the full URL
+  if (Platform.OS === 'web') return '';
+  return process.env.EXPO_PUBLIC_BACKEND_URL || '';
 };
 
-// Helper to determine if we need to use the proxy
-// This checks at runtime to ensure we're detecting web correctly
+// Always use proxy - both web (CORS) and native (need backend for debrid auth)
 const shouldUseProxy = () => {
-  // Check if we're in a browser environment
-  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-    return true;
-  }
-  // Fallback to Platform check
-  return Platform.OS === 'web';
+  return true;
 };
 
 // ============================================
@@ -383,7 +379,7 @@ export const realDebridService = {
         errorLogService.error(`Direct API failed: ${directError.message}`, 'RealDebrid');
         
         // Fallback to backend proxy
-        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        const backendUrl = getBackendUrl();
         if (!backendUrl) return null;
 
         // Step 1: Add magnet via backend
@@ -447,7 +443,7 @@ export const realDebridService = {
       const token = await realDebridService.getToken();
       if (!token) return [];
 
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const backendUrl = getBackendUrl();
       const endpoint =
         type === 'movie'
           ? `${backendUrl}/api/torrents/movie?title=${encodeURIComponent(title)}${year ? `&year=${year}` : ''}`
@@ -1021,7 +1017,7 @@ export const debridCacheService = {
 
       // Fallback to backend search if we have token and backend URL
       if (token) {
-        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        const backendUrl = getBackendUrl();
         if (backendUrl) {
           try {
             const params = new URLSearchParams({ title, token });
@@ -1077,7 +1073,7 @@ export const debridCacheService = {
         
         // Fallback to backend proxy (for web environments)
         try {
-          const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+          const backendUrl = getBackendUrl();
           if (backendUrl) {
             const proxyUrl = `${backendUrl}/api/torrentio/stream/${contentPath}.json`;
             const proxyResponse = await axios.get(proxyUrl, { timeout: 20000 });
@@ -1219,7 +1215,7 @@ export const debridCacheService = {
 
       // Fallback to backend if token available
       if (token) {
-        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        const backendUrl = getBackendUrl();
         if (backendUrl) {
           try {
             const params = new URLSearchParams({
@@ -1374,7 +1370,7 @@ export const debridCacheService = {
         errorLogService.warn(`Direct API error: ${directError.message}`, 'DebridCache');
         
         // Fallback to backend (won't work on mobile but try anyway)
-        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        const backendUrl = getBackendUrl();
         if (!backendUrl) return null;
 
         const params = new URLSearchParams({ hash, token });

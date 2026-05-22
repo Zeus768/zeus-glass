@@ -1039,7 +1039,7 @@ export default function SettingsScreen() {
                     setFocusedElement(null);
                     return;
                   }
-                  const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+                  const backendUrl = Platform.OS === 'web' ? '' : (process.env.EXPO_PUBLIC_BACKEND_URL || '');
                   const response = await fetch(`${backendUrl}/api/proxy/test?proxy_url=${encodeURIComponent(proxyUrl)}`, {
                     signal: AbortSignal.timeout(15000),
                   });

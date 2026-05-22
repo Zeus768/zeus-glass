@@ -149,7 +149,7 @@ export const testProxy = async (proxy: ProxyServer): Promise<{ success: boolean;
   
   try {
     // Use the backend proxy test endpoint for real connectivity check
-    const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+    const backendUrl = Platform.OS === 'web' ? '' : (process.env.EXPO_PUBLIC_BACKEND_URL || '');
     const proxyUrl = `${proxy.type}://${proxy.host}:${proxy.port}`;
     
     const response = await fetch(`${backendUrl}/api/proxy/test?proxy_url=${encodeURIComponent(proxyUrl)}`, {

@@ -7,6 +7,11 @@ const NAV_KEY = '@zeus_debug_navigation';
 const MAX_INTERACTIONS = 1000;
 const MAX_NAV = 500;
 
+const getBackendUrl = (): string => {
+  if (Platform.OS === 'web') return '';
+  return process.env.EXPO_PUBLIC_BACKEND_URL || '';
+};
+
 export interface InteractionEvent {
   id: string;
   timestamp: string;
@@ -114,7 +119,7 @@ export const debugTracker = {
   // Upload debug bundle to GoFile via backend
   uploadDebugBundle: async (): Promise<{ success: boolean; gofileUrl: string | null; message: string }> => {
     try {
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const backendUrl = getBackendUrl();
       if (!backendUrl) return { success: false, gofileUrl: null, message: 'Backend URL not configured' };
 
       const deviceId = await getDeviceId();

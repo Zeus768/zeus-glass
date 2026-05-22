@@ -207,7 +207,7 @@ export default function MoviesScreen() {
     else setLoadingMore(true);
     
     try {
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const backendUrl = Platform.OS === 'web' ? '' : (process.env.EXPO_PUBLIC_BACKEND_URL || '');
       const rdToken = await realDebridService.getToken();
       const tbToken = await torboxService.getToken();
       

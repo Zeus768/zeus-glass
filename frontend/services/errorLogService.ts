@@ -27,6 +27,7 @@ const TELEGRAM_BOT = 'https://t.me/zeusglasssupport';
 
 // Get backend URL
 const getBackendUrl = (): string => {
+  if (Platform.OS === 'web') return '';
   return process.env.EXPO_PUBLIC_BACKEND_URL || '';
 };
 
