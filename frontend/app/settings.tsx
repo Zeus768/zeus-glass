@@ -1443,6 +1443,8 @@ export default function SettingsScreen() {
     | { type: 'debug-upload' }
     | { type: 'section-header'; title: string }
     | { type: 'account-card'; title: string; icon: string; account: any; onLogin: () => void; onLogout: () => void }
+    | { type: 'pressable-button'; key: string; label: string; icon: string; iconColor?: string; sublabel?: string; onPress: () => void; disabled?: boolean }
+    | { type: 'info-text'; text: string }
     | { type: 'custom-section'; key: string; render: () => any };
 
   const settingsItems: SettingsItem[] = [
@@ -1458,15 +1460,80 @@ export default function SettingsScreen() {
     { type: 'account-card', title: 'TorBox', icon: 'cube', account: torboxAccount, onLogin: () => handleQRAuth('torbox'), onLogout: logoutTorbox },
     { type: 'account-card', title: 'Premium IPTV', icon: 'tv', account: iptvAccount, onLogin: () => setIptvModalVisible(true), onLogout: logoutIPTV },
     
-    // Remaining sections as custom renders
-    { type: 'custom-section', key: 'vault', render: SectionVault },
-    { type: 'custom-section', key: 'vpn', render: SectionVPN },
-    { type: 'custom-section', key: 'scrapers', render: SectionScrapers },
-    { type: 'custom-section', key: 'content-filter', render: SectionContentFilter },
-    { type: 'custom-section', key: 'parental', render: SectionParental },
-    { type: 'custom-section', key: 'player', render: SectionPlayer },
-    { type: 'custom-section', key: 'debug', render: SectionDebug },
-    { type: 'custom-section', key: 'about', render: SectionAbout },
+    // Zeus Vault
+    { type: 'section-header', title: 'Zeus Vault' },
+    { type: 'info-text', text: vaultStatus?.exists ? `${vaultStatus.accountCount} accounts saved` : 'No backup saved' },
+    { type: 'pressable-button', key: 'vault-save', label: 'Save Backup', icon: 'cloud-upload-outline', iconColor: '#000', onPress: handleSaveVault, disabled: vaultLoading },
+    { type: 'pressable-button', key: 'vault-restore', label: 'Restore Backup', icon: 'cloud-download-outline', onPress: handleRestoreVault, disabled: vaultLoading },
+    { type: 'pressable-button', key: 'vault-export', label: 'Share / Copy', icon: 'share-outline', onPress: handleExportVault, disabled: vaultLoading },
+    { type: 'pressable-button', key: 'vault-import', label: 'Paste Import', icon: 'clipboard-outline', onPress: () => setVaultModalVisible(true) },
+
+    // VPN
+    { type: 'section-header', title: 'VPN / Proxy' },
+    { type: 'info-text', text: proxySettings?.enabled ? `Connected to ${proxyCountries.find(c => c.code === proxySettings.selectedCountry)?.name || 'Unknown'}` : 'Route traffic through proxy servers' },
+    ...proxyCountries.map(country => ({
+      type: 'pressable-button' as const,
+      key: `vpn-${country.code}`,
+      label: `${country.flag} ${country.name}`,
+      icon: proxySettings?.selectedCountry === country.code ? 'checkmark-circle' : 'globe-outline',
+      iconColor: proxySettings?.selectedCountry === country.code ? theme.colors.success : undefined,
+      sublabel: proxySettings?.selectedCountry === country.code ? 'Active' : undefined,
+      onPress: async () => {
+        const newSettings = { ...proxySettings!, selectedCountry: country.code, enabled: true };
+        await proxyService.saveSettings(newSettings);
+        setProxySettings(newSettings);
+        if (proxySettings?.enabled) await proxyService.enableProxy(country.code);
+      },
+    })),
+    { type: 'pressable-button', key: 'speed-test', label: 'Run Speed Test', icon: 'speedometer', onPress: async () => {
+      if (!proxySettings?.enabled) { Alert.alert('Enable Proxy', 'Please enable proxy first'); return; }
+      try {
+        const proxyUrl = await proxyService.getProxyUrl();
+        if (!proxyUrl) { Alert.alert('No Proxy', 'No proxy configured'); return; }
+        const response = await fetch(`${BACKEND_URL}/api/proxy/test?proxy_url=${encodeURIComponent(proxyUrl)}`, { signal: AbortSignal.timeout(15000) });
+        const data = await response.json();
+        Alert.alert('Speed Test', data.success ? `Latency: ${data.latency_ms}ms\nIP: ${data.ip}` : `Failed: ${data.error}`);
+      } catch (e: any) { Alert.alert('Error', e.message); }
+    }},
+
+    // Scraper Status
+    { type: 'section-header', title: 'Scraper Status' },
+    { type: 'pressable-button', key: 'check-scrapers', label: checkingScrapers ? 'Checking...' : 'Check All Scrapers', icon: 'refresh', onPress: () => { if (!checkingScrapers) checkScraperStatus(); }, disabled: checkingScrapers },
+    
+    // Content Filter
+    { type: 'section-header', title: 'Content Filter' },
+    { type: 'pressable-button', key: 'filter-adult-streams', label: contentFilterSettings.blockAdultStreams ? 'Block Adult Streams: ON' : 'Block Adult Streams: OFF', icon: contentFilterSettings.blockAdultStreams ? 'eye-off' : 'eye', onPress: async () => {
+      await contentFilterService.saveSettings({ blockAdultStreams: !contentFilterSettings.blockAdultStreams });
+      setContentFilterSettings(contentFilterService.getSettings());
+    }},
+    { type: 'pressable-button', key: 'filter-adult-categories', label: contentFilterSettings.blockAdultCategories ? 'Block Adult IPTV: ON' : 'Block Adult IPTV: OFF', icon: contentFilterSettings.blockAdultCategories ? 'eye-off' : 'eye', onPress: async () => {
+      await contentFilterService.saveSettings({ blockAdultCategories: !contentFilterSettings.blockAdultCategories });
+      setContentFilterSettings(contentFilterService.getSettings());
+    }},
+
+    // Parental Controls
+    { type: 'section-header', title: 'Parental Controls' },
+    { type: 'pressable-button', key: 'parental-manage', label: parentalSettings?.enabled ? 'Parental Controls: ON (Manage)' : 'Enable Parental Controls', icon: parentalSettings?.enabled ? 'lock-closed' : 'lock-open', onPress: () => {
+      setPinMode(parentalSettings?.enabled ? 'verify' : 'setup');
+      setParentalModalVisible(true);
+    }},
+
+    // Player Settings
+    { type: 'section-header', title: 'Player Settings' },
+    { type: 'pressable-button', key: 'subtitles', label: 'Configure Subtitles', icon: 'text', onPress: () => setSubtitleModalVisible(true) },
+    { type: 'pressable-button', key: 'opensubtitles', label: openSubtitlesApiKey ? 'OpenSubtitles: Connected' : 'Setup OpenSubtitles', icon: 'cloud-download', onPress: () => setSubtitleModalVisible(true) },
+    { type: 'pressable-button', key: 'oneclick', label: oneClickSettings?.enabled ? `One-Click: ${oneClickSettings.preferredQuality}` : 'Configure One-Click Play', icon: 'flash', onPress: () => setOneClickModalVisible(true) },
+    
+    // Debug & Support
+    { type: 'section-header', title: 'Debug & Support' },
+    { type: 'pressable-button', key: 'upload-cloud', label: 'Upload Logs to Cloud', icon: 'cloud-upload', onPress: handleUploadToCloud },
+    { type: 'pressable-button', key: 'error-logs', label: 'View Error Logs', icon: 'document-text', onPress: handleOpenLogs },
+    { type: 'pressable-button', key: 'send-email', label: 'Send via Email', icon: 'mail', onPress: handleSendLogsEmail },
+    { type: 'pressable-button', key: 'copy-logs', label: 'Copy Logs', icon: 'copy', onPress: handleCopyLogs },
+
+    // About
+    { type: 'section-header', title: 'About' },
+    { type: 'info-text', text: 'Zeus Glass v1.5.0 - Premium Streaming Platform' },
   ];
 
   const renderSettingsItem = ({ item }: { item: SettingsItem }) => {
@@ -1475,6 +1542,8 @@ export default function SettingsScreen() {
         return <SectionDebugUpload />;
       case 'section-header':
         return <Text style={styles.sectionTitle}>{item.title}</Text>;
+      case 'info-text':
+        return <Text style={{ color: theme.colors.textSecondary, fontSize: isTV ? 12 : 14, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>{item.text}</Text>;
       case 'account-card':
         return (
           <AccountCard
@@ -1485,6 +1554,33 @@ export default function SettingsScreen() {
             onLogout={item.onLogout}
           />
         );
+      case 'pressable-button': {
+        const isFocused = focusedElement === item.key;
+        return (
+          <Pressable
+            style={[
+              styles.settingsButton,
+              isFocused && styles.settingsButtonFocused,
+              item.disabled && { opacity: 0.5 },
+            ]}
+            onPress={() => {
+              debugTracker.trackInteraction('press', item.key, item.label);
+              item.onPress();
+            }}
+            onFocus={() => setFocusedElement(item.key)}
+            onBlur={() => setFocusedElement(null)}
+            disabled={item.disabled}
+            testID={`btn-${item.key}`}
+          >
+            <Ionicons name={item.icon as any} size={isTV ? 20 : 22} color={isFocused ? '#000' : (item.iconColor || theme.colors.primary)} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.settingsButtonText, isFocused && { color: '#000' }]}>{item.label}</Text>
+              {item.sublabel && <Text style={[styles.settingsButtonSub, isFocused && { color: '#000' }]}>{item.sublabel}</Text>}
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={isFocused ? '#000' : theme.colors.textSecondary} />
+          </Pressable>
+        );
+      }
       case 'custom-section':
         const Renderer = item.render;
         return <Renderer />;
@@ -1853,6 +1949,34 @@ const styles = StyleSheet.create({
     borderColor: '#00D9FF',
     borderWidth: 4,
     backgroundColor: '#00D9FF',
+  },
+  // Generic settings button - each is its own FlatList item for TV D-pad
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.card,
+    marginHorizontal: theme.spacing.lg,
+    marginVertical: theme.spacing.xs,
+    paddingVertical: isTV ? theme.spacing.lg : theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  settingsButtonFocused: {
+    backgroundColor: '#00D9FF',
+    borderColor: '#00D9FF',
+    borderWidth: 4,
+  },
+  settingsButtonText: {
+    color: theme.colors.text,
+    fontSize: isTV ? 14 : 16,
+    fontWeight: '600',
+  },
+  settingsButtonSub: {
+    color: theme.colors.textSecondary,
+    fontSize: isTV ? 11 : 12,
+    marginTop: 2,
   },
   accountHeader: {
     flexDirection: 'row',
