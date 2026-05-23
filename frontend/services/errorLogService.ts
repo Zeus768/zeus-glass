@@ -275,17 +275,23 @@ export const errorLogService = {
 
       const response = await fetch(`${backendUrl}/api/logs/upload`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
           device_id: deviceId,
           device_name: getDeviceName(),
           platform: `${Platform.OS}${Platform.isTV ? '-tv' : ''} ${Platform.Version || ''}`.trim(),
           app_version: '1.5.0',
-          logs: logs.slice(0, 200), // Cap at 200 entries per upload
+          logs: logs.slice(0, 200),
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        return { success: false, message: `Server returned non-JSON (HTTP ${response.status})` };
+      }
       
       if (data.success) {
         return { success: true, message: `Uploaded ${data.log_count} logs to cloud` };

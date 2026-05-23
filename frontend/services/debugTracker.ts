@@ -147,13 +147,31 @@ export const debugTracker = {
         },
       };
 
-      const response = await fetch(`${backendUrl}/api/debug/upload-gofile`, {
+      const url = `${backendUrl}/api/debug/upload-gofile`;
+      const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify(body),
       });
 
-      const data = await response.json();
+      // Handle non-JSON responses (proxy pages, HTML errors, etc.)
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        // Response isn't JSON — likely a proxy/HTML page
+        console.warn('[DebugTracker] Non-JSON response:', responseText.substring(0, 200));
+        return { 
+          success: false, 
+          gofileUrl: null, 
+          message: `HTTP ${response.status} from ${url.substring(0, 60)}. Response: ${responseText.substring(0, 100)}` 
+        };
+      }
+      
       return {
         success: data.success || false,
         gofileUrl: data.gofile_url || null,
