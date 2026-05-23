@@ -582,92 +582,71 @@ export default function SettingsScreen() {
     onLogout: () => void;
   }) => {
     const cardId = title.toLowerCase().replace(/\s+/g, '-');
-    const isCardFocused = focusedCard === cardId;
-    const isLoginFocused = focusedButton === `${cardId}-login`;
-    const isLogoutFocused = focusedButton === `${cardId}-logout`;
+    const isFocused = focusedCard === cardId;
     
+    // The ENTIRE card is a single Pressable — this is required for Android TV
+    // D-pad focus. Nested Pressables inside Views don't receive focus in FlatList.
     return (
-      <View 
+      <Pressable 
         style={[
           styles.accountCard,
-          isCardFocused && styles.accountCardFocused,
+          isFocused && styles.accountCardFocused,
         ]}
+        onPress={() => {
+          debugTracker.trackInteraction('press', `${cardId}-${account ? 'logout' : 'login'}`, title);
+          if (account) {
+            onLogout();
+          } else {
+            onLogin();
+          }
+        }}
+        onFocus={() => setFocusedCard(cardId)}
+        onBlur={() => setFocusedCard(null)}
+        testID={`card-${cardId}`}
       >
         <View style={styles.accountHeader}>
           <View style={styles.accountTitleContainer}>
-            <Ionicons name={icon as any} size={isTV ? 20 : 24} color={theme.colors.primary} />
-            <Text style={styles.accountTitle}>{title}</Text>
+            <Ionicons name={icon as any} size={isTV ? 20 : 24} color={isFocused ? '#000' : theme.colors.primary} />
+            <Text style={[styles.accountTitle, isFocused && { color: '#000' }]}>{title}</Text>
           </View>
-          {account ? (
-            <Pressable 
-              onPress={onLogout} 
-              onFocus={() => {
-                setFocusedCard(cardId);
-                setFocusedButton(`${cardId}-logout`);
-              }}
-              onBlur={() => {
-                setFocusedCard(null);
-                setFocusedButton(null);
-              }}
-              style={[
-                styles.logoutButton,
-                isLogoutFocused && styles.buttonFocused,
-              ]}
-              testID={`logout-${cardId}`}
-            >
-              <Text style={[styles.logoutText, isLogoutFocused && styles.buttonTextFocused]}>
-                Logout
-              </Text>
-            </Pressable>
-          ) : (
-            <Pressable 
-              onPress={onLogin} 
-              onFocus={() => {
-                setFocusedCard(cardId);
-                setFocusedButton(`${cardId}-login`);
-              }}
-              onBlur={() => {
-                setFocusedCard(null);
-                setFocusedButton(null);
-              }}
-              style={[
-                styles.loginButton,
-                isLoginFocused && styles.buttonFocused,
-              ]}
-              testID={`login-${cardId}`}
-            >
-              <Text style={[styles.loginText, isLoginFocused && styles.buttonTextFocused]}>
-                Login
-              </Text>
-            </Pressable>
-          )}
+          <View style={[
+            account ? styles.logoutButton : styles.loginButton,
+            isFocused && { backgroundColor: 'rgba(0,0,0,0.3)' },
+          ]}>
+            <Text style={[
+              account ? styles.logoutText : styles.loginText,
+              isFocused && { color: '#000', fontWeight: '900' },
+            ]}>
+              {account ? 'Logout' : 'Login'}
+            </Text>
+          </View>
         </View>
         {account && (
           <View style={styles.accountInfo}>
             <View style={styles.accountRow}>
-              <Text style={styles.accountLabel}>Username:</Text>
-              <Text style={styles.accountValue}>{account.username}</Text>
+              <Text style={[styles.accountLabel, isFocused && { color: '#000' }]}>Username:</Text>
+              <Text style={[styles.accountValue, isFocused && { color: '#000' }]}>{account.username}</Text>
             </View>
             {account.email && (
               <View style={styles.accountRow}>
-                <Text style={styles.accountLabel}>Email:</Text>
-                <Text style={styles.accountValue}>{account.email}</Text>
+                <Text style={[styles.accountLabel, isFocused && { color: '#000' }]}>Email:</Text>
+                <Text style={[styles.accountValue, isFocused && { color: '#000' }]}>{account.email}</Text>
               </View>
             )}
             {account.expiryDate && (
               <>
                 <View style={styles.accountRow}>
-                  <Text style={styles.accountLabel}>Expires:</Text>
-                  <Text style={styles.accountValue}>
+                  <Text style={[styles.accountLabel, isFocused && { color: '#000' }]}>Expires:</Text>
+                  <Text style={[styles.accountValue, isFocused && { color: '#000' }]}>
                     {formatDistanceToNow(new Date(account.expiryDate), { addSuffix: true })}
                   </Text>
                 </View>
                 <View style={styles.accountRow}>
-                  <Text style={styles.accountLabel}>Days Left:</Text>
+                  <Text style={[styles.accountLabel, isFocused && { color: '#000' }]}>Days Left:</Text>
                   <Text
                     style={[
                       styles.accountValue,
-                      { color: account.daysLeft <= 10 ? theme.colors.error : account.daysLeft < 30 ? theme.colors.warning : theme.colors.success },
+                      isFocused ? { color: '#000' } : { color: account.daysLeft <= 10 ? theme.colors.error : account.daysLeft < 30 ? theme.colors.warning : theme.colors.success },
                     ]}
                   >
                     {account.daysLeft} days {account.daysLeft <= 10 && '⚠️'}
@@ -685,7 +664,7 @@ export default function SettingsScreen() {
             )}
           </View>
         )}
-      </View>
+      </Pressable>
     );
   };
 
@@ -1872,13 +1851,8 @@ const styles = StyleSheet.create({
   },
   accountCardFocused: {
     borderColor: '#00D9FF',
-    borderWidth: 3,
-    backgroundColor: 'rgba(0, 217, 255, 0.2)',
-    shadowColor: '#00D9FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 25,
-    elevation: 25,
+    borderWidth: 4,
+    backgroundColor: '#00D9FF',
   },
   accountHeader: {
     flexDirection: 'row',
