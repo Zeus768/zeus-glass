@@ -1237,9 +1237,13 @@ const styles = StyleSheet.create({
   },
   linkCardFocused: {
     backgroundColor: theme.colors.primary,
-    borderColor: '#FFFFFF',
+    borderColor: '#00D9FF',
     borderWidth: 3,
-    transform: [{ scale: 1.02 }],
+    shadowColor: '#00D9FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 20,
   },
   linkCardActive: {
     borderColor: theme.colors.gold,

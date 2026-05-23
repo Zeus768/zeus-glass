@@ -1458,33 +1458,73 @@ export default function SettingsScreen() {
         </AccountSection>
   );
 
-  // All section renderers for FlatList
-  const sectionRenderers: any = {
-    'debug-upload': SectionDebugUpload,
-    accounts: SectionAccounts,
-    vault: SectionVault,
-    vpn: SectionVPN,
-    scrapers: SectionScrapers,
-    'content-filter': SectionContentFilter,
-    parental: SectionParental,
-    player: SectionPlayer,
-    debug: SectionDebug,
-    about: SectionAbout,
-  };
+  // Build flat list of ALL individual interactive items for TV D-pad navigation.
+  // Each Pressable button is its OWN FlatList item so D-pad can focus each one individually.
+  type SettingsItem = 
+    | { type: 'debug-upload' }
+    | { type: 'section-header'; title: string }
+    | { type: 'account-card'; title: string; icon: string; account: any; onLogin: () => void; onLogout: () => void }
+    | { type: 'custom-section'; key: string; render: () => any };
 
-  const settingsSectionKeys = ['debug-upload', 'accounts', 'vault', 'vpn', 'scrapers', 'content-filter', 'parental', 'player', 'debug', 'about'];
+  const settingsItems: SettingsItem[] = [
+    // Debug Upload
+    { type: 'debug-upload' },
+    
+    // Accounts
+    { type: 'section-header', title: 'Accounts' },
+    { type: 'account-card', title: 'Trakt', icon: 'play-circle', account: traktUser, onLogin: () => handleQRAuth('trakt'), onLogout: logoutTrakt },
+    { type: 'account-card', title: 'Real-Debrid', icon: 'cloud-download', account: realDebridAccount, onLogin: () => handleQRAuth('real-debrid'), onLogout: logoutRealDebrid },
+    { type: 'account-card', title: 'AllDebrid', icon: 'cloud-download', account: allDebridAccount, onLogin: () => handleQRAuth('alldebrid'), onLogout: logoutAllDebrid },
+    { type: 'account-card', title: 'Premiumize', icon: 'cloud-download', account: premiumizeAccount, onLogin: () => handleQRAuth('premiumize'), onLogout: logoutPremiumize },
+    { type: 'account-card', title: 'TorBox', icon: 'cube', account: torboxAccount, onLogin: () => handleQRAuth('torbox'), onLogout: logoutTorbox },
+    { type: 'account-card', title: 'Premium IPTV', icon: 'tv', account: iptvAccount, onLogin: () => setIptvModalVisible(true), onLogout: logoutIPTV },
+    
+    // Remaining sections as custom renders
+    { type: 'custom-section', key: 'vault', render: SectionVault },
+    { type: 'custom-section', key: 'vpn', render: SectionVPN },
+    { type: 'custom-section', key: 'scrapers', render: SectionScrapers },
+    { type: 'custom-section', key: 'content-filter', render: SectionContentFilter },
+    { type: 'custom-section', key: 'parental', render: SectionParental },
+    { type: 'custom-section', key: 'player', render: SectionPlayer },
+    { type: 'custom-section', key: 'debug', render: SectionDebug },
+    { type: 'custom-section', key: 'about', render: SectionAbout },
+  ];
 
-  const renderSettingsItem = ({ item }: { item: string }) => {
-    const Renderer = sectionRenderers[item];
-    return Renderer ? <Renderer /> : null;
+  const renderSettingsItem = ({ item }: { item: SettingsItem }) => {
+    switch (item.type) {
+      case 'debug-upload':
+        return <SectionDebugUpload />;
+      case 'section-header':
+        return <Text style={styles.sectionTitle}>{item.title}</Text>;
+      case 'account-card':
+        return (
+          <AccountCard
+            title={item.title}
+            icon={item.icon}
+            account={item.account}
+            onLogin={item.onLogin}
+            onLogout={item.onLogout}
+          />
+        );
+      case 'custom-section':
+        const Renderer = item.render;
+        return <Renderer />;
+      default:
+        return null;
+    }
   };
 
   return (
     <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={settingsSectionKeys}
-        keyExtractor={(item) => item}
+        data={settingsItems}
+        keyExtractor={(item, index) => {
+          if (item.type === 'account-card') return `card-${item.title}`;
+          if (item.type === 'section-header') return `header-${item.title}`;
+          if (item.type === 'custom-section') return `section-${item.key}`;
+          return `item-${index}`;
+        }}
         renderItem={renderSettingsItem}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -1831,15 +1871,14 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   accountCardFocused: {
-    borderColor: '#FFFFFF',
-    borderWidth: isTV ? 3 : 3,  // Reduced from 5
-    backgroundColor: 'rgba(0, 217, 255, 0.15)',
+    borderColor: '#00D9FF',
+    borderWidth: 3,
+    backgroundColor: 'rgba(0, 217, 255, 0.2)',
     shadowColor: '#00D9FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: isTV ? 20 : 20,  // Reduced from 30
-    elevation: 20,
-    transform: [{ scale: isTV ? 1.02 : 1.01 }],  // Reduced from 1.03
+    shadowRadius: 25,
+    elevation: 25,
   },
   accountHeader: {
     flexDirection: 'row',
@@ -1884,17 +1923,19 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   buttonFocused: {
-    borderColor: '#FFFFFF',
-    borderWidth: isTV ? 3 : 4,   // Reduced from 5
-    transform: [{ scale: isTV ? 1.1 : 1.12 }],  // Reduced from 1.18
-    shadowColor: '#FFFFFF',
+    borderColor: '#00D9FF',
+    borderWidth: 4,
+    transform: [{ scale: 1.05 }],
+    backgroundColor: 'rgba(0, 217, 255, 0.15)',
+    shadowColor: '#00D9FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: isTV ? 18 : 25,  // Reduced from 30
+    shadowRadius: 20,
     elevation: 30,
   },
   buttonTextFocused: {
     fontWeight: '900' as const,
+    color: '#00D9FF',
   },
   // Zeus Vault styles
   vaultCard: {
