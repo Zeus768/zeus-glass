@@ -28,6 +28,13 @@ export const PREMIUMIZE_CLIENT_ID = 'zeus-glass-app';
 export const TORBOX_BASE_URL = 'https://api.torbox.app';
 export const TORBOX_AGENT = 'zeus-glass';
 
+// Backend API URL
+// This is the CRITICAL URL that native Android builds use for all proxy calls
+// (debrid auth, debug upload, IPTV, scraping). On web, relative paths work
+// via Kubernetes ingress, but native APKs MUST have the full URL.
+// Hardcoded fallback ensures it's NEVER empty even if env var isn't baked in.
+export const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://zeus-glass.preview.emergentagent.com';
+
 // App Configuration
 export const APP_NAME = 'Zeus Glass';
 export const APP_SCHEME = 'zeusglass';

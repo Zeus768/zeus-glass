@@ -1,11 +1,9 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import { proxyService } from './proxyService';
+import { BACKEND_URL } from '../config/constants';
 
-const getBackendUrl = () => {
-  if (Platform.OS === 'web') return '';
-  return process.env.EXPO_PUBLIC_BACKEND_URL || '';
-};
+const getBackendUrl = () => BACKEND_URL;
 
 /**
  * Proxied fetch utility for streaming requests.

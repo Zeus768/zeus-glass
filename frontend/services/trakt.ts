@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { storage } from '../utils/storage';
-import { TRAKT_BASE_URL, TRAKT_CLIENT_ID, TRAKT_CLIENT_SECRET, STORAGE_KEYS, APP_SCHEME } from '../config/constants';
+import { TRAKT_BASE_URL, TRAKT_CLIENT_ID, TRAKT_CLIENT_SECRET, STORAGE_KEYS, APP_SCHEME, BACKEND_URL } from '../config/constants';
 import { TraktToken, TraktUser, ContinueWatching } from '../types';
 
-const getBackendUrl = () => process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const getBackendUrl = () => BACKEND_URL;
 
 // Check if we need to use the proxy (web environment)
 const shouldUseProxy = () => {

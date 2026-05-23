@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { BlurView } from 'expo-blur';
 import { theme, isTV } from '../constants/theme';
+import { BACKEND_URL } from '../config/constants';
 import { QRAuthModal } from '../components/QRAuthModal';
 import { useAuthStore } from '../store/authStore';
 import { iptvService } from '../services/iptv';
@@ -1039,7 +1040,7 @@ export default function SettingsScreen() {
                     setFocusedElement(null);
                     return;
                   }
-                  const backendUrl = Platform.OS === 'web' ? '' : (process.env.EXPO_PUBLIC_BACKEND_URL || '');
+                  const backendUrl = BACKEND_URL;
                   const response = await fetch(`${backendUrl}/api/proxy/test?proxy_url=${encodeURIComponent(proxyUrl)}`, {
                     signal: AbortSignal.timeout(15000),
                   });

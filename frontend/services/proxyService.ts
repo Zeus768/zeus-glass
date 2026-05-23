@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { BACKEND_URL } from '../config/constants';
 
 // Free proxy servers for streaming (regularly updated)
 // These are SOCKS5/HTTP proxies that can be used for streaming traffic
@@ -149,7 +150,7 @@ export const testProxy = async (proxy: ProxyServer): Promise<{ success: boolean;
   
   try {
     // Use the backend proxy test endpoint for real connectivity check
-    const backendUrl = Platform.OS === 'web' ? '' : (process.env.EXPO_PUBLIC_BACKEND_URL || '');
+    const backendUrl = BACKEND_URL;
     const proxyUrl = `${proxy.type}://${proxy.host}:${proxy.port}`;
     
     const response = await fetch(`${backendUrl}/api/proxy/test?proxy_url=${encodeURIComponent(proxyUrl)}`, {

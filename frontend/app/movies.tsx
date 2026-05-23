@@ -6,6 +6,7 @@ import { theme, isTV } from '../constants/theme';
 import { tmdbService } from '../services/tmdb';
 import { traktService } from '../services/trakt';
 import { realDebridService, torboxService } from '../services/debrid';
+import { BACKEND_URL } from '../config/constants';
 import { Movie, Genre } from '../types';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
@@ -207,7 +208,7 @@ export default function MoviesScreen() {
     else setLoadingMore(true);
     
     try {
-      const backendUrl = Platform.OS === 'web' ? '' : (process.env.EXPO_PUBLIC_BACKEND_URL || '');
+      const backendUrl = BACKEND_URL;
       const rdToken = await realDebridService.getToken();
       const tbToken = await torboxService.getToken();
       

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import * as MailComposer from 'expo-mail-composer';
 import { Platform } from 'react-native';
+import { BACKEND_URL } from '../config/constants';
 
 // Error log entry interface
 export interface LogEntry {
@@ -25,11 +26,8 @@ const MAX_LOGS = 500;
 const SUPPORT_EMAIL = 'thealphaddon@gmail.com';
 const TELEGRAM_BOT = 'https://t.me/zeusglasssupport';
 
-// Get backend URL
-const getBackendUrl = (): string => {
-  if (Platform.OS === 'web') return '';
-  return process.env.EXPO_PUBLIC_BACKEND_URL || '';
-};
+// Get backend URL — uses centralized constant with hardcoded fallback
+const getBackendUrl = (): string => BACKEND_URL;
 
 // Generate or retrieve a persistent device ID
 const getDeviceId = async (): Promise<string> => {

@@ -7,23 +7,15 @@ import {
   ALLDEBRID_BASE_URL,
   PREMIUMIZE_BASE_URL,
   STORAGE_KEYS,
+  BACKEND_URL,
 } from '../config/constants';
 import { DebridAccount, StreamLink, CachedTorrent } from '../types';
 import { errorLogService } from './errorLogService';
 import { proxiedGet, proxiedPost } from './proxiedFetch';
 
-// Get backend URL for proxy calls
-const getBackendUrl = () => {
-  // On web, relative path works through Kubernetes ingress
-  // On native (Android TV, mobile), we need the full URL
-  if (Platform.OS === 'web') return '';
-  return process.env.EXPO_PUBLIC_BACKEND_URL || '';
-};
-
-// Always use proxy - both web (CORS) and native (need backend for debrid auth)
-const shouldUseProxy = () => {
-  return true;
-};
+// Use centralized BACKEND_URL constant — hardcoded fallback ensures it's NEVER empty
+const getBackendUrl = () => BACKEND_URL;
+const shouldUseProxy = () => true;
 
 // ============================================
 // REAL-DEBRID SERVICE

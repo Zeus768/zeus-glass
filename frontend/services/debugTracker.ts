@@ -1,16 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Dimensions } from 'react-native';
 import { errorLogService } from './errorLogService';
+import { BACKEND_URL } from '../config/constants';
 
 const INTERACTION_KEY = '@zeus_debug_interactions';
 const NAV_KEY = '@zeus_debug_navigation';
 const MAX_INTERACTIONS = 1000;
 const MAX_NAV = 500;
 
-const getBackendUrl = (): string => {
-  if (Platform.OS === 'web') return '';
-  return process.env.EXPO_PUBLIC_BACKEND_URL || '';
-};
+const getBackendUrl = (): string => BACKEND_URL;
 
 export interface InteractionEvent {
   id: string;
