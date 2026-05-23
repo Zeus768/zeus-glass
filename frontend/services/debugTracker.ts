@@ -114,71 +114,109 @@ export const debugTracker = {
     AsyncStorage.setItem(INTERACTION_KEY, JSON.stringify(interactions)).catch(() => {});
   },
 
-  // Upload debug bundle to GoFile via backend
+  // Upload debug bundle directly to file hosting (no backend proxy needed)
   uploadDebugBundle: async (): Promise<{ success: boolean; gofileUrl: string | null; message: string }> => {
     try {
-      const backendUrl = getBackendUrl();
-      if (!backendUrl) return { success: false, gofileUrl: null, message: 'Backend URL not configured' };
-
       const deviceId = await getDeviceId();
       const { width, height } = Dimensions.get('window');
 
-      const body = {
-        device_id: deviceId,
-        device_name: getDeviceName(),
-        platform: `${Platform.OS}${Platform.isTV ? '-tv' : ''} ${Platform.Version || ''}`.trim(),
-        app_version: '1.5.0',
-        interaction_logs: interactions.slice(0, 500),
-        error_logs: errorLogService.logs.slice(0, 200),
-        navigation_history: navigation.slice(0, 200),
-        device_info: {
-          os: Platform.OS,
-          version: Platform.Version,
-          isTV: Platform.isTV,
+      const report = {
+        zeus_glass_debug_report: true,
+        generated_at: new Date().toISOString(),
+        device: {
+          id: deviceId,
+          name: getDeviceName(),
+          platform: `${Platform.OS}${Platform.isTV ? '-tv' : ''} ${Platform.Version || ''}`.trim(),
+          app_version: '1.5.0',
           screenWidth: width,
           screenHeight: height,
+          isTV: Platform.isTV,
         },
-        app_state: {
-          totalInteractions: interactions.length,
-          totalErrors: errorLogService.logs.filter(l => l.level === 'error').length,
-          totalNavigations: navigation.length,
-          currentScreen,
-          uptime: `${Math.floor((Date.now() - (interactions[interactions.length - 1] ? new Date(interactions[interactions.length - 1].timestamp).getTime() : Date.now())) / 60000)} minutes`,
-        },
+        interaction_count: interactions.length,
+        error_count: errorLogService.logs.filter(l => l.level === 'error').length,
+        nav_count: navigation.length,
+        current_screen: currentScreen,
+        interactions: interactions.slice(0, 300),
+        errors: errorLogService.logs.slice(0, 100),
+        navigation: navigation.slice(0, 100),
       };
 
-      const url = `${backendUrl}/api/debug/upload-gofile`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
+      const reportJson = JSON.stringify(report, null, 2);
 
-      // Handle non-JSON responses (proxy pages, HTML errors, etc.)
-      const responseText = await response.text();
-      let data;
+      // Try multiple upload methods in order of reliability
+
+      // Method 1: Try backend proxy (works if backend is reachable)
       try {
-        data = JSON.parse(responseText);
-      } catch {
-        // Response isn't JSON — likely a proxy/HTML page
-        console.warn('[DebugTracker] Non-JSON response:', responseText.substring(0, 200));
-        return { 
-          success: false, 
-          gofileUrl: null, 
-          message: `HTTP ${response.status} from ${url.substring(0, 60)}. Response: ${responseText.substring(0, 100)}` 
-        };
-      }
-      
-      return {
-        success: data.success || false,
-        gofileUrl: data.gofile_url || null,
-        message: data.message || 'Upload complete',
-      };
+        const backendUrl = getBackendUrl();
+        if (backendUrl) {
+          const resp = await fetch(`${backendUrl}/api/debug/upload-gofile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+              device_id: deviceId,
+              device_name: getDeviceName(),
+              platform: report.device.platform,
+              app_version: '1.5.0',
+              interaction_logs: interactions.slice(0, 300),
+              error_logs: errorLogService.logs.slice(0, 100),
+              navigation_history: navigation.slice(0, 100),
+              device_info: report.device,
+            }),
+          });
+          const text = await resp.text();
+          try {
+            const data = JSON.parse(text);
+            if (data.gofile_url) {
+              return { success: true, gofileUrl: data.gofile_url, message: data.message || 'Uploaded via backend' };
+            }
+          } catch {}
+        }
+      } catch {}
+
+      // Method 2: Upload to paste.rs (simple raw POST, works from any device)
+      try {
+        const pasteResp = await fetch('https://paste.rs/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: reportJson,
+        });
+        const pasteUrl = await pasteResp.text();
+        if (pasteUrl && pasteUrl.startsWith('http')) {
+          return { success: true, gofileUrl: pasteUrl.trim(), message: `Debug uploaded (${reportJson.length} bytes)` };
+        }
+      } catch {}
+
+      // Method 3: Upload to dpaste.org
+      try {
+        const formBody = `content=${encodeURIComponent(reportJson)}&syntax=json&expiry_days=30`;
+        const dpasteResp = await fetch('https://dpaste.org/api/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formBody,
+        });
+        const dpasteUrl = await dpasteResp.text();
+        if (dpasteUrl && dpasteUrl.startsWith('http')) {
+          return { success: true, gofileUrl: dpasteUrl.trim(), message: `Debug uploaded (${reportJson.length} bytes)` };
+        }
+      } catch {}
+
+      // Method 3: Upload to ix.io paste service
+      try {
+        const ixBody = `f:1=${encodeURIComponent(reportJson)}`;
+        const ixResp = await fetch('http://ix.io', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: ixBody,
+        });
+        const ixUrl = await ixResp.text();
+        if (ixUrl && ixUrl.startsWith('http')) {
+          return { success: true, gofileUrl: ixUrl.trim(), message: `Debug uploaded (${reportJson.length} bytes)` };
+        }
+      } catch {}
+
+      return { success: false, gofileUrl: null, message: 'All upload methods failed. Check network connection.' };
     } catch (error: any) {
-      return { success: false, gofileUrl: null, message: error.message || 'Network error' };
+      return { success: false, gofileUrl: null, message: error.message || 'Upload failed' };
     }
   },
 
