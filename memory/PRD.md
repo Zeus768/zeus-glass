@@ -46,6 +46,22 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 
 ## Completed Features
 
+### Service-Agnostic Debrid Resolution + In-App Changelog (2026-02-15) — v1.6.0
+- **Debrid resolution decoupled from Real-Debrid (P0 fix)**: `DebridDownloadDialog.tsx` rewritten to auto-detect the active debrid service (priority: TorBox → AllDebrid → Premiumize → Real-Debrid) and dispatch to the correct resolver. TorBox users can now stream cached + uncached torrents end-to-end without RD.
+- New per-service resolvers: `resolveTorbox`, `resolveRealDebrid`, `resolveAllDebrid`, `resolvePremiumize` — each handles the service's own magnet-add, polling, file-pick and unrestrict flow.
+- Dialog header now shows the *active* service name dynamically (no more hardcoded "Real-Debrid").
+- All dialog buttons switched `Pressable` → `TouchableOpacity` for TV D-pad focus.
+- `debridCacheService.checkCacheStatus(hashes, service)` now accepts `'realdebrid' | 'torbox'` so cache (⚡) badges work for TorBox users too.
+- `debridCacheService.getStreamUrl(hash, fileId?, serviceType?)` accepts an explicit service type.
+- `searchCachedMovie` / `searchCachedTV` pick the active service automatically.
+- **In-app version + changelog**: 
+  - New `services/versionService.ts` (reads version directly from `app.json` — reliable on web), `constants/changelog.ts` (versioned highlights), `components/ChangelogModal.tsx`.
+  - Auto-pops modal once after each app update (via `_layout.tsx`).
+  - Settings → About now shows dynamic version + a new "What's New / Changelog" pressable that opens the full history.
+- App version bumped 1.5.0 → 1.6.0.
+- Verified on web preview: Settings displays `Zeus Glass v1.6.0`, changelog modal renders both entries with TorBox bullet.
+- Tested with `testing_agent_v3_fork` (iteration_16); P0 version-display bug found & fixed (see CHANGELOG of session for root-cause).
+
 ### Trakt Recommendations (2026-03-21)
 - Personalized movie and TV show recommendations from Trakt
 - `getRecommendedMovies()` and `getRecommendedShows()` API methods

@@ -22,6 +22,8 @@ import { BlurView } from 'expo-blur';
 import { theme, isTV } from '../constants/theme';
 import { BACKEND_URL } from '../config/constants';
 import { QRAuthModal } from '../components/QRAuthModal';
+import { ChangelogModal } from '../components/ChangelogModal';
+import { versionService } from '../services/versionService';
 import { useAuthStore } from '../store/authStore';
 import { iptvService } from '../services/iptv';
 import { errorLogService, LogEntry } from '../services/errorLogService';
@@ -63,6 +65,8 @@ export default function SettingsScreen() {
 
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceType>('real-debrid');
+  const [changelogVisible, setChangelogVisible] = useState(false);
+  const appVersion = versionService.getCurrentVersion();
   const [iptvModalVisible, setIptvModalVisible] = useState(false);
   const [iptvDomain, setIptvDomain] = useState('');
   const [iptvUsername, setIptvUsername] = useState('');
@@ -1434,7 +1438,7 @@ export default function SettingsScreen() {
   const SectionAbout = () => (
         <AccountSection title="About">
           <View style={styles.infoCard}>
-            <Text style={styles.infoText}>Zeus Glass v1.5.0</Text>
+            <Text style={styles.infoText}>Zeus Glass v{appVersion}</Text>
             <Text style={styles.infoSubtext}>Premium Streaming Platform</Text>
           </View>
         </AccountSection>
@@ -1536,7 +1540,8 @@ export default function SettingsScreen() {
 
     // About
     { type: 'section-header', title: 'About' },
-    { type: 'info-text', text: 'Zeus Glass v1.5.0 - Premium Streaming Platform' },
+    { type: 'info-text', text: `Zeus Glass v${appVersion} • Premium Streaming Platform` },
+    { type: 'pressable-button', key: 'view-changelog', label: "What's New / Changelog", icon: 'sparkles-outline', iconColor: theme.colors.primary, onPress: () => setChangelogVisible(true) },
   ];
 
   const renderSettingsItem = ({ item }: { item: SettingsItem }) => {
@@ -1658,6 +1663,12 @@ export default function SettingsScreen() {
         service={selectedService}
         onClose={() => setQrModalVisible(false)}
         onSuccess={handleQRSuccess}
+      />
+
+      {/* Changelog Modal (from Settings → About → What's New) */}
+      <ChangelogModal
+        visible={changelogVisible}
+        onClose={() => setChangelogVisible(false)}
       />
 
       {/* IPTV Login Modal */}

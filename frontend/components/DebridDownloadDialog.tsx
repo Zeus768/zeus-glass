@@ -8,18 +8,24 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, isTV } from '../constants/theme';
-import { realDebridService, allDebridService, torboxService } from '../services/debrid';
-import { BACKEND_URL } from '../config/constants';
+import {
+  realDebridService,
+  allDebridService,
+  torboxService,
+  premiumizeService,
+  debridCacheService,
+} from '../services/debrid';
 import { CachedTorrent } from '../types';
 import axios from 'axios';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type DownloadStage = 
+type DebridType = 'torbox' | 'realdebrid' | 'alldebrid' | 'premiumize';
+
+type DownloadStage =
   | 'checking_auth'
   | 'adding_torrent'
   | 'checking_cache'
@@ -46,44 +52,37 @@ export function DebridDownloadDialog({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('Initializing...');
+  const [activeServiceName, setActiveServiceName] = useState<string>('Debrid');
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const pollInterval = useRef<NodeJS.Timeout | null>(null);
+  const cancelledRef = useRef(false);
 
-  // Stage descriptions
-  const stageInfo: Record<DownloadStage, { icon: string; text: string; color: string }> = {
-    checking_auth: { icon: 'key', text: 'Checking authentication...', color: theme.colors.primary },
-    adding_torrent: { icon: 'magnet', text: 'Adding torrent to Real-Debrid...', color: '#8A2BE2' },
-    checking_cache: { icon: 'flash', text: 'Checking cache status...', color: theme.colors.gold },
-    downloading: { icon: 'cloud-download', text: 'Downloading...', color: theme.colors.info },
-    selecting_file: { icon: 'folder-open', text: 'Selecting video file...', color: theme.colors.success },
-    getting_link: { icon: 'link', text: 'Getting streaming link...', color: theme.colors.primary },
-    ready: { icon: 'play-circle', text: 'Ready to play!', color: theme.colors.success },
-    error: { icon: 'alert-circle', text: 'Error occurred', color: theme.colors.error },
+  const stageInfo: Record<DownloadStage, { icon: string; color: string }> = {
+    checking_auth: { icon: 'key', color: theme.colors.primary },
+    adding_torrent: { icon: 'magnet', color: '#8A2BE2' },
+    checking_cache: { icon: 'flash', color: theme.colors.gold },
+    downloading: { icon: 'cloud-download', color: theme.colors.info },
+    selecting_file: { icon: 'folder-open', color: theme.colors.success },
+    getting_link: { icon: 'link', color: theme.colors.primary },
+    ready: { icon: 'play-circle', color: theme.colors.success },
+    error: { icon: 'alert-circle', color: theme.colors.error },
   };
 
   useEffect(() => {
     if (visible && torrent) {
+      cancelledRef.current = false;
       startDownloadProcess();
     } else {
-      // Reset state
+      cancelledRef.current = true;
       setStage('checking_auth');
       setProgress(0);
       setError(null);
       setStatusText('Initializing...');
-      if (pollInterval.current) {
-        clearInterval(pollInterval.current);
-        pollInterval.current = null;
-      }
     }
-
     return () => {
-      if (pollInterval.current) {
-        clearInterval(pollInterval.current);
-      }
+      cancelledRef.current = true;
     };
   }, [visible, torrent]);
 
-  // Animate progress bar
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: progress,
@@ -92,341 +91,311 @@ export function DebridDownloadDialog({
     }).start();
   }, [progress]);
 
-  // Detect which debrid service the user has
-  const getActiveDebridService = async (): Promise<{ name: string; token: string; type: 'torbox' | 'realdebrid' | 'alldebrid' } | null> => {
-    // Priority: TorBox > AllDebrid > Real-Debrid
-    const tbToken = await torboxService.getToken();
-    if (tbToken) return { name: 'TorBox', token: tbToken, type: 'torbox' };
-    
-    const adToken = await allDebridService.getToken();
-    if (adToken) return { name: 'AllDebrid', token: adToken, type: 'alldebrid' };
-    
-    const rdToken = await realDebridService.getToken();
-    if (rdToken) return { name: 'Real-Debrid', token: rdToken, type: 'realdebrid' };
-    
+  // Detect active debrid service (priority: TorBox > AllDebrid > Premiumize > Real-Debrid)
+  const getActiveDebrid = async (): Promise<
+    { name: string; token: string; type: DebridType } | null
+  > => {
+    const tb = await torboxService.getToken();
+    if (tb) return { name: 'TorBox', token: tb, type: 'torbox' };
+
+    const ad = await allDebridService.getToken();
+    if (ad) return { name: 'AllDebrid', token: ad, type: 'alldebrid' };
+
+    const pm = await premiumizeService.getToken();
+    if (pm) return { name: 'Premiumize', token: pm, type: 'premiumize' };
+
+    const rd = await realDebridService.getToken();
+    if (rd) return { name: 'Real-Debrid', token: rd, type: 'realdebrid' };
+
     return null;
   };
 
   const startDownloadProcess = async () => {
     if (!torrent) return;
-
     try {
-      // Stage 1: Find active debrid service
       setStage('checking_auth');
       setStatusText('Finding debrid service...');
       setProgress(5);
 
-      const debrid = await getActiveDebridService();
+      const debrid = await getActiveDebrid();
       if (!debrid) {
         setStage('error');
-        setError('No debrid service logged in. Please login to TorBox, AllDebrid, or Real-Debrid in Settings.');
+        setError('No debrid service connected. Please login to TorBox, AllDebrid, Premiumize, or Real-Debrid in Settings.');
         return;
       }
-
+      setActiveServiceName(debrid.name);
       setStatusText(`Using ${debrid.name}...`);
       setProgress(10);
 
+      if (cancelledRef.current) return;
+
+      let streamUrl: string | null = null;
       if (debrid.type === 'torbox') {
-        await resolveTorbox(debrid.token);
+        streamUrl = await resolveTorbox(debrid.token);
       } else if (debrid.type === 'realdebrid') {
-        await resolveRealDebrid(debrid.token);
+        streamUrl = await resolveRealDebrid(debrid.token);
       } else if (debrid.type === 'alldebrid') {
-        await resolveAllDebrid(debrid.token);
+        streamUrl = await resolveAllDebrid(debrid.token);
+      } else if (debrid.type === 'premiumize') {
+        streamUrl = await resolvePremiumize(debrid.token);
       }
-    } catch (err: any) {
-      console.error('[DebridDownload] Error:', err);
-      setStage('error');
-      setError(err.message || 'An unexpected error occurred');
-    }
-  };
 
-  // TorBox resolution
-  const resolveTorbox = async (token: string) => {
-    if (!torrent) return;
-    
-    try {
-      setStage('adding_torrent');
-      setStatusText('Adding torrent to TorBox...');
-      setProgress(20);
-
-      const magnetUrl = `magnet:?xt=urn:btih:${torrent.hash}`;
-      
-      // Create torrent on TorBox
-      const formData = new FormData();
-      formData.append('magnet', magnetUrl);
-      
-      const addResp = await fetch(`https://api.torbox.app/v1/api/torrents/createtorrent`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
-      const addData = await addResp.json();
-      
-      if (!addData?.success || !addData?.data?.torrent_id) {
-        // Might already exist, try to find it
-        setStatusText('Checking existing torrents...');
-        setProgress(30);
-      }
-      
-      const torrentId = addData?.data?.torrent_id;
-      
-      if (torrentId) {
-        // Poll for completion
-        setStage('downloading');
-        let attempts = 0;
-        
-        while (attempts < 30) {
-          await new Promise(r => setTimeout(r, 2000));
-          attempts++;
-          
-          const infoResp = await fetch(`https://api.torbox.app/v1/api/torrents/mylist?id=${torrentId}`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-          const infoData = await infoResp.json();
-          const tInfo = infoData?.data;
-          
-          if (tInfo?.download_finished || tInfo?.cached) {
-            setProgress(70);
-            setStatusText('Download complete! Getting link...');
-            break;
-          }
-          
-          const dlProgress = tInfo?.progress || 0;
-          setProgress(30 + (dlProgress * 40));
-          setStatusText(`Downloading: ${(dlProgress * 100).toFixed(0)}%`);
-        }
-        
-        // Get download link
-        setStage('getting_link');
-        setStatusText('Getting streaming link...');
-        setProgress(90);
-        
-        const linkResp = await fetch(
-          `https://api.torbox.app/v1/api/torrents/requestdl?token=${token}&torrent_id=${torrentId}&zip_link=false`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        const linkData = await linkResp.json();
-        
-        if (linkData?.success && linkData?.data) {
-          setStage('ready');
-          setStatusText('Ready to play!');
-          setProgress(100);
-          setTimeout(() => onStreamReady(linkData.data), 800);
-          return;
-        }
-      }
-      
-      // Fallback: try to get cached link directly
-      setStatusText('Trying cached resolution...');
-      const cachedResp = await fetch(
-        `https://api.torbox.app/v1/api/torrents/checkcached?hash=${torrent.hash}`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      const cachedData = await cachedResp.json();
-      
-      if (cachedData?.data?.[torrent.hash]) {
-        // It's cached, create and get link
-        const formData2 = new FormData();
-        formData2.append('magnet', `magnet:?xt=urn:btih:${torrent.hash}`);
-        
-        const add2 = await fetch('https://api.torbox.app/v1/api/torrents/createtorrent', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData2,
-        });
-        const add2Data = await add2.json();
-        const tid2 = add2Data?.data?.torrent_id;
-        
-        if (tid2) {
-          await new Promise(r => setTimeout(r, 1000));
-          const link2 = await fetch(
-            `https://api.torbox.app/v1/api/torrents/requestdl?token=${token}&torrent_id=${tid2}&zip_link=false`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
-          );
-          const link2Data = await link2.json();
-          if (link2Data?.success && link2Data?.data) {
-            setStage('ready');
-            setStatusText('Ready to play!');
-            setProgress(100);
-            setTimeout(() => onStreamReady(link2Data.data), 800);
-            return;
-          }
-        }
-      }
-      
-      setStage('error');
-      setError('Failed to get TorBox streaming link. Try another source.');
-    } catch (err: any) {
-      setStage('error');
-      setError(`TorBox error: ${err.message}`);
-    }
-  };
-
-  // Real-Debrid resolution (kept for users who still have it)
-  const resolveRealDebrid = async (token: string) => {
-    if (!torrent) return;
-
-      // Stage 2: Add torrent
-      setStage('adding_torrent');
-      setStatusText(`Adding "${torrent.title}" to Real-Debrid...`);
-      setProgress(15);
-
-      // If it's cached, we can skip downloading
-      if (torrent.cached) {
-        setStage('checking_cache');
-        setStatusText('Torrent is cached! Preparing instant stream...');
-        setProgress(50);
-        
-        await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UX
-        
-        // Get stream URL directly
-        await getStreamUrl();
-      } else {
-        // Need to add and potentially wait for download
-        setStage('checking_cache');
-        setStatusText('Checking if torrent is available...');
-        setProgress(20);
-
-        // Add magnet to Real-Debrid
-        const magnetUrl = `magnet:?xt=urn:btih:${torrent.hash}`;
-        const addResult = await realDebridService.addMagnet(magnetUrl);
-        
-        if (!addResult || !addResult.id) {
-          setStage('error');
-          setError('Failed to add torrent to Real-Debrid. The torrent may be invalid.');
-          return;
-        }
-
-        // Check torrent status and wait for download if needed
-        setStage('downloading');
-        setStatusText('Processing torrent...');
-        setProgress(30);
-
-        // Poll for download status
-        await pollDownloadStatus(addResult.id);
-      }
-    } catch (err: any) {
-      console.error('[DebridDownload] Error:', err);
-      setStage('error');
-      setError(err.message || 'An unexpected error occurred');
-    }
-  };
-
-  const pollDownloadStatus = async (torrentId: string) => {
-    let attempts = 0;
-    const maxAttempts = 60; // 60 seconds max
-
-    const checkStatus = async () => {
-      try {
-        const info = await realDebridService.getTorrentInfo(torrentId);
-        
-        if (!info) {
-          setStage('error');
-          setError('Failed to get torrent info');
-          return true; // Stop polling
-        }
-
-        const status = info.status;
-        const downloadProgress = info.progress || 0;
-
-        if (status === 'downloaded' || status === 'seeding') {
-          // Download complete
-          setProgress(70);
-          setStatusText('Download complete!');
-          
-          // Select files
-          setStage('selecting_file');
-          setStatusText('Selecting video file...');
-          setProgress(80);
-          
-          // Get stream URL
-          await getStreamUrl();
-          return true; // Stop polling
-        } else if (status === 'downloading') {
-          setProgress(30 + (downloadProgress * 0.4)); // 30-70%
-          setStatusText(`Downloading: ${downloadProgress.toFixed(0)}%`);
-          return false; // Continue polling
-        } else if (status === 'waiting_files_selection') {
-          // Need to select files
-          await realDebridService.selectFiles(torrentId);
-          return false; // Continue polling
-        } else if (status === 'magnet_error' || status === 'error' || status === 'dead') {
-          setStage('error');
-          setError('Torrent is unavailable or dead. Please try another source.');
-          return true; // Stop polling
-        } else if (status === 'queued') {
-          setStatusText('Queued for download...');
-          return false; // Continue polling
-        } else {
-          setStatusText(`Status: ${status}...`);
-          return false; // Continue polling
-        }
-      } catch (err) {
-        attempts++;
-        if (attempts >= maxAttempts) {
-          setStage('error');
-          setError('Timeout waiting for download. Please try again.');
-          return true;
-        }
-        return false;
-      }
-    };
-
-    // Initial check
-    const done = await checkStatus();
-    if (done) return;
-
-    // Start polling
-    pollInterval.current = setInterval(async () => {
-      attempts++;
-      if (attempts >= maxAttempts) {
-        if (pollInterval.current) clearInterval(pollInterval.current);
-        setStage('error');
-        setError('Timeout waiting for download');
-        return;
-      }
-      
-      const done = await checkStatus();
-      if (done && pollInterval.current) {
-        clearInterval(pollInterval.current);
-        pollInterval.current = null;
-      }
-    }, 1000);
-  };
-
-  const getStreamUrl = async () => {
-    if (!torrent) return;
-
-    try {
-      setStage('getting_link');
-      setStatusText('Getting streaming link...');
-      setProgress(90);
-
-      const streamUrl = await debridCacheService.getStreamUrl(torrent.hash, torrent.file_id);
-
+      if (cancelledRef.current) return;
       if (streamUrl) {
         setStage('ready');
         setStatusText('Ready to play!');
         setProgress(100);
-        
-        // Auto-play after brief delay
         setTimeout(() => {
-          onStreamReady(streamUrl);
-        }, 800);
-      } else {
+          if (!cancelledRef.current) onStreamReady(streamUrl!);
+        }, 600);
+      } else if (stage !== 'error') {
         setStage('error');
-        setError('Failed to get streaming link. Please try another source.');
+        setError(`${debrid.name} could not resolve this torrent. Try another source.`);
       }
     } catch (err: any) {
-      setStage('error');
-      setError(err.message || 'Failed to get streaming link');
+      console.error('[DebridDownload] Error:', err);
+      if (!cancelledRef.current) {
+        setStage('error');
+        setError(err.message || 'An unexpected error occurred');
+      }
     }
+  };
+
+  // ---------------- TORBOX ----------------
+  const resolveTorbox = async (token: string): Promise<string | null> => {
+    if (!torrent) return null;
+    const headers = { Authorization: `Bearer ${token}` };
+    const magnetUrl = `magnet:?xt=urn:btih:${torrent.hash}`;
+
+    setStage('checking_cache');
+    setStatusText('Checking TorBox cache...');
+    setProgress(20);
+
+    let isCached = false;
+    try {
+      const cachedResp = await axios.get(
+        `https://api.torbox.app/v1/api/torrents/checkcached?hash=${torrent.hash}&format=object`,
+        { headers, timeout: 12000 }
+      );
+      const cd = cachedResp.data?.data;
+      isCached = !!(cd && (cd[torrent.hash] || cd[torrent.hash.toLowerCase()] || cd[torrent.hash.toUpperCase()]));
+    } catch (e) {
+      // ignore - we'll still try adding
+    }
+
+    setStage('adding_torrent');
+    setStatusText(isCached ? 'Adding cached torrent...' : 'Adding torrent to TorBox...');
+    setProgress(30);
+
+    // Add (create) torrent - returns existing id if already added
+    const formData = new FormData();
+    formData.append('magnet', magnetUrl);
+
+    let torrentId: number | string | null = null;
+    try {
+      const addResp = await axios.post(
+        'https://api.torbox.app/v1/api/torrents/createtorrent',
+        formData,
+        { headers, timeout: 20000 }
+      );
+      torrentId = addResp.data?.data?.torrent_id ?? addResp.data?.data?.id ?? null;
+    } catch (e: any) {
+      // If already exists, the API responds with the existing id in error payload
+      torrentId = e?.response?.data?.data?.torrent_id ?? null;
+    }
+
+    if (!torrentId) {
+      setStage('error');
+      setError('TorBox could not add this torrent.');
+      return null;
+    }
+
+    if (!isCached) {
+      // Poll for download completion
+      setStage('downloading');
+      setStatusText('Downloading on TorBox...');
+      let attempts = 0;
+      const maxAttempts = 60; // ~120s
+      while (attempts < maxAttempts) {
+        if (cancelledRef.current) return null;
+        await new Promise((r) => setTimeout(r, 2000));
+        attempts++;
+        try {
+          const infoResp = await axios.get(
+            `https://api.torbox.app/v1/api/torrents/mylist?id=${torrentId}`,
+            { headers, timeout: 10000 }
+          );
+          const info = infoResp.data?.data;
+          if (info?.download_finished || info?.cached || info?.download_state === 'completed') {
+            break;
+          }
+          const p = typeof info?.progress === 'number' ? info.progress : 0;
+          setProgress(30 + Math.min(50, p * 50));
+          setStatusText(`Downloading: ${(p * 100).toFixed(0)}%`);
+        } catch {
+          // ignore single-poll errors
+        }
+      }
+      if (attempts >= maxAttempts) {
+        setStage('error');
+        setError('TorBox is still downloading. Try again shortly or pick another source.');
+        return null;
+      }
+    }
+
+    // Request download link
+    setStage('getting_link');
+    setStatusText('Getting streaming link...');
+    setProgress(90);
+
+    try {
+      const linkResp = await axios.get(
+        `https://api.torbox.app/v1/api/torrents/requestdl?token=${encodeURIComponent(token)}&torrent_id=${torrentId}&zip_link=false`,
+        { headers, timeout: 15000 }
+      );
+      const link = linkResp.data?.data;
+      if (typeof link === 'string' && link.startsWith('http')) {
+        return link;
+      }
+    } catch (e: any) {
+      console.error('[TorBox] requestdl failed', e?.response?.data || e?.message);
+    }
+    return null;
+  };
+
+  // ---------------- REAL-DEBRID ----------------
+  const resolveRealDebrid = async (_token: string): Promise<string | null> => {
+    if (!torrent) return null;
+    setStage('checking_cache');
+    setStatusText(torrent.cached ? 'Cached! Preparing instant stream...' : 'Adding torrent...');
+    setProgress(torrent.cached ? 50 : 25);
+
+    if (!torrent.cached) {
+      setStage('downloading');
+      setStatusText('Processing torrent...');
+      setProgress(40);
+    }
+
+    setStage('getting_link');
+    setStatusText('Getting streaming link...');
+    setProgress(85);
+
+    const url = await debridCacheService.getStreamUrl(torrent.hash, torrent.file_id, 'realdebrid');
+    return url;
+  };
+
+  // ---------------- ALLDEBRID ----------------
+  const resolveAllDebrid = async (token: string): Promise<string | null> => {
+    if (!torrent) return null;
+    const magnetUrl = `magnet:?xt=urn:btih:${torrent.hash}`;
+
+    setStage('adding_torrent');
+    setStatusText('Adding to AllDebrid...');
+    setProgress(25);
+
+    try {
+      const addResp = await axios.get(
+        `https://api.alldebrid.com/v4/magnet/upload?agent=zeus-glass&apikey=${encodeURIComponent(token)}&magnets[]=${encodeURIComponent(magnetUrl)}`,
+        { timeout: 20000 }
+      );
+      const magnet = addResp.data?.data?.magnets?.[0];
+      const magnetId = magnet?.id;
+      if (!magnetId) {
+        setStage('error');
+        setError('AllDebrid could not add this magnet.');
+        return null;
+      }
+
+      // Poll status
+      setStage('downloading');
+      setStatusText('AllDebrid is processing...');
+      let attempts = 0;
+      const maxAttempts = 60;
+      let links: any[] = [];
+      while (attempts < maxAttempts) {
+        if (cancelledRef.current) return null;
+        await new Promise((r) => setTimeout(r, 2000));
+        attempts++;
+        try {
+          const statusResp = await axios.get(
+            `https://api.alldebrid.com/v4/magnet/status?agent=zeus-glass&apikey=${encodeURIComponent(token)}&id=${magnetId}`,
+            { timeout: 10000 }
+          );
+          const m = statusResp.data?.data?.magnets;
+          if (m?.status === 'Ready' || m?.statusCode === 4) {
+            links = m.links || [];
+            break;
+          }
+          const dl = m?.downloaded ?? 0;
+          const sz = m?.size ?? 0;
+          const pct = sz > 0 ? dl / sz : 0;
+          setProgress(30 + Math.min(50, pct * 50));
+          setStatusText(`Processing: ${(pct * 100).toFixed(0)}%`);
+        } catch {
+          // ignore
+        }
+      }
+      if (!links.length) {
+        setStage('error');
+        setError('AllDebrid still processing. Try again shortly.');
+        return null;
+      }
+
+      // Pick largest video link
+      const sorted = [...links].sort((a, b) => (b?.size || 0) - (a?.size || 0));
+      const targetLink = sorted[0]?.link;
+      if (!targetLink) return null;
+
+      setStage('getting_link');
+      setStatusText('Unlocking link...');
+      setProgress(90);
+
+      const unlockResp = await axios.get(
+        `https://api.alldebrid.com/v4/link/unlock?agent=zeus-glass&apikey=${encodeURIComponent(token)}&link=${encodeURIComponent(targetLink)}`,
+        { timeout: 15000 }
+      );
+      return unlockResp.data?.data?.link || null;
+    } catch (e: any) {
+      console.error('[AllDebrid] resolve failed', e?.response?.data || e?.message);
+      return null;
+    }
+  };
+
+  // ---------------- PREMIUMIZE ----------------
+  const resolvePremiumize = async (token: string): Promise<string | null> => {
+    if (!torrent) return null;
+    setStage('adding_torrent');
+    setStatusText('Resolving via Premiumize...');
+    setProgress(40);
+    try {
+      const magnetUrl = `magnet:?xt=urn:btih:${torrent.hash}`;
+      const form = new URLSearchParams();
+      form.append('apikey', token);
+      form.append('src', magnetUrl);
+      const resp = await axios.post(
+        'https://www.premiumize.me/api/transfer/directdl',
+        form.toString(),
+        {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          timeout: 20000,
+        }
+      );
+      if (resp.data?.status === 'success' && Array.isArray(resp.data?.content)) {
+        // Pick largest file
+        const files = [...resp.data.content].sort((a, b) => (b?.size || 0) - (a?.size || 0));
+        return files[0]?.stream_link || files[0]?.link || null;
+      }
+    } catch (e: any) {
+      console.error('[Premiumize] resolve failed', e?.response?.data || e?.message);
+    }
+    return null;
   };
 
   const handleRetry = () => {
     setStage('checking_auth');
     setProgress(0);
     setError(null);
+    cancelledRef.current = false;
     startDownloadProcess();
   };
 
@@ -438,79 +407,85 @@ export function DebridDownloadDialog({
     outputRange: ['0%', '100%'],
   });
 
+  const showSpinner =
+    stage === 'downloading' ||
+    stage === 'adding_torrent' ||
+    stage === 'checking_cache' ||
+    stage === 'getting_link';
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.dialog}>
-          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Real-Debrid</Text>
-            <Pressable focusable={true} style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.headerTitle} testID="debrid-dialog-service-name">
+              {activeServiceName}
+            </Text>
+            <TouchableOpacity
+              focusable
+              hasTVPreferredFocus={false}
+              style={styles.closeButton}
+              onPress={onClose}
+              testID="debrid-dialog-close-button"
+            >
               <Ionicons name="close" size={isTV ? 22 : 20} color={theme.colors.text} />
-            </Pressable>
+            </TouchableOpacity>
           </View>
 
-          {/* Content */}
           <View style={styles.content}>
-            {/* Torrent Info */}
             <Text style={styles.torrentTitle} numberOfLines={2}>
               {torrent?.title || 'Loading...'}
             </Text>
-            
+
             {torrent && (
               <View style={styles.torrentMeta}>
                 <Text style={styles.metaText}>{torrent.quality}</Text>
-                {torrent.size && <Text style={styles.metaText}>• {torrent.size}</Text>}
+                {torrent.size ? <Text style={styles.metaText}>• {torrent.size}</Text> : null}
                 <Text style={styles.metaText}>• {torrent.source}</Text>
               </View>
             )}
 
-            {/* Stage Icon */}
             <View style={[styles.stageIcon, { backgroundColor: currentStage.color + '20' }]}>
-              {stage === 'downloading' || stage === 'adding_torrent' || stage === 'checking_cache' || stage === 'getting_link' ? (
+              {showSpinner ? (
                 <ActivityIndicator size={isTV ? 'large' : 'small'} color={currentStage.color} />
               ) : (
                 <Ionicons name={currentStage.icon as any} size={isTV ? 48 : 40} color={currentStage.color} />
               )}
             </View>
 
-            {/* Status Text */}
-            <Text style={[styles.statusText, { color: currentStage.color }]}>
+            <Text style={[styles.statusText, { color: currentStage.color }]} testID="debrid-dialog-status-text">
               {statusText}
             </Text>
 
-            {/* Progress Bar */}
             {stage !== 'error' && stage !== 'ready' && (
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
-                  <Animated.View 
+                  <Animated.View
                     style={[
-                      styles.progressFill, 
-                      { width: progressWidth, backgroundColor: currentStage.color }
-                    ]} 
+                      styles.progressFill,
+                      { width: progressWidth, backgroundColor: currentStage.color },
+                    ]}
                   />
                 </View>
                 <Text style={styles.progressText}>{progress.toFixed(0)}%</Text>
               </View>
             )}
 
-            {/* Error Message */}
             {error && (
               <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-                <Pressable focusable={true} style={styles.retryButton} onPress={handleRetry}>
+                <Text style={styles.errorText} testID="debrid-dialog-error-text">{error}</Text>
+                <TouchableOpacity
+                  focusable
+                  style={styles.retryButton}
+                  onPress={handleRetry}
+                  testID="debrid-dialog-retry-button"
+                >
                   <Ionicons name="refresh" size={18} color="#fff" />
                   <Text style={styles.retryButtonText}>Retry</Text>
-                </Pressable>
+                </TouchableOpacity>
               </View>
             )}
 
-            {/* Ready State */}
             {stage === 'ready' && (
               <View style={styles.readyContainer}>
                 <Ionicons name="checkmark-circle" size={isTV ? 60 : 48} color={theme.colors.success} />
@@ -519,11 +494,15 @@ export function DebridDownloadDialog({
             )}
           </View>
 
-          {/* Footer */}
           <View style={styles.footer}>
-            <Pressable focusable={true} style={styles.cancelButton} onPress={onClose}>
+            <TouchableOpacity
+              focusable
+              style={styles.cancelButton}
+              onPress={onClose}
+              testID="debrid-dialog-cancel-button"
+            >
               <Text style={styles.cancelButtonText}>Cancel</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
       </View>

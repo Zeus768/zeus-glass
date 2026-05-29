@@ -915,7 +915,7 @@ export const torboxService = {
   },
 
   logout: async (): Promise<void> => {
-    await storage.removeItem(STORAGE_KEYS.TORBOX_TOKEN);
+    await storage.deleteItem(STORAGE_KEYS.TORBOX_TOKEN);
     console.log('[TorBox] Logged out');
   },
 
@@ -970,7 +970,10 @@ export const debridCacheService = {
     imdbId?: string
   ): Promise<CachedTorrent[]> => {
     try {
-      const token = await realDebridService.getToken();
+      // Find active debrid service (priority: TorBox > AllDebrid > Premiumize > Real-Debrid)
+      const rdToken = await realDebridService.getToken();
+      const tbToken = await torboxService.getToken();
+      const activeService: 'realdebrid' | 'torbox' | null = tbToken ? 'torbox' : (rdToken ? 'realdebrid' : null);
 
       // Search Torrentio regardless of token (token only needed for cache check + playback)
       if (imdbId) {
@@ -981,11 +984,11 @@ export const debridCacheService = {
           
           if (torrentioResults.length > 0) {
             // Check cache status if we have a token
-            if (token) {
+            if (activeService) {
               try {
                 const hashes = torrentioResults.map(t => t.hash.toLowerCase());
-                errorLogService.info(`Checking cache for ${hashes.length} hashes`, 'DebridCache');
-                const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
+                errorLogService.info(`Checking cache (${activeService}) for ${hashes.length} hashes`, 'DebridCache');
+                const cachedHashes = await debridCacheService.checkCacheStatus(hashes, activeService);
                 errorLogService.info(`Found ${cachedHashes.length} cached hashes`, 'DebridCache');
                 
                 return torrentioResults.map(t => ({
@@ -996,7 +999,7 @@ export const debridCacheService = {
                 errorLogService.warn(`Cache check failed: ${cacheError.message}, returning unchecked`, 'DebridCache');
               }
             } else {
-              errorLogService.info('No Real-Debrid token - showing torrents without cache status', 'DebridCache');
+              errorLogService.info('No debrid token - showing torrents without cache status', 'DebridCache');
             }
             
             // Return results without cache info
@@ -1007,12 +1010,12 @@ export const debridCacheService = {
         }
       }
 
-      // Fallback to backend search if we have token and backend URL
-      if (token) {
+      // Fallback to backend search if we have RD token and backend URL
+      if (rdToken) {
         const backendUrl = getBackendUrl();
         if (backendUrl) {
           try {
-            const params = new URLSearchParams({ title, token });
+            const params = new URLSearchParams({ title, token: rdToken });
             if (year) params.append('year', year.toString());
             if (imdbId) params.append('imdb_id', imdbId);
             
@@ -1137,11 +1140,47 @@ export const debridCacheService = {
     }
   },
 
-  // Check cache status directly with Real-Debrid
-  checkCacheStatus: async (hashes: string[], token: string): Promise<string[]> => {
+  // Check cache status (service-agnostic): pass service type, returns lowercased hashes that are cached
+  checkCacheStatus: async (hashes: string[], serviceOrToken: string | 'realdebrid' | 'torbox'): Promise<string[]> => {
     try {
       if (hashes.length === 0) return [];
-      
+
+      // Resolve service + token. If a known service string is passed, look up the token.
+      let service: 'realdebrid' | 'torbox' = 'realdebrid';
+      let token: string | null = null;
+      if (serviceOrToken === 'realdebrid' || serviceOrToken === 'torbox') {
+        service = serviceOrToken;
+        token = service === 'torbox' ? await torboxService.getToken() : await realDebridService.getToken();
+      } else {
+        // Backward-compat: a token string was passed (assume RD)
+        token = serviceOrToken;
+      }
+      if (!token) return [];
+
+      const cachedHashes: string[] = [];
+
+      if (service === 'torbox') {
+        // TorBox: batch GET with repeated hash= params
+        try {
+          const params = new URLSearchParams();
+          hashes.forEach(h => params.append('hash', h));
+          params.append('format', 'object');
+          const resp = await axios.get(
+            `https://api.torbox.app/v1/api/torrents/checkcached?${params.toString()}`,
+            { headers: { Authorization: `Bearer ${token}` }, timeout: 12000 }
+          );
+          const data = resp.data?.data || {};
+          hashes.forEach(h => {
+            if (data[h] || data[h.toLowerCase()] || data[h.toUpperCase()]) {
+              cachedHashes.push(h.toLowerCase());
+            }
+          });
+        } catch (e: any) {
+          errorLogService.warn(`TorBox cache check failed: ${e.message}`, 'DebridCache');
+        }
+        return cachedHashes;
+      }
+
       // Real-Debrid instant availability check
       const hashParam = hashes.join('/');
       const response = await axios.get(`https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/${hashParam}`, {
@@ -1149,7 +1188,6 @@ export const debridCacheService = {
         timeout: 10000,
       });
 
-      const cachedHashes: string[] = [];
       if (response.data) {
         Object.keys(response.data).forEach(hash => {
           const data = response.data[hash];
@@ -1173,7 +1211,9 @@ export const debridCacheService = {
     imdbId?: string
   ): Promise<CachedTorrent[]> => {
     try {
-      const token = await realDebridService.getToken();
+      const rdToken = await realDebridService.getToken();
+      const tbToken = await torboxService.getToken();
+      const activeService: 'realdebrid' | 'torbox' | null = tbToken ? 'torbox' : (rdToken ? 'realdebrid' : null);
 
       // Search Torrentio regardless of token
       if (imdbId) {
@@ -1183,11 +1223,11 @@ export const debridCacheService = {
           errorLogService.info(`Torrentio returned ${torrentioResults.length} results`, 'DebridCache');
           
           if (torrentioResults.length > 0) {
-            if (token) {
+            if (activeService) {
               try {
                 const hashes = torrentioResults.map(t => t.hash.toLowerCase());
-                const cachedHashes = await debridCacheService.checkCacheStatus(hashes, token);
-                errorLogService.info(`Found ${cachedHashes.length} cached hashes`, 'DebridCache');
+                const cachedHashes = await debridCacheService.checkCacheStatus(hashes, activeService);
+                errorLogService.info(`Found ${cachedHashes.length} cached hashes (${activeService})`, 'DebridCache');
                 
                 return torrentioResults.map(t => ({
                   ...t,
@@ -1205,14 +1245,14 @@ export const debridCacheService = {
         }
       }
 
-      // Fallback to backend if token available
-      if (token) {
+      // Fallback to backend if RD token available
+      if (rdToken) {
         const backendUrl = getBackendUrl();
         if (backendUrl) {
           try {
             const params = new URLSearchParams({
               title,
-              token,
+              token: rdToken,
               season: season.toString(),
               episode: episode.toString(),
             });
@@ -1238,8 +1278,21 @@ export const debridCacheService = {
     }
   },
 
-  getStreamUrl: async (hash: string, fileId?: string): Promise<string | null> => {
+  getStreamUrl: async (hash: string, fileId?: string | number, serviceType?: 'realdebrid' | 'torbox' | 'alldebrid' | 'premiumize'): Promise<string | null> => {
     try {
+      // If serviceType not specified, auto-detect (priority: TorBox > AllDebrid > Premiumize > RD)
+      if (!serviceType) {
+        if (await torboxService.getToken()) serviceType = 'torbox';
+        else if (await allDebridService.getToken()) serviceType = 'alldebrid';
+        else if (await premiumizeService.getToken()) serviceType = 'premiumize';
+        else serviceType = 'realdebrid';
+      }
+
+      if (serviceType !== 'realdebrid') {
+        errorLogService.info(`getStreamUrl called for ${serviceType} - use service-specific resolver`, 'DebridCache');
+        return null;
+      }
+
       const token = await realDebridService.getToken();
       if (!token) {
         errorLogService.error('No Real-Debrid token for streaming', 'DebridCache');
@@ -1331,8 +1384,9 @@ export const debridCacheService = {
         }
 
         // Pick the right file if fileId provided
-        const linkToUse = fileId && parseInt(fileId) < links.length 
-          ? links[parseInt(fileId)] 
+        const fileIdNum = typeof fileId === 'number' ? fileId : (fileId ? parseInt(String(fileId)) : NaN);
+        const linkToUse = !isNaN(fileIdNum) && fileIdNum < links.length 
+          ? links[fileIdNum] 
           : links[0];
 
         // Step 5: Unrestrict the link

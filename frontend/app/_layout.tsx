@@ -7,6 +7,8 @@ import { useContentStore } from '../store/contentStore';
 import { playerState } from '../utils/playerState';
 import { initWatchedStore } from '../stores/useWatchedStore';
 import { debugTracker } from '../services/debugTracker';
+import { versionService } from '../services/versionService';
+import { ChangelogModal } from '../components/ChangelogModal';
 import { BackHandler } from 'react-native';
 import { 
   Platform, 
@@ -389,6 +391,8 @@ export default function TabLayout() {
   const loadHomeContent = useContentStore((state) => state.loadHomeContent);
   const loadFavorites = useContentStore((state) => state.loadFavorites);
   const [showDonation, setShowDonation] = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [changelogSince, setChangelogSince] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -408,6 +412,15 @@ export default function TabLayout() {
       // Initialize debug tracker
       try {
         await debugTracker.init();
+      } catch {}
+      // Check if app was updated; show changelog one time
+      try {
+        const lastSeen = await versionService.getLastSeenVersion();
+        const updated = await versionService.isFirstLaunchAfterUpdate();
+        if (updated) {
+          setChangelogSince(lastSeen);
+          setShowChangelog(true);
+        }
       } catch {}
     };
     init();
@@ -526,6 +539,18 @@ export default function TabLayout() {
       
       {/* Donation Modal */}
       <DonationModal visible={showDonation} onClose={() => setShowDonation(false)} />
+
+      {/* Changelog Modal - shown automatically once after each app update */}
+      <ChangelogModal
+        visible={showChangelog}
+        sinceVersion={changelogSince}
+        onClose={async () => {
+          setShowChangelog(false);
+          try {
+            await versionService.markCurrentVersionSeen();
+          } catch {}
+        }}
+      />
     </View>
     </AppErrorBoundary>
   );
