@@ -183,7 +183,7 @@ export function SourcesSearchDialog({
     const isFocused = focusedItem === itemKey;
 
     return (
-      <Pressable
+      <Pressable focusable={true}
         style={[styles.resultItem, isFocused && styles.resultItemFocused]}
         onPress={() => onSelectSource(item)}
         onFocus={() => setFocusedItem(itemKey)}
@@ -235,7 +235,7 @@ export function SourcesSearchDialog({
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Search Sources</Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>{title}</Text>
-            <Pressable style={styles.closeButton} onPress={onClose} data-testid="close-sources-dialog">
+            <Pressable focusable={true} style={styles.closeButton} onPress={onClose} data-testid="close-sources-dialog">
               <Ionicons name="close" size={isTV ? 22 : 20} color={theme.colors.text} />
             </Pressable>
           </View>
@@ -249,7 +249,7 @@ export function SourcesSearchDialog({
                   : `Found ${allResults.length} results from ${successCount} sources`
                 }
               </Text>
-              <Pressable 
+              <Pressable focusable={true} 
                 style={styles.expandButton}
                 onPress={() => {}} // Could toggle expanded view
               >
@@ -280,7 +280,7 @@ export function SourcesSearchDialog({
           {/* Tabs */}
           <View style={styles.tabs}>
             {(['all', 'torrent', 'embed', 'direct'] as const).map(tab => (
-              <Pressable
+              <Pressable focusable={true}
                 key={tab}
                 style={[styles.tab, activeTab === tab && styles.tabActive]}
                 onPress={() => setActiveTab(tab)}

@@ -149,7 +149,7 @@ export function IPTVPipPlayer({
   // Normal mini-player UI (corner overlay)
   return (
     <View style={styles.miniPlayerContainer}>
-      <Pressable 
+      <Pressable focusable={true} 
         style={styles.miniPlayer}
         onPress={() => setShowControls(!showControls)}
       >
@@ -184,7 +184,7 @@ export function IPTVPipPlayer({
             {/* Top Bar - Title & Close */}
             <View style={styles.topBar}>
               <Text style={styles.miniTitle} numberOfLines={1}>{title}</Text>
-              <Pressable 
+              <Pressable focusable={true} 
                 style={styles.closeBtn}
                 onPress={onClose}
                 data-testid="pip-close-btn"
@@ -195,7 +195,7 @@ export function IPTVPipPlayer({
 
             {/* Center Controls */}
             <View style={styles.centerControls}>
-              <Pressable style={styles.controlBtn} onPress={togglePlayPause}>
+              <Pressable focusable={true} style={styles.controlBtn} onPress={togglePlayPause}>
                 <Ionicons 
                   name={status?.isLoaded && status.isPlaying ? 'pause' : 'play'} 
                   size={24} 
@@ -207,7 +207,7 @@ export function IPTVPipPlayer({
             {/* Bottom Bar - PiP & Fullscreen */}
             <View style={styles.bottomBar}>
               {Platform.OS === 'android' && ExpoPip && (
-                <Pressable 
+                <Pressable focusable={true} 
                   style={styles.bottomBtn}
                   onPress={enterPipMode}
                   data-testid="pip-enter-btn"
@@ -218,7 +218,7 @@ export function IPTVPipPlayer({
               )}
               
               {onEnterFullscreen && (
-                <Pressable 
+                <Pressable focusable={true} 
                   style={styles.bottomBtn}
                   onPress={onEnterFullscreen}
                   data-testid="pip-fullscreen-btn"

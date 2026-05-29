@@ -39,7 +39,7 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, index, onPress, isWat
     : item.first_air_date?.split('-')[0];
 
   return (
-    <Pressable
+    <Pressable focusable={true}
       onPress={() => onPress(item)}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
@@ -137,7 +137,7 @@ export const Carousel: React.FC<CarouselProps> = ({ title, data, onSeeAll, icon,
           <Text style={styles.headerTitle}>{title}</Text>
         </View>
         {onSeeAll && (
-          <Pressable onPress={onSeeAll} data-testid={`see-all-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+          <Pressable focusable={true} onPress={onSeeAll} data-testid={`see-all-${title.toLowerCase().replace(/\s+/g, '-')}`}>
             <Text style={styles.seeAll}>See All</Text>
           </Pressable>
         )}

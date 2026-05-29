@@ -142,7 +142,7 @@ export default function SearchScreen() {
     const isFocused = focusedItem === key;
 
     return (
-      <Pressable 
+      <Pressable focusable={true} 
         key={key}
         style={[styles.resultCard, isFocused && styles.resultCardFocused]} 
         onPress={() => handleTMDBItemPress(item)}
@@ -182,7 +182,7 @@ export default function SearchScreen() {
     const isFocused = focusedItem === key;
 
     return (
-      <Pressable 
+      <Pressable focusable={true} 
         key={key}
         style={[styles.resultCard, isFocused && styles.resultCardFocused]} 
         onPress={() => handleIPTVItemPress(item, type)}
@@ -280,7 +280,7 @@ export default function SearchScreen() {
           returnKeyType="search"
         />
         {query.length > 0 && (
-          <Pressable onPress={() => handleSearch('')} style={styles.clearButton}>
+          <Pressable focusable={true} onPress={() => handleSearch('')} style={styles.clearButton}>
             <Ionicons name="close-circle" size={20} color={theme.colors.textMuted} />
           </Pressable>
         )}
@@ -290,7 +290,7 @@ export default function SearchScreen() {
       {totalResults > 0 && (
         <View style={styles.tabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <Pressable 
+            <Pressable focusable={true} 
               style={[
                 styles.tab, 
                 activeTab === 'all' && styles.tabActive,
@@ -308,7 +308,7 @@ export default function SearchScreen() {
                 All ({totalResults})
               </Text>
             </Pressable>
-            <Pressable 
+            <Pressable focusable={true} 
               style={[
                 styles.tab, 
                 activeTab === 'movies' && styles.tabActive,
@@ -326,7 +326,7 @@ export default function SearchScreen() {
                 Movies ({tmdbResults.filter(r => isMovie(r)).length + iptvMovieResults.length})
               </Text>
             </Pressable>
-            <Pressable 
+            <Pressable focusable={true} 
               style={[
                 styles.tab, 
                 activeTab === 'tvshows' && styles.tabActive,
@@ -345,7 +345,7 @@ export default function SearchScreen() {
               </Text>
             </Pressable>
             {hasIPTV && iptvTotal > 0 && (
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[
                   styles.tab, 
                   styles.iptvTab, 

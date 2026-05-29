@@ -350,7 +350,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <Pressable 
+        <Pressable focusable={true} 
           style={[styles.submitButton, isTV && styles.submitButtonTV, verifyingApiKey && styles.submitButtonDisabled]}
           onPress={handleTorboxApiKeySubmit}
           disabled={verifyingApiKey}
@@ -385,7 +385,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
         <Text style={[styles.urlText, isTV && styles.urlTextTV]}>
           {verificationUrl}
         </Text>
-        <Pressable 
+        <Pressable focusable={true} 
           style={[styles.copyButton, isTV && styles.copyButtonTV]}
           onPress={async () => {
             await Clipboard.setStringAsync(verificationUrl);
@@ -410,7 +410,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           autoCorrect={false}
           secureTextEntry={false}
         />
-        <Pressable 
+        <Pressable focusable={true} 
           style={[styles.submitButton, isTV && styles.submitButtonTV, verifyingApiKey && styles.submitButtonDisabled]}
           onPress={handlePremiumizeApiKeySubmit}
           disabled={verifyingApiKey}
@@ -471,7 +471,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
             <Text style={[styles.codeText, isTV && styles.codeTextTV]}>{userCode}</Text>
           </View>
           
-          <Pressable 
+          <Pressable focusable={true} 
             style={[styles.copyButton, isTV && styles.copyButtonTV]}
             onPress={async () => {
               await Clipboard.setStringAsync(userCode);
@@ -487,7 +487,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
             {verificationUrl}
           </Text>
           
-          <Pressable 
+          <Pressable focusable={true} 
             style={[styles.copyButton, isTV && styles.copyButtonTV]}
             onPress={async () => {
               await Clipboard.setStringAsync(verificationUrl);
@@ -524,7 +524,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
               {/* Header */}
               <View style={[styles.header, isTV && styles.headerTV]}>
                 <Text style={[styles.title, isTV && styles.titleTV]}>Authorize {serviceNames[service]}</Text>
-                <Pressable onPress={handleClose} style={styles.closeButton}>
+                <Pressable focusable={true} onPress={handleClose} style={styles.closeButton}>
                   <Ionicons name="close" size={isTV ? 36 : 24} color={theme.colors.text} />
                 </Pressable>
               </View>
@@ -538,7 +538,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
                 <View style={[styles.errorContainer, isTV && styles.errorContainerTV]}>
                   <Ionicons name="alert-circle" size={isTV ? 72 : 48} color={theme.colors.error} />
                   <Text style={[styles.errorText, isTV && styles.errorTextTV]}>{error}</Text>
-                  <Pressable style={[styles.retryButton, isTV && styles.retryButtonTV]} onPress={initializeAuth}>
+                  <Pressable focusable={true} style={[styles.retryButton, isTV && styles.retryButtonTV]} onPress={initializeAuth}>
                     <Text style={[styles.retryButtonText, isTV && styles.retryButtonTextTV]}>Retry</Text>
                   </Pressable>
                 </View>

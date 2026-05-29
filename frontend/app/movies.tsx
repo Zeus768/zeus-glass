@@ -319,7 +319,7 @@ export default function MoviesScreen() {
     const isFocused = focusedIndex === index;
 
     return (
-      <Pressable
+      <Pressable focusable={true}
         style={[
           styles.movieCard,
           isFocused && styles.movieCardFocused,
@@ -380,7 +380,7 @@ export default function MoviesScreen() {
     const isFocused = focusedGenreIndex === index;
     
     return (
-      <Pressable
+      <Pressable focusable={true}
         key={genre?.id ?? 'all'}
         onPress={() => genre === null ? handleCategorySelect('all') : handleGenreSelect(genre.id)}
         onFocus={() => setFocusedGenreIndex(index)}
@@ -408,7 +408,7 @@ export default function MoviesScreen() {
     const isFocused = focusedGenreIndex === index;
     
     return (
-      <Pressable
+      <Pressable focusable={true}
         key={category.key}
         onPress={() => handleCategorySelect(category.key as any)}
         onFocus={() => setFocusedGenreIndex(index)}
@@ -456,7 +456,7 @@ export default function MoviesScreen() {
         {renderCategoryButton({ key: 'cloud', label: 'Cloud', icon: 'cloud' }, 6)}
         
         {/* Franchises Button */}
-        <Pressable
+        <Pressable focusable={true}
           onPress={() => router.push('/franchises')}
           style={[styles.genreButton, styles.franchiseButton]}
           data-testid="franchises-btn"

@@ -184,7 +184,7 @@ export default function CatchUpScreen() {
         style={styles.categoriesContainer}
         contentContainerStyle={styles.categoriesContent}
       >
-        <Pressable
+        <Pressable focusable={true}
           onPress={() => setSelectedCategory('all')}
           style={[
             styles.categoryChip,
@@ -197,7 +197,7 @@ export default function CatchUpScreen() {
           </Text>
         </Pressable>
 
-        <Pressable
+        <Pressable focusable={true}
           onPress={() => setSelectedCategory('scheduled')}
           style={[
             styles.categoryChip,
@@ -211,7 +211,7 @@ export default function CatchUpScreen() {
         </Pressable>
 
         {categories.map(({ category, count }) => (
-          <Pressable
+          <Pressable focusable={true}
             key={category}
             onPress={() => setSelectedCategory(category)}
             style={[
@@ -277,7 +277,7 @@ export default function CatchUpScreen() {
                       </View>
                     </View>
                     <View style={styles.scheduledActions}>
-                      <Pressable
+                      <Pressable focusable={true}
                         onPress={() => handleToggleScheduled(sched.id)}
                         style={[styles.toggleButton, !sched.enabled && styles.toggleButtonDisabled]}
                       >
@@ -287,7 +287,7 @@ export default function CatchUpScreen() {
                           color={sched.enabled ? theme.colors.success : theme.colors.textSecondary}
                         />
                       </Pressable>
-                      <Pressable onPress={() => handleCancelScheduled(sched.id)} style={styles.deleteButton}>
+                      <Pressable focusable={true} onPress={() => handleCancelScheduled(sched.id)} style={styles.deleteButton}>
                         <Ionicons name="trash-outline" size={20} color="#F44336" />
                       </Pressable>
                     </View>
@@ -321,7 +321,7 @@ export default function CatchUpScreen() {
             ) : (
               <View style={styles.recordingsGrid}>
                 {filteredRecordings.map((recording) => (
-                  <Pressable
+                  <Pressable focusable={true}
                     key={recording.id}
                     style={styles.recordingCard}
                     onPress={() => handlePlayRecording(recording)}
@@ -386,7 +386,7 @@ export default function CatchUpScreen() {
                       Started {format(new Date(recording.startTime), 'HH:mm')} • {recording.duration} min
                     </Text>
                   </View>
-                  <Pressable
+                  <Pressable focusable={true}
                     style={styles.stopButton}
                     onPress={() => recordingService.stopRecording(recording.id).then(loadData)}
                   >
@@ -410,10 +410,10 @@ export default function CatchUpScreen() {
               "{selectedRecording?.title}" will be permanently deleted.
             </Text>
             <View style={styles.modalButtons}>
-              <Pressable style={styles.modalCancelButton} onPress={() => setShowDeleteModal(false)}>
+              <Pressable focusable={true} style={styles.modalCancelButton} onPress={() => setShowDeleteModal(false)}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.modalDeleteButton} onPress={handleDeleteRecording}>
+              <Pressable focusable={true} style={styles.modalDeleteButton} onPress={handleDeleteRecording}>
                 <Text style={styles.modalDeleteText}>Delete</Text>
               </Pressable>
             </View>

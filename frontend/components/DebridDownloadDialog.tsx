@@ -289,7 +289,7 @@ export function DebridDownloadDialog({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Real-Debrid</Text>
-            <Pressable style={styles.closeButton} onPress={onClose}>
+            <Pressable focusable={true} style={styles.closeButton} onPress={onClose}>
               <Ionicons name="close" size={isTV ? 22 : 20} color={theme.colors.text} />
             </Pressable>
           </View>
@@ -342,7 +342,7 @@ export function DebridDownloadDialog({
             {error && (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{error}</Text>
-                <Pressable style={styles.retryButton} onPress={handleRetry}>
+                <Pressable focusable={true} style={styles.retryButton} onPress={handleRetry}>
                   <Ionicons name="refresh" size={18} color="#fff" />
                   <Text style={styles.retryButtonText}>Retry</Text>
                 </Pressable>
@@ -360,7 +360,7 @@ export function DebridDownloadDialog({
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Pressable style={styles.cancelButton} onPress={onClose}>
+            <Pressable focusable={true} style={styles.cancelButton} onPress={onClose}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </Pressable>
           </View>

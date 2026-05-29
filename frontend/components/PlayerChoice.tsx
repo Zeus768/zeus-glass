@@ -66,7 +66,7 @@ export const PlayerChoice: React.FC<PlayerChoiceProps> = ({ visible, onClose, st
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
+      <Pressable focusable={true} style={styles.overlay} onPress={onClose}>
         <View style={styles.container}>
           <Text style={styles.header}>Choose Player</Text>
           <Text style={styles.subtitle} numberOfLines={1}>{title}</Text>
@@ -105,7 +105,7 @@ export const PlayerChoice: React.FC<PlayerChoiceProps> = ({ visible, onClose, st
             onPress={handleSystemDefault}
           />
 
-          <Pressable style={styles.cancelButton} onPress={onClose} data-testid="player-choice-cancel">
+          <Pressable focusable={true} style={styles.cancelButton} onPress={onClose} data-testid="player-choice-cancel">
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
         </View>
@@ -124,7 +124,7 @@ const PlayerOption: React.FC<{
   const [isFocused, setIsFocused] = React.useState(false);
   
   return (
-    <Pressable
+    <Pressable focusable={true}
       onPress={onPress}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}

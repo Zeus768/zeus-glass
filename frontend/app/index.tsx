@@ -152,7 +152,7 @@ export default function HomeScreen() {
 
                 {/* Buttons */}
                 <View style={styles.heroButtons}>
-                  <Pressable 
+                  <Pressable focusable={true} 
                     style={[styles.watchButton, heroFocused && styles.watchButtonFocused]}
                     onPress={handleWatchNow}
                     onFocus={() => setHeroFocused(true)}
@@ -163,11 +163,11 @@ export default function HomeScreen() {
                     <Ionicons name="play" size={isTV ? 28 : 20} color={theme.colors.background} />
                     <Text style={styles.watchButtonText}>Watch Now</Text>
                   </Pressable>
-                  <Pressable style={styles.addButton} data-testid="hero-playlist">
+                  <Pressable focusable={true} style={styles.addButton} data-testid="hero-playlist">
                     <Ionicons name="add" size={isTV ? 28 : 20} color={theme.colors.text} />
                     <Text style={styles.addButtonText}>Playlist</Text>
                   </Pressable>
-                  <Pressable style={styles.infoButton} data-testid="hero-info">
+                  <Pressable focusable={true} style={styles.infoButton} data-testid="hero-info">
                     <Ionicons name="information-circle-outline" size={isTV ? 28 : 20} color={theme.colors.text} />
                   </Pressable>
                 </View>

@@ -156,7 +156,7 @@ export default function VODScreen() {
     const isFocused = focusedItem === item.id;
     
     return (
-      <Pressable 
+      <Pressable focusable={true} 
         style={[
           styles.vodCard,
           isFocused && styles.vodCardFocused,
@@ -224,7 +224,7 @@ export default function VODScreen() {
     <View style={styles.container}>
       {/* Content Type Tabs */}
       <View style={styles.tabsContainer}>
-        <Pressable
+        <Pressable focusable={true}
           style={[
             styles.tab,
             contentType === 'movies' && styles.tabActive,
@@ -247,7 +247,7 @@ export default function VODScreen() {
             Movies
           </Text>
         </Pressable>
-        <Pressable
+        <Pressable focusable={true}
           style={[
             styles.tab,
             contentType === 'series' && styles.tabActive,
@@ -282,7 +282,7 @@ export default function VODScreen() {
           {currentCategories.map((category) => {
             const isCatFocused = focusedCategory === category.category_id;
             return (
-              <Pressable
+              <Pressable focusable={true}
                 key={category.category_id}
                 onPress={() => setSelectedCategory(category.category_id)}
                 onFocus={() => setFocusedCategory(category.category_id)}
@@ -350,7 +350,7 @@ export default function VODScreen() {
               <Text style={styles.modalTitle} numberOfLines={1}>
                 {selectedSeries?.name}
               </Text>
-              <Pressable onPress={() => {
+              <Pressable focusable={true} onPress={() => {
                 setSelectedSeries(null);
                 setSeriesInfo(null);
               }}>
@@ -374,7 +374,7 @@ export default function VODScreen() {
                       style={styles.seasonScroll}
                     >
                       {Object.keys(seriesInfo.episodes).map((season) => (
-                        <Pressable
+                        <Pressable focusable={true}
                           key={season}
                           style={[
                             styles.seasonButton,
@@ -395,7 +395,7 @@ export default function VODScreen() {
                     {/* Episodes */}
                     <ScrollView style={styles.episodesScroll}>
                       {seriesInfo.episodes[selectedSeason]?.map((episode: any, index: number) => (
-                        <Pressable
+                        <Pressable focusable={true}
                           key={episode.id || index}
                           style={styles.episodeCard}
                           onPress={() => playContent(episode.stream_url, `${selectedSeries?.name} S${selectedSeason}E${episode.episode_num || index + 1}`)}

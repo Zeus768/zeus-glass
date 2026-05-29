@@ -66,7 +66,7 @@ export default function FranchisesScreen() {
     const imageUrl = tmdbService.getImageUrl(item.poster_path, 'w342');
 
     return (
-      <Pressable
+      <Pressable focusable={true}
         style={[styles.franchiseCard, isFocused && styles.franchiseCardFocused]}
         onPress={() => handleFranchisePress(item)}
         onFocus={() => setFocusedFranchise(index)}
@@ -97,7 +97,7 @@ export default function FranchisesScreen() {
     const year = item.release_date?.split('-')[0];
 
     return (
-      <Pressable
+      <Pressable focusable={true}
         style={[styles.movieCard, isFocused && styles.movieCardFocused]}
         onPress={() => handleMoviePress(item)}
         onFocus={() => setFocusedMovie(index)}
@@ -152,7 +152,7 @@ export default function FranchisesScreen() {
           )}
           <View style={styles.backdropGradient} />
           <View style={styles.detailHeaderContent}>
-            <Pressable onPress={handleBack} style={styles.backButton}>
+            <Pressable focusable={true} onPress={handleBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </Pressable>
             <View style={styles.detailInfo}>
@@ -188,7 +188,7 @@ export default function FranchisesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={handleBack} style={styles.backButton}>
+        <Pressable focusable={true} onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </Pressable>
         <Text style={styles.title}>Movie Franchises</Text>

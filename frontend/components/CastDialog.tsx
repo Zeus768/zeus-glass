@@ -136,7 +136,7 @@ export const CastDialog: React.FC<CastDialogProps> = ({ visible, onClose, videoU
               <Ionicons name="tv" size={isTV ? 28 : 24} color={theme.colors.primary} />
               <Text style={styles.headerTitle}>Cast to Device</Text>
             </View>
-            <Pressable onPress={onClose} style={styles.closeBtn} data-testid="cast-dialog-close">
+            <Pressable focusable={true} onPress={onClose} style={styles.closeBtn} data-testid="cast-dialog-close">
               <Ionicons name="close" size={isTV ? 24 : 20} color={theme.colors.text} />
             </Pressable>
           </View>
@@ -146,7 +146,7 @@ export const CastDialog: React.FC<CastDialogProps> = ({ visible, onClose, videoU
             <Text style={styles.sectionTitle}>Quick Cast</Text>
             <View style={styles.quickActions}>
               {Platform.OS === 'android' && (
-                <Pressable style={styles.quickAction} onPress={handleChromecast} data-testid="cast-chromecast-btn">
+                <Pressable focusable={true} style={styles.quickAction} onPress={handleChromecast} data-testid="cast-chromecast-btn">
                   <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(66, 133, 244, 0.15)' }]}>
                     <Ionicons name="logo-google" size={isTV ? 28 : 22} color="#4285F4" />
                   </View>
@@ -154,14 +154,14 @@ export const CastDialog: React.FC<CastDialogProps> = ({ visible, onClose, videoU
                 </Pressable>
               )}
               
-              <Pressable style={styles.quickAction} onPress={handleShare} data-testid="cast-share-btn">
+              <Pressable focusable={true} style={styles.quickAction} onPress={handleShare} data-testid="cast-share-btn">
                 <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(0, 217, 255, 0.15)' }]}>
                   <Ionicons name="share" size={isTV ? 28 : 22} color={theme.colors.primary} />
                 </View>
                 <Text style={styles.quickActionText}>Share to App</Text>
               </Pressable>
 
-              <Pressable 
+              <Pressable focusable={true} 
                 style={styles.quickAction} 
                 onPress={() => setShowManualEntry(!showManualEntry)}
                 data-testid="cast-manual-btn"
@@ -185,7 +185,7 @@ export const CastDialog: React.FC<CastDialogProps> = ({ visible, onClose, videoU
                   keyboardType="numeric"
                   data-testid="cast-manual-ip-input"
                 />
-                <Pressable 
+                <Pressable focusable={true} 
                   style={styles.manualCastBtn} 
                   onPress={handleManualAdd}
                   data-testid="cast-manual-connect-btn"
@@ -203,7 +203,7 @@ export const CastDialog: React.FC<CastDialogProps> = ({ visible, onClose, videoU
             <View style={styles.dlnaSection}>
               <View style={styles.dlnaHeader}>
                 <Text style={styles.sectionTitle}>Smart TV / DLNA</Text>
-                <Pressable 
+                <Pressable focusable={true} 
                   style={styles.scanBtn} 
                   onPress={handleScan}
                   disabled={scanning}
@@ -222,7 +222,7 @@ export const CastDialog: React.FC<CastDialogProps> = ({ visible, onClose, videoU
 
               {allDevices.length > 0 ? (
                 allDevices.map(device => (
-                  <Pressable
+                  <Pressable focusable={true}
                     key={device.id}
                     style={styles.deviceItem}
                     onPress={() => handleCastDLNA(device)}
@@ -245,7 +245,7 @@ export const CastDialog: React.FC<CastDialogProps> = ({ visible, onClose, videoU
                       ) : (
                         <>
                           <Ionicons name="play-circle" size={isTV ? 28 : 24} color="#22C55E" />
-                          <Pressable
+                          <Pressable focusable={true}
                             onPress={(e) => {
                               e.stopPropagation?.();
                               handleRemoveDevice(device.id);

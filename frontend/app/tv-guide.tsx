@@ -344,7 +344,7 @@ export default function TVGuideScreen() {
         <Text style={styles.emptyText}>
           Please configure your IPTV settings to access live TV channels.
         </Text>
-        <Pressable style={styles.settingsButton} onPress={() => router.push('/settings')}>
+        <Pressable focusable={true} style={styles.settingsButton} onPress={() => router.push('/settings')}>
           <Ionicons name="settings-outline" size={20} color="#000" />
           <Text style={styles.settingsButtonText}>Go to Settings</Text>
         </Pressable>
@@ -364,7 +364,7 @@ export default function TVGuideScreen() {
         {categories.map((category) => {
           const isCatFocused = focusedCategory === category.category_id;
           return (
-            <Pressable
+            <Pressable focusable={true}
               key={category.category_id}
               onPress={() => setSelectedCategory(category.category_id)}
               onFocus={() => setFocusedCategory(category.category_id)}
@@ -407,7 +407,7 @@ export default function TVGuideScreen() {
                 isRecording && styles.channelCardRecording,
                 isChannelFocused && styles.channelCardFocused,
               ]}>
-                <Pressable 
+                <Pressable focusable={true} 
                   onPress={() => handlePlayChannel(channel)} 
                   onFocus={() => setFocusedChannel(channel.id)}
                   onBlur={() => setFocusedChannel(null)}
@@ -441,14 +441,14 @@ export default function TVGuideScreen() {
                     {/* Action Buttons */}
                     <View style={styles.channelActions}>
                       {isRecording ? (
-                        <Pressable
+                        <Pressable focusable={true}
                           style={styles.stopRecordButton}
                           onPress={() => handleStopRecording(channel)}
                         >
                           <Ionicons name="stop-circle" size={isTV ? 24 : 22} color="#F44336" />
                         </Pressable>
                       ) : (
-                        <Pressable
+                        <Pressable focusable={true}
                           style={styles.recordButton}
                           onPress={() => handleRecordPress(channel)}
                         >
@@ -456,14 +456,14 @@ export default function TVGuideScreen() {
                         </Pressable>
                       )}
                       {/* PiP Button - watch while browsing */}
-                      <Pressable
+                      <Pressable focusable={true}
                         style={styles.pipButton}
                         onPress={() => handlePlayChannel(channel, true)}
                         data-testid={`pip-btn-${channel.id}`}
                       >
                         <Ionicons name="albums-outline" size={isTV ? 20 : 18} color={theme.colors.primary} />
                       </Pressable>
-                      <Pressable
+                      <Pressable focusable={true}
                         style={styles.playButton}
                         onPress={() => handlePlayChannel(channel, false)}
                       >
@@ -516,7 +516,7 @@ export default function TVGuideScreen() {
                 {channel.epg && channel.epg.length > 0 && (
                   <View style={styles.epgContainer}>
                     {channel.epg.map((program) => (
-                      <Pressable
+                      <Pressable focusable={true}
                         key={program.id}
                         style={styles.programCard}
                         onPress={() => {
@@ -573,7 +573,7 @@ export default function TVGuideScreen() {
               <Text style={styles.modalTitle}>
                 {isScheduling ? 'Schedule Recording' : 'Record Now'}
               </Text>
-              <Pressable onPress={() => setShowRecordModal(false)}>
+              <Pressable focusable={true} onPress={() => setShowRecordModal(false)}>
                 <Ionicons name="close" size={28} color={theme.colors.text} />
               </Pressable>
             </View>
@@ -593,7 +593,7 @@ export default function TVGuideScreen() {
 
             {/* Mode Toggle */}
             <View style={styles.modeToggle}>
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.modeButton, !isScheduling && styles.modeButtonActive]}
                 onPress={() => setIsScheduling(false)}
               >
@@ -602,7 +602,7 @@ export default function TVGuideScreen() {
                   Record Now
                 </Text>
               </Pressable>
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.modeButton, isScheduling && styles.modeButtonActive]}
                 onPress={() => {
                   setIsScheduling(true);
@@ -621,7 +621,7 @@ export default function TVGuideScreen() {
               <Text style={styles.inputLabel}>Duration (minutes)</Text>
               <View style={styles.durationButtons}>
                 {['30', '60', '90', '120', '180'].map((dur) => (
-                  <Pressable
+                  <Pressable focusable={true}
                     key={dur}
                     style={[styles.durationButton, recordDuration === dur && styles.durationButtonActive]}
                     onPress={() => setRecordDuration(dur)}
@@ -656,7 +656,7 @@ export default function TVGuideScreen() {
                   <Text style={styles.inputLabel}>Repeat</Text>
                   <View style={styles.repeatButtons}>
                     {(['once', 'daily', 'weekly'] as const).map((type) => (
-                      <Pressable
+                      <Pressable focusable={true}
                         key={type}
                         style={[styles.repeatButton, repeatType === type && styles.repeatButtonActive]}
                         onPress={() => setRepeatType(type)}
@@ -678,10 +678,10 @@ export default function TVGuideScreen() {
 
             {/* Actions */}
             <View style={styles.modalActions}>
-              <Pressable style={styles.cancelButton} onPress={() => setShowRecordModal(false)}>
+              <Pressable focusable={true} style={styles.cancelButton} onPress={() => setShowRecordModal(false)}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.startButton} onPress={handleStartRecording}>
+              <Pressable focusable={true} style={styles.startButton} onPress={handleStartRecording}>
                 <Ionicons name={isScheduling ? 'calendar' : 'radio-button-on'} size={20} color="#fff" />
                 <Text style={styles.startButtonText}>
                   {isScheduling ? 'Schedule' : 'Start Recording'}

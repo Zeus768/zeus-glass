@@ -43,7 +43,7 @@ class AppErrorBoundary extends React.Component<{children: React.ReactNode}, {has
         <View style={{ flex: 1, backgroundColor: '#0A0E27', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
           <Text style={{ color: '#FF4444', fontSize: 22, fontWeight: 'bold', marginBottom: 16 }}>Zeus Glass Error</Text>
           <Text style={{ color: '#FFFFFF', fontSize: 16, textAlign: 'center', marginBottom: 24 }}>{this.state.error}</Text>
-          <Pressable 
+          <Pressable focusable={true} 
             onPress={() => this.setState({ hasError: false, error: '' })}
             style={{ backgroundColor: '#00D9FF', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 8 }}
           >
@@ -96,7 +96,7 @@ function CustomTabBar() {
           const isFocused = focusedTab === tab.name;
           
           return (
-            <Pressable
+            <Pressable focusable={true}
               key={tab.name}
               onPress={() => router.push(tab.route as any)}
               onFocus={() => setFocusedTab(tab.name)}
@@ -191,7 +191,7 @@ const FocusableButton = ({
   const [isFocused, setIsFocused] = useState(false);
   
   return (
-    <Pressable
+    <Pressable focusable={true}
       onPress={onPress}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}

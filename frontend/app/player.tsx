@@ -504,7 +504,7 @@ export default function PlayerScreen() {
           <StatusBar hidden />
         
         {/* Close Button for Embed */}
-        <Pressable 
+        <Pressable focusable={true} 
           onPress={handleClose}
           style={[styles.embedCloseButton, focusedButton === 'close' && styles.buttonFocused]}
           onFocus={() => setFocusedButton('close')}
@@ -514,7 +514,7 @@ export default function PlayerScreen() {
         </Pressable>
         
         {/* Quick Settings Button */}
-        <Pressable 
+        <Pressable focusable={true} 
           onPress={() => setShowQuickSettings(!showQuickSettings)}
           style={[styles.quickSettingsButton, focusedButton === 'quicksettings' && styles.buttonFocused]}
           onFocus={() => setFocusedButton('quicksettings')}
@@ -534,7 +534,7 @@ export default function PlayerScreen() {
             <Text style={styles.quickSettingsTitle}>Quick Settings</Text>
             
             {/* Subtitles Toggle */}
-            <Pressable 
+            <Pressable focusable={true} 
               style={styles.quickSettingRow}
               onPress={() => {
                 if (subtitleSettings) {
@@ -562,7 +562,7 @@ export default function PlayerScreen() {
             <View style={styles.quickSettingSizeRow}>
               <Text style={styles.quickSettingSizeLabel}>Size:</Text>
               {(['small', 'medium', 'large', 'extra-large'] as const).map((size) => (
-                <Pressable
+                <Pressable focusable={true}
                   key={size}
                   style={[
                     styles.sizeButton,
@@ -584,7 +584,7 @@ export default function PlayerScreen() {
             </View>
             
             {/* Language Preferences Button */}
-            <Pressable 
+            <Pressable focusable={true} 
               style={styles.quickSettingRow}
               onPress={() => setShowLanguagePicker(true)}
             >
@@ -604,7 +604,7 @@ export default function PlayerScreen() {
               </View>
             </Pressable>
             
-            <Pressable 
+            <Pressable focusable={true} 
               style={styles.closeQuickSettings}
               onPress={() => setShowQuickSettings(false)}
             >
@@ -650,7 +650,7 @@ export default function PlayerScreen() {
       <StatusBar hidden />
 
       {/* Persistent Back Button - always visible */}
-      <Pressable
+      <Pressable focusable={true}
         onPress={handleClose}
         style={[styles.persistentBackBtn, focusedButton === 'persistent-back' && styles.buttonFocused]}
         onFocus={() => setFocusedButton('persistent-back')}
@@ -662,7 +662,7 @@ export default function PlayerScreen() {
 
       {/* Persistent Cast Button - always visible (mobile only) */}
       {!isTV && (
-        <Pressable
+        <Pressable focusable={true}
           onPress={() => setShowCastDialog(true)}
           style={[styles.persistentCastBtn, focusedButton === 'persistent-cast' && styles.buttonFocused]}
           onFocus={() => setFocusedButton('persistent-cast')}
@@ -674,7 +674,7 @@ export default function PlayerScreen() {
       )}
       
       {/* Video Player - Full Screen */}
-      <Pressable 
+      <Pressable focusable={true} 
         style={styles.videoContainer}
         onPress={() => setShowControls(!showControls)}
       >
@@ -755,7 +755,7 @@ export default function PlayerScreen() {
           <View style={styles.errorOverlay}>
             <Ionicons name="alert-circle" size={64} color={theme.colors.error} />
             <Text style={styles.errorText}>{error}</Text>
-            <Pressable 
+            <Pressable focusable={true} 
               style={[styles.errorButton, focusedButton === 'back' && styles.buttonFocused]} 
               onPress={handleClose}
               onFocus={() => setFocusedButton('back')}
@@ -771,7 +771,7 @@ export default function PlayerScreen() {
           <View style={styles.controlsOverlay}>
             {/* Top Bar */}
             <View style={styles.topBar}>
-              <Pressable 
+              <Pressable focusable={true} 
                 onPress={handleClose} 
                 style={[styles.closeButton, focusedButton === 'close' && styles.buttonFocused]}
                 onFocus={() => setFocusedButton('close')}
@@ -780,7 +780,7 @@ export default function PlayerScreen() {
                 <Ionicons name="arrow-back" size={isTV ? 36 : 28} color="#fff" />
               </Pressable>
               <Text style={styles.titleText} numberOfLines={1}>{title || 'Playing'}</Text>
-              <Pressable 
+              <Pressable focusable={true} 
                 onPress={() => setShowExternalPlayerModal(true)} 
                 style={[styles.externalPlayerButton, focusedButton === 'external' && styles.buttonFocused]}
                 onFocus={() => setFocusedButton('external')}
@@ -792,7 +792,7 @@ export default function PlayerScreen() {
 
             {/* Center Controls */}
             <View style={styles.centerControls}>
-              <Pressable 
+              <Pressable focusable={true} 
                 onPress={() => handleSeek(-10)} 
                 style={[styles.controlButton, focusedButton === 'rewind' && styles.buttonFocused]}
                 onFocus={() => setFocusedButton('rewind')}
@@ -802,7 +802,7 @@ export default function PlayerScreen() {
                 <Text style={styles.controlLabel}>-10s</Text>
               </Pressable>
 
-              <Pressable 
+              <Pressable focusable={true} 
                 onPress={handlePlayPause} 
                 style={[styles.playButton, focusedButton === 'play' && styles.playButtonFocused]}
                 onFocus={() => setFocusedButton('play')}
@@ -816,7 +816,7 @@ export default function PlayerScreen() {
                 />
               </Pressable>
 
-              <Pressable 
+              <Pressable focusable={true} 
                 onPress={() => handleSeek(10)} 
                 style={[styles.controlButton, focusedButton === 'forward' && styles.buttonFocused]}
                 onFocus={() => setFocusedButton('forward')}
@@ -853,7 +853,7 @@ export default function PlayerScreen() {
           <View style={styles.externalPlayerModal}>
             <View style={styles.externalPlayerHeader}>
               <Text style={styles.externalPlayerTitle}>Open in External Player</Text>
-              <Pressable onPress={() => setShowExternalPlayerModal(false)}>
+              <Pressable focusable={true} onPress={() => setShowExternalPlayerModal(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </Pressable>
             </View>
@@ -861,7 +861,7 @@ export default function PlayerScreen() {
             
             <View style={styles.externalPlayerList}>
               {externalPlayers.map((player, index) => (
-                <Pressable
+                <Pressable focusable={true}
                   key={player.name}
                   style={styles.externalPlayerItem}
                   onPress={() => openInExternalPlayer(player)}
@@ -889,7 +889,7 @@ export default function PlayerScreen() {
           <View style={styles.languagePickerModal}>
             <View style={styles.languagePickerHeader}>
               <Text style={styles.languagePickerTitle}>Subtitle Languages</Text>
-              <Pressable onPress={() => setShowLanguagePicker(false)}>
+              <Pressable focusable={true} onPress={() => setShowLanguagePicker(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </Pressable>
             </View>
@@ -901,7 +901,7 @@ export default function PlayerScreen() {
               {availableLanguages.map((lang) => {
                 const isSelected = subtitleSettings?.preferredLanguages?.includes(lang.code);
                 return (
-                  <Pressable
+                  <Pressable focusable={true}
                     key={lang.code}
                     style={[styles.languageItem, isSelected && styles.languageItemSelected]}
                     onPress={() => toggleLanguagePreference(lang.code)}
@@ -922,7 +922,7 @@ export default function PlayerScreen() {
               })}
             </ScrollView>
             
-            <Pressable 
+            <Pressable focusable={true} 
               style={styles.languagePickerDone}
               onPress={() => setShowLanguagePicker(false)}
             >

@@ -27,7 +27,7 @@ const RecentlyPlayedCard: React.FC<{ item: WatchHistoryItem; index: number; onPr
     : null;
 
   return (
-    <Pressable
+    <Pressable focusable={true}
       onPress={() => onPress(item)}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}

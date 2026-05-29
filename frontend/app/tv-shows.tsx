@@ -241,7 +241,7 @@ export default function TVShowsScreen() {
     const isFocused = focusedIndex === index;
 
     return (
-      <Pressable
+      <Pressable focusable={true}
         style={[styles.showCard, isFocused && styles.showCardFocused]}
         onPress={() => handleShowPress(item)}
         onFocus={() => setFocusedIndex(index)}
@@ -293,7 +293,7 @@ export default function TVShowsScreen() {
     const isFocused = focusedGenreIndex === index;
     
     return (
-      <Pressable
+      <Pressable focusable={true}
         key={genre?.id ?? 'all'}
         onPress={() => genre === null ? handleCategorySelect('all') : handleGenreSelect(genre.id)}
         onFocus={() => setFocusedGenreIndex(index)}
@@ -321,7 +321,7 @@ export default function TVShowsScreen() {
     const isFocused = focusedGenreIndex === index;
     
     return (
-      <Pressable
+      <Pressable focusable={true}
         key={category.key}
         onPress={() => handleCategorySelect(category.key)}
         onFocus={() => setFocusedGenreIndex(index)}

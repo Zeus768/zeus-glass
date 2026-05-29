@@ -587,7 +587,8 @@ export default function SettingsScreen() {
     // The ENTIRE card is a single Pressable — this is required for Android TV
     // D-pad focus. Nested Pressables inside Views don't receive focus in FlatList.
     return (
-      <Pressable 
+      <Pressable focusable={true} 
+        focusable={true}
         style={[
           styles.accountCard,
           isFocused && styles.accountCardFocused,
@@ -703,7 +704,9 @@ export default function SettingsScreen() {
         Upload a full debug bundle with all clicks, navigation, crashes and errors to GoFile for developer analysis.
         {Platform.isTV ? ' Shortcut: Hold UP + OK for 3 seconds.' : ''}
       </Text>
-      <Pressable
+      <Pressable focusable={true}
+        focusable={true}
+        hasTVPreferredFocus={true}
         style={[styles.debugButton, { backgroundColor: theme.colors.primary }, focusedElement === 'debug-upload' && styles.buttonFocused]}
         onPress={handleDebugUpload}
         onFocus={() => setFocusedElement('debug-upload')}
@@ -796,7 +799,7 @@ export default function SettingsScreen() {
               <Text style={styles.accountNotConnected}>Not configured</Text>
             )}
             <View style={styles.accountActions}>
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.accountButton, torrentioConfig && styles.logoutButton]}
                 onPress={() => torrentioConfig ? clearTorrentioConfig() : setTorrentioModalVisible(true)}
               >
@@ -805,7 +808,7 @@ export default function SettingsScreen() {
                 </Text>
               </Pressable>
               {torrentioConfig && (
-                <Pressable
+                <Pressable focusable={true}
                   style={styles.accountButton}
                   onPress={() => setTorrentioModalVisible(true)}
                 >
@@ -851,7 +854,7 @@ export default function SettingsScreen() {
             )}
 
             <View style={styles.vaultActions}>
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.vaultButton, styles.vaultButtonPrimary, focusedElement === 'vault-save' && styles.buttonFocused]}
                 onPress={handleSaveVault}
                 onFocus={() => setFocusedElement('vault-save')}
@@ -869,7 +872,7 @@ export default function SettingsScreen() {
                 )}
               </Pressable>
 
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.vaultButton, focusedElement === 'vault-restore' && styles.buttonFocused]}
                 onPress={handleRestoreVault}
                 onFocus={() => setFocusedElement('vault-restore')}
@@ -881,7 +884,7 @@ export default function SettingsScreen() {
                 <Text style={styles.vaultButtonText}>Restore Backup</Text>
               </Pressable>
 
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.vaultButton, focusedElement === 'vault-export' && styles.buttonFocused]}
                 onPress={handleExportVault}
                 onFocus={() => setFocusedElement('vault-export')}
@@ -893,7 +896,7 @@ export default function SettingsScreen() {
                 <Text style={styles.vaultButtonText}>Share/Copy</Text>
               </Pressable>
 
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.vaultButton, focusedElement === 'vault-modal' && styles.buttonFocused]}
                 onPress={() => setVaultModalVisible(true)}
                 onFocus={() => setFocusedElement('vault-modal')}
@@ -954,7 +957,7 @@ export default function SettingsScreen() {
               {proxyCountries.map(country => {
                 const isSelected = proxySettings?.selectedCountry === country.code;
                 return (
-                  <Pressable
+                  <Pressable focusable={true}
                     key={country.code}
                     style={[
                       styles.vpnCountryButton,
@@ -1001,7 +1004,7 @@ export default function SettingsScreen() {
             </View>
 
             {/* Speed Test */}
-            <Pressable
+            <Pressable focusable={true}
               style={[
                 styles.speedTestBtn,
                 focusedElement === 'speed-test' && styles.vpnCountryButtonFocused,
@@ -1071,7 +1074,7 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <Pressable
+              <Pressable focusable={true}
                 style={[
                   styles.scraperCheckButton,
                   checkingScrapers && styles.scraperCheckButtonDisabled,
@@ -1175,7 +1178,7 @@ export default function SettingsScreen() {
                 <Text style={styles.settingLabel}>Block Adult Streams</Text>
                 <Text style={styles.settingDescription}>Filter NSFW links from free scrapers</Text>
               </View>
-              <Pressable
+              <Pressable focusable={true}
                 style={[
                   styles.toggleButton,
                   contentFilterSettings.blockAdultStreams && styles.toggleButtonActive,
@@ -1201,7 +1204,7 @@ export default function SettingsScreen() {
                 <Text style={styles.settingLabel}>Block Adult IPTV Categories</Text>
                 <Text style={styles.settingDescription}>Hide adult categories from IPTV listings</Text>
               </View>
-              <Pressable
+              <Pressable focusable={true}
                 style={[
                   styles.toggleButton,
                   contentFilterSettings.blockAdultCategories && styles.toggleButtonActive,
@@ -1243,7 +1246,7 @@ export default function SettingsScreen() {
                 <Ionicons name="shield-checkmark" size={24} color={parentalSettings?.enabled ? theme.colors.success : theme.colors.textSecondary} />
                 <Text style={styles.parentalTitle}>Adult Content Filter</Text>
               </View>
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.parentalButton, parentalSettings?.enabled && styles.parentalButtonEnabled, focusedElement === 'parental-manage' && styles.buttonFocused]}
                 onPress={() => {
                   if (parentalSettings?.enabled) {
@@ -1302,7 +1305,7 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.configureButton, focusedElement === 'subtitles' && styles.buttonFocused]}
                 onPress={() => setSubtitleModalVisible(true)}
                 onFocus={() => setFocusedElement('subtitles')}
@@ -1323,7 +1326,7 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.configureButton, focusedElement === 'opensubtitles' && styles.buttonFocused]}
                 onPress={() => setSubtitleModalVisible(true)}
                 onFocus={() => setFocusedElement('opensubtitles')}
@@ -1346,7 +1349,7 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.configureButton, focusedElement === 'oneclick' && styles.buttonFocused]}
                 onPress={() => setOneClickModalVisible(true)}
                 onFocus={() => setFocusedElement('oneclick')}
@@ -1362,7 +1365,7 @@ export default function SettingsScreen() {
   const SectionDebug = () => (
         <AccountSection title="Debug & Support" sectionKey="debug-support">
           <View style={styles.settingsCard}>
-            <Pressable 
+            <Pressable focusable={true} 
               style={[styles.debugButton, focusedElement === 'error-logs' && styles.buttonFocused]}
               onPress={handleOpenLogs}
               onFocus={() => setFocusedElement('error-logs')}
@@ -1379,7 +1382,7 @@ export default function SettingsScreen() {
             </Pressable>
 
             <View style={styles.supportActions}>
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.supportButton, styles.supportButtonPrimary, focusedElement === 'upload-cloud' && styles.buttonFocused]}
                 onPress={handleUploadToCloud}
                 onFocus={() => setFocusedElement('upload-cloud')}
@@ -1391,7 +1394,7 @@ export default function SettingsScreen() {
                   {focusedElement === 'uploading-logs' ? 'Uploading...' : 'Upload to Cloud'}
                 </Text>
               </Pressable>
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.supportButton, focusedElement === 'send-email' && styles.buttonFocused]}
                 onPress={handleSendLogsEmail}
                 onFocus={() => setFocusedElement('send-email')}
@@ -1400,7 +1403,7 @@ export default function SettingsScreen() {
                 <Ionicons name="mail" size={20} color={theme.colors.text} />
                 <Text style={styles.supportButtonText}>Send via Email</Text>
               </Pressable>
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.supportButton, focusedElement === 'send-telegram' && styles.buttonFocused]}
                 onPress={handleSendLogsTelegram}
                 onFocus={() => setFocusedElement('send-telegram')}
@@ -1409,7 +1412,7 @@ export default function SettingsScreen() {
                 <Ionicons name="paper-plane" size={20} color={theme.colors.text} />
                 <Text style={styles.supportButtonText}>Send to Telegram</Text>
               </Pressable>
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.supportButton, focusedElement === 'copy-logs' && styles.buttonFocused]}
                 onPress={handleCopyLogs}
                 onFocus={() => setFocusedElement('copy-logs')}
@@ -1557,7 +1560,8 @@ export default function SettingsScreen() {
       case 'pressable-button': {
         const isFocused = focusedElement === item.key;
         return (
-          <Pressable
+          <Pressable focusable={true}
+            focusable={true}
             style={[
               styles.settingsButton,
               isFocused && styles.settingsButtonFocused,
@@ -1591,21 +1595,62 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        ref={flatListRef}
-        data={settingsItems}
-        keyExtractor={(item, index) => {
-          if (item.type === 'account-card') return `card-${item.title}`;
-          if (item.type === 'section-header') return `header-${item.title}`;
-          if (item.type === 'custom-section') return `section-${item.key}`;
-          return `item-${index}`;
-        }}
-        renderItem={renderSettingsItem}
+      <ScrollView 
+        ref={flatListRef as any}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
-        ListFooterComponent={<View style={{ height: 100 }} />}
-      />
+      >
+        <SectionDebugUpload />
+        
+        <Text style={styles.sectionTitle}>Accounts</Text>
+        <AccountCard title="Trakt" icon="play-circle" account={traktUser} onLogin={() => handleQRAuth('trakt')} onLogout={logoutTrakt} />
+        <AccountCard title="Real-Debrid" icon="cloud-download" account={realDebridAccount} onLogin={() => handleQRAuth('real-debrid')} onLogout={logoutRealDebrid} />
+        <AccountCard title="AllDebrid" icon="cloud-download" account={allDebridAccount} onLogin={() => handleQRAuth('alldebrid')} onLogout={logoutAllDebrid} />
+        <AccountCard title="Premiumize" icon="cloud-download" account={premiumizeAccount} onLogin={() => handleQRAuth('premiumize')} onLogout={logoutPremiumize} />
+        <AccountCard title="TorBox" icon="cube" account={torboxAccount} onLogin={() => handleQRAuth('torbox')} onLogout={logoutTorbox} />
+        <AccountCard title="Premium IPTV" icon="tv" account={iptvAccount} onLogin={() => setIptvModalVisible(true)} onLogout={logoutIPTV} />
+        
+        {settingsItems.filter(i => i.type === 'section-header' || i.type === 'pressable-button' || i.type === 'info-text').map((item, idx) => {
+          if (item.type === 'section-header') {
+            return <Text key={`hdr-${item.title}`} style={styles.sectionTitle}>{item.title}</Text>;
+          }
+          if (item.type === 'info-text') {
+            return <Text key={`info-${idx}`} style={{ color: theme.colors.textSecondary, fontSize: isTV ? 12 : 14, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>{item.text}</Text>;
+          }
+          if (item.type === 'pressable-button') {
+            const isFocused = focusedElement === item.key;
+            return (
+              <Pressable focusable={true}
+                key={`btn-${item.key}`}
+                style={[
+                  styles.settingsButton,
+                  isFocused && styles.settingsButtonFocused,
+                  item.disabled && { opacity: 0.5 },
+                ]}
+                onPress={() => {
+                  debugTracker.trackInteraction('press', item.key, item.label);
+                  item.onPress();
+                }}
+                onFocus={() => setFocusedElement(item.key)}
+                onBlur={() => setFocusedElement(null)}
+                disabled={item.disabled}
+                testID={`btn-${item.key}`}
+              >
+                <Ionicons name={item.icon as any} size={isTV ? 20 : 22} color={isFocused ? '#000' : (item.iconColor || theme.colors.primary)} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.settingsButtonText, isFocused && { color: '#000' }]}>{item.label}</Text>
+                  {item.sublabel && <Text style={[styles.settingsButtonSub, isFocused && { color: '#000' }]}>{item.sublabel}</Text>}
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={isFocused ? '#000' : theme.colors.textSecondary} />
+              </Pressable>
+            );
+          }
+          return null;
+        })}
+        
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
       {/* QR Auth Modal */}
       <QRAuthModal
@@ -1626,7 +1671,7 @@ export default function SettingsScreen() {
           <View style={styles.iptvModal}>
             <View style={styles.iptvHeader}>
               <Text style={styles.iptvTitle}>IPTV Xtreme Codes Login</Text>
-              <Pressable onPress={() => setIptvModalVisible(false)}>
+              <Pressable focusable={true} onPress={() => setIptvModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </Pressable>
             </View>
@@ -1655,7 +1700,7 @@ export default function SettingsScreen() {
                 onChangeText={setIptvPassword}
                 secureTextEntry
               />
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.iptvButton, iptvLoading && styles.iptvButtonDisabled]}
                 onPress={handleIPTVLogin}
                 disabled={iptvLoading}
@@ -1682,7 +1727,7 @@ export default function SettingsScreen() {
           <View style={[styles.iptvModal, { maxWidth: 600 }]}>
             <View style={styles.iptvHeader}>
               <Text style={styles.iptvTitle}>Configure Torrentio</Text>
-              <Pressable onPress={() => setTorrentioModalVisible(false)}>
+              <Pressable focusable={true} onPress={() => setTorrentioModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </Pressable>
             </View>
@@ -1703,7 +1748,7 @@ export default function SettingsScreen() {
                   />
                 </View>
                 <Text style={styles.torrentioUrl}>{TORRENTIO_CONFIGURE_URL}</Text>
-                <Pressable 
+                <Pressable focusable={true} 
                   style={styles.torrentioLinkButton}
                   onPress={() => Linking.openURL(TORRENTIO_CONFIGURE_URL)}
                 >
@@ -1725,7 +1770,7 @@ export default function SettingsScreen() {
                 <Text style={styles.torrentioLabel}>Debrid Provider:</Text>
                 <View style={styles.torrentioProviderButtons}>
                   {(['realdebrid', 'alldebrid', 'premiumize'] as const).map((provider) => (
-                    <Pressable
+                    <Pressable focusable={true}
                       key={provider}
                       style={[
                         styles.torrentioProviderButton,
@@ -1756,7 +1801,7 @@ export default function SettingsScreen() {
                   autoCorrect={false}
                 />
 
-                <Pressable style={styles.iptvButton} onPress={saveTorrentioConfig}>
+                <Pressable focusable={true} style={styles.iptvButton} onPress={saveTorrentioConfig}>
                   <Text style={styles.iptvButtonText}>Save Configuration</Text>
                 </Pressable>
 
@@ -1781,20 +1826,20 @@ export default function SettingsScreen() {
             <View style={styles.logsHeader}>
               <Text style={styles.logsTitle}>Error Logs</Text>
               <View style={styles.logsActions}>
-                <Pressable onPress={handleCopyLogs} style={styles.logAction}>
+                <Pressable focusable={true} onPress={handleCopyLogs} style={styles.logAction}>
                   <Ionicons name="copy" size={20} color={theme.colors.text} />
                 </Pressable>
-                <Pressable onPress={handleClearLogs} style={styles.logAction}>
+                <Pressable focusable={true} onPress={handleClearLogs} style={styles.logAction}>
                   <Ionicons name="trash" size={20} color={theme.colors.error} />
                 </Pressable>
-                <Pressable onPress={() => setLogModalVisible(false)} style={styles.logAction}>
+                <Pressable focusable={true} onPress={() => setLogModalVisible(false)} style={styles.logAction}>
                   <Ionicons name="close" size={24} color={theme.colors.text} />
                 </Pressable>
               </View>
             </View>
 
             <View style={styles.logsFilter}>
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.filterButton, showErrorsOnly && styles.filterButtonActive]}
                 onPress={() => {
                   setShowErrorsOnly(true);
@@ -1805,7 +1850,7 @@ export default function SettingsScreen() {
                   Errors Only
                 </Text>
               </Pressable>
-              <Pressable
+              <Pressable focusable={true}
                 style={[styles.filterButton, !showErrorsOnly && styles.filterButtonActive]}
                 onPress={() => {
                   setShowErrorsOnly(false);
@@ -1858,7 +1903,7 @@ export default function SettingsScreen() {
               <Text style={styles.parentalModalTitle}>
                 {pinMode === 'setup' ? 'Setup Parental PIN' : pinMode === 'verify' ? 'Enter PIN' : 'Change PIN'}
               </Text>
-              <Pressable onPress={() => setParentalModalVisible(false)}>
+              <Pressable focusable={true} onPress={() => setParentalModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </Pressable>
             </View>
@@ -1886,7 +1931,7 @@ export default function SettingsScreen() {
                     secureTextEntry
                     maxLength={6}
                   />
-                  <Pressable style={styles.pinButton} onPress={handleParentalSetup}>
+                  <Pressable focusable={true} style={styles.pinButton} onPress={handleParentalSetup}>
                     <Text style={styles.pinButtonText}>Enable Parental Controls</Text>
                   </Pressable>
                 </>
@@ -1904,10 +1949,10 @@ export default function SettingsScreen() {
                     secureTextEntry
                     maxLength={6}
                   />
-                  <Pressable style={styles.pinButton} onPress={handleParentalVerify}>
+                  <Pressable focusable={true} style={styles.pinButton} onPress={handleParentalVerify}>
                     <Text style={styles.pinButtonText}>Unlock</Text>
                   </Pressable>
-                  <Pressable style={styles.pinButtonSecondary} onPress={handleParentalDisable}>
+                  <Pressable focusable={true} style={styles.pinButtonSecondary} onPress={handleParentalDisable}>
                     <Text style={styles.pinButtonSecondaryText}>Disable Parental Controls</Text>
                   </Pressable>
                 </>

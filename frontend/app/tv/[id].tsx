@@ -296,7 +296,7 @@ export default function TVShowDetailScreen() {
           />
           
           {/* Back Button */}
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Pressable focusable={true} style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={28} color="#fff" />
           </Pressable>
         </View>
@@ -341,7 +341,7 @@ export default function TVShowDetailScreen() {
               <Text style={styles.overview} numberOfLines={4}>{tvShow.overview}</Text>
               
               {/* Favorite Button */}
-              <Pressable style={styles.favButton} onPress={handleFavoriteToggle}>
+              <Pressable focusable={true} style={styles.favButton} onPress={handleFavoriteToggle}>
                 <Ionicons
                   name={isFavorite(tvShow.id) ? 'heart' : 'heart-outline'}
                   size={24}
@@ -352,7 +352,7 @@ export default function TVShowDetailScreen() {
                 </Text>
               </Pressable>
               {traktUser && (
-                <Pressable 
+                <Pressable focusable={true} 
                   style={[styles.favButton, inWatchlist && { borderColor: theme.colors.primary }]}
                   onPress={toggleWatchlist}
                   data-testid="trakt-watchlist-btn"
@@ -368,7 +368,7 @@ export default function TVShowDetailScreen() {
 
           {/* Next Up Episode (from Trakt) */}
           {nextUpEpisode && (
-            <Pressable 
+            <Pressable focusable={true} 
               style={styles.nextUpContainer}
               onPress={() => {
                 setSelectedSeason(nextUpEpisode.season);
@@ -413,7 +413,7 @@ export default function TVShowDetailScreen() {
               const isFocused = focusedSeason === season.season_number;
               const isSelected = selectedSeason === season.season_number;
               return (
-                <Pressable
+                <Pressable focusable={true}
                   key={season.id}
                   onPress={() => setSelectedSeason(season.season_number)}
                   onFocus={() => setFocusedSeason(season.season_number)}
@@ -460,7 +460,7 @@ export default function TVShowDetailScreen() {
               {episodes.map((episode) => {
                 const isFocused = focusedEpisode === episode.episode_number;
                 return (
-                  <Pressable
+                  <Pressable focusable={true}
                     key={episode.id}
                     onPress={() => handleEpisodePress(episode)}
                     onFocus={() => setFocusedEpisode(episode.episode_number)}
@@ -541,7 +541,7 @@ export default function TVShowDetailScreen() {
               <Text style={styles.modalTitle}>
                 S{selectedEpisode?.season_number}E{selectedEpisode?.episode_number}: {selectedEpisode?.name}
               </Text>
-              <Pressable onPress={() => setShowLinksModal(false)}>
+              <Pressable focusable={true} onPress={() => setShowLinksModal(false)}>
                 <Ionicons name="close" size={28} color={theme.colors.text} />
               </Pressable>
             </View>
@@ -556,10 +556,11 @@ export default function TVShowDetailScreen() {
                     ? cachedTorrents.filter(t => t.quality === q).length
                     : directStreams.filter(s => s.quality === q).length);
                 return (
-                  <Pressable
+                  <Pressable focusable={true}
                     key={q}
                     style={[styles.qualityTab, isActive && styles.qualityTabActive]}
                     onPress={() => setFilterQuality(q === 'All' ? null : q)}
+                    focusable={true}
                   >
                     <Text style={[styles.qualityTabText, isActive && styles.qualityTabTextActive]}>{q}</Text>
                     <Text style={[styles.qualityTabCount, isActive && styles.qualityTabCountActive]}>{count}</Text>
@@ -570,7 +571,7 @@ export default function TVShowDetailScreen() {
 
             {/* Tab Switcher */}
             <View style={styles.tabSwitcher}>
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.tabButton, activeTab === 'debrid' && styles.tabButtonActive]}
                 onPress={() => setActiveTab('debrid')}
               >
@@ -579,7 +580,7 @@ export default function TVShowDetailScreen() {
                   Debrid ({cachedTorrents.length})
                 </Text>
               </Pressable>
-              <Pressable 
+              <Pressable focusable={true} 
                 style={[styles.tabButton, activeTab === 'direct' && styles.tabButtonActive]}
                 onPress={() => setActiveTab('direct')}
               >
@@ -638,7 +639,8 @@ export default function TVShowDetailScreen() {
                     const qColor = qualityColors[torrent.quality] || theme.colors.textSecondary;
                     
                     return (
-                      <Pressable 
+                      <Pressable focusable={true} 
+                        focusable={true}
                         style={[
                           styles.linkCard, 
                           isSelected && gettingStream && styles.linkCardActive,
@@ -693,7 +695,7 @@ export default function TVShowDetailScreen() {
               ) : (
                 <ScrollView style={styles.modalScroll}>
                   {directStreams.map((stream, index) => (
-                    <Pressable 
+                    <Pressable focusable={true} 
                       key={index} 
                       style={styles.linkCard}
                       onPress={() => handlePlayDirectStream(stream)}

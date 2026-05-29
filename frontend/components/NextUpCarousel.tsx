@@ -24,7 +24,7 @@ const NextUpCard: React.FC<{ item: NextUpItem; index: number; onPress: (item: Ne
   const episodeLabel = `S${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')}`;
 
   return (
-    <Pressable
+    <Pressable focusable={true}
       onPress={() => onPress(item)}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}

@@ -164,7 +164,7 @@ export default function LiveTVScreen() {
     const count = item.category_id === 'all' ? channels.length : (categoryCounts[item.category_id] || 0);
     
     return (
-      <Pressable
+      <Pressable focusable={true}
         onPress={() => setSelectedCategory(item.category_id)}
         onFocus={() => setFocusedCategory(item.category_id)}
         onBlur={() => setFocusedCategory(null)}
@@ -194,7 +194,7 @@ export default function LiveTVScreen() {
     const isFocused = focusedChannel === item.id;
     
     return (
-      <Pressable
+      <Pressable focusable={true}
         onPress={() => handleChannelPress(item, false)}
         onLongPress={() => handleChannelPress(item, true)} // Long press = PiP mode
         onFocus={() => setFocusedChannel(item.id)}
@@ -273,7 +273,7 @@ export default function LiveTVScreen() {
         <Ionicons name="tv-outline" size={80} color={theme.colors.textMuted} />
         <Text style={styles.emptyTitle}>No Channels</Text>
         <Text style={styles.emptyText}>Please log in to your IPTV service in Settings</Text>
-        <Pressable style={styles.settingsButton} onPress={() => router.push('/settings')}>
+        <Pressable focusable={true} style={styles.settingsButton} onPress={() => router.push('/settings')}>
           <Text style={styles.settingsButtonText}>Go to Settings</Text>
         </Pressable>
       </View>
@@ -290,7 +290,7 @@ export default function LiveTVScreen() {
       <View style={styles.container} data-testid="live-tv-channels">
         {/* Header bar */}
         <View style={styles.channelHeader}>
-          <Pressable 
+          <Pressable focusable={true} 
             onPress={() => setSelectedCategory(null)} 
             style={styles.backButton}
             data-testid="back-to-categories"
