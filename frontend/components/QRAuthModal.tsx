@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Dimensions, Platform, ScrollView, Alert, TextInput } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Modal, ActivityIndicator, Dimensions, Platform, ScrollView, Alert, TextInput } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { BlurView } from 'expo-blur';
 import QRCode from 'react-native-qrcode-svg';
@@ -350,7 +350,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <Pressable focusable={true} 
+        <TouchableOpacity activeOpacity={0.7} 
           style={[styles.submitButton, isTV && styles.submitButtonTV, verifyingApiKey && styles.submitButtonDisabled]}
           onPress={handleTorboxApiKeySubmit}
           disabled={verifyingApiKey}
@@ -363,7 +363,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
               <Text style={[styles.submitButtonText, isTV && styles.submitButtonTextTV]}>Verify & Save</Text>
             </>
           )}
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       {/* Poll Status */}
@@ -385,7 +385,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
         <Text style={[styles.urlText, isTV && styles.urlTextTV]}>
           {verificationUrl}
         </Text>
-        <Pressable focusable={true} 
+        <TouchableOpacity activeOpacity={0.7} 
           style={[styles.copyButton, isTV && styles.copyButtonTV]}
           onPress={async () => {
             await Clipboard.setStringAsync(verificationUrl);
@@ -394,7 +394,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
         >
           <Ionicons name="link-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
           <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Open in Browser</Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       {/* API Key Input */}
@@ -410,7 +410,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           autoCorrect={false}
           secureTextEntry={false}
         />
-        <Pressable focusable={true} 
+        <TouchableOpacity activeOpacity={0.7} 
           style={[styles.submitButton, isTV && styles.submitButtonTV, verifyingApiKey && styles.submitButtonDisabled]}
           onPress={handlePremiumizeApiKeySubmit}
           disabled={verifyingApiKey}
@@ -423,7 +423,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
               <Text style={[styles.submitButtonText, isTV && styles.submitButtonTextTV]}>Verify & Save</Text>
             </>
           )}
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       {/* Status */}
@@ -471,7 +471,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
             <Text style={[styles.codeText, isTV && styles.codeTextTV]}>{userCode}</Text>
           </View>
           
-          <Pressable focusable={true} 
+          <TouchableOpacity activeOpacity={0.7} 
             style={[styles.copyButton, isTV && styles.copyButtonTV]}
             onPress={async () => {
               await Clipboard.setStringAsync(userCode);
@@ -480,14 +480,14 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           >
             <Ionicons name="copy-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
             <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Copy Code</Text>
-          </Pressable>
+          </TouchableOpacity>
           
           <Text style={[styles.urlLabel, isTV && styles.urlLabelTV]}>at this URL:</Text>
           <Text style={[styles.urlTextSmall, isTV && styles.urlTextSmallTV]} numberOfLines={2}>
             {verificationUrl}
           </Text>
           
-          <Pressable focusable={true} 
+          <TouchableOpacity activeOpacity={0.7} 
             style={[styles.copyButton, isTV && styles.copyButtonTV]}
             onPress={async () => {
               await Clipboard.setStringAsync(verificationUrl);
@@ -496,7 +496,7 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
           >
             <Ionicons name="link-outline" size={isTV ? 24 : 18} color={theme.colors.text} />
             <Text style={[styles.copyButtonText, isTV && styles.copyButtonTextTV]}>Copy URL</Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -524,9 +524,9 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
               {/* Header */}
               <View style={[styles.header, isTV && styles.headerTV]}>
                 <Text style={[styles.title, isTV && styles.titleTV]}>Authorize {serviceNames[service]}</Text>
-                <Pressable focusable={true} onPress={handleClose} style={styles.closeButton}>
+                <TouchableOpacity activeOpacity={0.7} onPress={handleClose} style={styles.closeButton}>
                   <Ionicons name="close" size={isTV ? 36 : 24} color={theme.colors.text} />
-                </Pressable>
+                </TouchableOpacity>
               </View>
 
               {loading ? (
@@ -538,9 +538,9 @@ export const QRAuthModal: React.FC<QRAuthModalProps> = ({
                 <View style={[styles.errorContainer, isTV && styles.errorContainerTV]}>
                   <Ionicons name="alert-circle" size={isTV ? 72 : 48} color={theme.colors.error} />
                   <Text style={[styles.errorText, isTV && styles.errorTextTV]}>{error}</Text>
-                  <Pressable focusable={true} style={[styles.retryButton, isTV && styles.retryButtonTV]} onPress={initializeAuth}>
+                  <TouchableOpacity activeOpacity={0.7} style={[styles.retryButton, isTV && styles.retryButtonTV]} onPress={initializeAuth}>
                     <Text style={[styles.retryButtonText, isTV && styles.retryButtonTextTV]}>Retry</Text>
-                  </Pressable>
+                  </TouchableOpacity>
                 </View>
               ) : service === 'premiumize' ? (
                 renderPremiumizeContent()

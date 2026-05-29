@@ -5,7 +5,7 @@ import {
   StyleSheet,
   FlatList,
   ScrollView,
-  Pressable,
+  TouchableOpacity,
   TextInput,
   Modal,
   ActivityIndicator,
@@ -587,7 +587,7 @@ export default function SettingsScreen() {
     // The ENTIRE card is a single Pressable — this is required for Android TV
     // D-pad focus. Nested Pressables inside Views don't receive focus in FlatList.
     return (
-      <Pressable focusable={true} 
+      <TouchableOpacity activeOpacity={0.7} 
         focusable={true}
         style={[
           styles.accountCard,
@@ -665,7 +665,7 @@ export default function SettingsScreen() {
             )}
           </View>
         )}
-      </Pressable>
+      </TouchableOpacity>
     );
   };
 
@@ -704,7 +704,7 @@ export default function SettingsScreen() {
         Upload a full debug bundle with all clicks, navigation, crashes and errors to GoFile for developer analysis.
         {Platform.isTV ? ' Shortcut: Hold UP + OK for 3 seconds.' : ''}
       </Text>
-      <Pressable focusable={true}
+      <TouchableOpacity activeOpacity={0.7}
         focusable={true}
         hasTVPreferredFocus={true}
         style={[styles.debugButton, { backgroundColor: theme.colors.primary }, focusedElement === 'debug-upload' && styles.buttonFocused]}
@@ -721,7 +721,7 @@ export default function SettingsScreen() {
         <Text style={{ color: '#000', fontWeight: '700', fontSize: isTV ? 12 : 14, marginLeft: 8 }}>
           {debugUploading ? 'Uploading...' : 'Upload Debug Bundle to GoFile'}
         </Text>
-      </Pressable>
+      </TouchableOpacity>
       {debugGofileUrl && (
         <View style={{ marginTop: theme.spacing.sm, backgroundColor: 'rgba(0,217,255,0.1)', padding: theme.spacing.md, borderRadius: theme.borderRadius.md }}>
           <Text style={{ color: theme.colors.primary, fontSize: isTV ? 11 : 13, fontWeight: '600' }}>GoFile Link:</Text>
@@ -799,21 +799,21 @@ export default function SettingsScreen() {
               <Text style={styles.accountNotConnected}>Not configured</Text>
             )}
             <View style={styles.accountActions}>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[styles.accountButton, torrentioConfig && styles.logoutButton]}
                 onPress={() => torrentioConfig ? clearTorrentioConfig() : setTorrentioModalVisible(true)}
               >
                 <Text style={[styles.accountButtonText, torrentioConfig && styles.logoutButtonText]}>
                   {torrentioConfig ? 'Clear' : 'Configure'}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
               {torrentioConfig && (
-                <Pressable focusable={true}
+                <TouchableOpacity activeOpacity={0.7}
                   style={styles.accountButton}
                   onPress={() => setTorrentioModalVisible(true)}
                 >
                   <Text style={styles.accountButtonText}>Edit</Text>
-                </Pressable>
+                </TouchableOpacity>
               )}
             </View>
           </View>
@@ -854,7 +854,7 @@ export default function SettingsScreen() {
             )}
 
             <View style={styles.vaultActions}>
-              <Pressable focusable={true} 
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.vaultButton, styles.vaultButtonPrimary, focusedElement === 'vault-save' && styles.buttonFocused]}
                 onPress={handleSaveVault}
                 onFocus={() => setFocusedElement('vault-save')}
@@ -870,9 +870,9 @@ export default function SettingsScreen() {
                     <Text style={styles.vaultButtonTextPrimary}>Save Backup</Text>
                   </>
                 )}
-              </Pressable>
+              </TouchableOpacity>
 
-              <Pressable focusable={true} 
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.vaultButton, focusedElement === 'vault-restore' && styles.buttonFocused]}
                 onPress={handleRestoreVault}
                 onFocus={() => setFocusedElement('vault-restore')}
@@ -882,9 +882,9 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="cloud-download-outline" size={18} color={theme.colors.text} />
                 <Text style={styles.vaultButtonText}>Restore Backup</Text>
-              </Pressable>
+              </TouchableOpacity>
 
-              <Pressable focusable={true} 
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.vaultButton, focusedElement === 'vault-export' && styles.buttonFocused]}
                 onPress={handleExportVault}
                 onFocus={() => setFocusedElement('vault-export')}
@@ -894,9 +894,9 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="share-outline" size={18} color={theme.colors.text} />
                 <Text style={styles.vaultButtonText}>Share/Copy</Text>
-              </Pressable>
+              </TouchableOpacity>
 
-              <Pressable focusable={true} 
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.vaultButton, focusedElement === 'vault-modal' && styles.buttonFocused]}
                 onPress={() => setVaultModalVisible(true)}
                 onFocus={() => setFocusedElement('vault-modal')}
@@ -905,7 +905,7 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="clipboard-outline" size={18} color={theme.colors.text} />
                 <Text style={styles.vaultButtonText}>Paste Import</Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
           </View>
         </AccountSection>
@@ -957,7 +957,7 @@ export default function SettingsScreen() {
               {proxyCountries.map(country => {
                 const isSelected = proxySettings?.selectedCountry === country.code;
                 return (
-                  <Pressable focusable={true}
+                  <TouchableOpacity activeOpacity={0.7}
                     key={country.code}
                     style={[
                       styles.vpnCountryButton,
@@ -990,7 +990,7 @@ export default function SettingsScreen() {
                     {isSelected && (
                       <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
                     )}
-                  </Pressable>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -1004,7 +1004,7 @@ export default function SettingsScreen() {
             </View>
 
             {/* Speed Test */}
-            <Pressable focusable={true}
+            <TouchableOpacity activeOpacity={0.7}
               style={[
                 styles.speedTestBtn,
                 focusedElement === 'speed-test' && styles.vpnCountryButtonFocused,
@@ -1053,7 +1053,7 @@ export default function SettingsScreen() {
               <Text style={styles.speedTestText}>
                 {focusedElement === 'speed-testing' ? 'Testing...' : 'Run Speed Test'}
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </AccountSection>
   );
@@ -1074,7 +1074,7 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[
                   styles.scraperCheckButton,
                   checkingScrapers && styles.scraperCheckButtonDisabled,
@@ -1094,7 +1094,7 @@ export default function SettingsScreen() {
                     <Text style={styles.scraperCheckButtonText}>Check All</Text>
                   </>
                 )}
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             {/* Progress indicator */}
@@ -1178,7 +1178,7 @@ export default function SettingsScreen() {
                 <Text style={styles.settingLabel}>Block Adult Streams</Text>
                 <Text style={styles.settingDescription}>Filter NSFW links from free scrapers</Text>
               </View>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[
                   styles.toggleButton,
                   contentFilterSettings.blockAdultStreams && styles.toggleButtonActive,
@@ -1196,7 +1196,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.toggleText, contentFilterSettings.blockAdultStreams && styles.toggleTextActive]}>
                   {contentFilterSettings.blockAdultStreams ? 'ON' : 'OFF'}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.settingRow}>
@@ -1204,7 +1204,7 @@ export default function SettingsScreen() {
                 <Text style={styles.settingLabel}>Block Adult IPTV Categories</Text>
                 <Text style={styles.settingDescription}>Hide adult categories from IPTV listings</Text>
               </View>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[
                   styles.toggleButton,
                   contentFilterSettings.blockAdultCategories && styles.toggleButtonActive,
@@ -1222,7 +1222,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.toggleText, contentFilterSettings.blockAdultCategories && styles.toggleTextActive]}>
                   {contentFilterSettings.blockAdultCategories ? 'ON' : 'OFF'}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.settingRow}>
@@ -1246,7 +1246,7 @@ export default function SettingsScreen() {
                 <Ionicons name="shield-checkmark" size={24} color={parentalSettings?.enabled ? theme.colors.success : theme.colors.textSecondary} />
                 <Text style={styles.parentalTitle}>Adult Content Filter</Text>
               </View>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[styles.parentalButton, parentalSettings?.enabled && styles.parentalButtonEnabled, focusedElement === 'parental-manage' && styles.buttonFocused]}
                 onPress={() => {
                   if (parentalSettings?.enabled) {
@@ -1263,7 +1263,7 @@ export default function SettingsScreen() {
                 <Text style={styles.parentalButtonText}>
                   {parentalSettings?.enabled ? 'Manage' : 'Enable'}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             {parentalSettings?.enabled && (
@@ -1305,14 +1305,14 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[styles.configureButton, focusedElement === 'subtitles' && styles.buttonFocused]}
                 onPress={() => setSubtitleModalVisible(true)}
                 onFocus={() => setFocusedElement('subtitles')}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Text style={styles.configureButtonText}>Configure</Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             {/* OpenSubtitles Account */}
@@ -1326,14 +1326,14 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[styles.configureButton, focusedElement === 'opensubtitles' && styles.buttonFocused]}
                 onPress={() => setSubtitleModalVisible(true)}
                 onFocus={() => setFocusedElement('opensubtitles')}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Text style={styles.configureButtonText}>Setup</Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             {/* One-Click Play */}
@@ -1349,14 +1349,14 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[styles.configureButton, focusedElement === 'oneclick' && styles.buttonFocused]}
                 onPress={() => setOneClickModalVisible(true)}
                 onFocus={() => setFocusedElement('oneclick')}
                 onBlur={() => setFocusedElement(null)}
               >
                 <Text style={styles.configureButtonText}>Configure</Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
           </View>
         </AccountSection>
@@ -1365,7 +1365,7 @@ export default function SettingsScreen() {
   const SectionDebug = () => (
         <AccountSection title="Debug & Support" sectionKey="debug-support">
           <View style={styles.settingsCard}>
-            <Pressable focusable={true} 
+            <TouchableOpacity activeOpacity={0.7} 
               style={[styles.debugButton, focusedElement === 'error-logs' && styles.buttonFocused]}
               onPress={handleOpenLogs}
               onFocus={() => setFocusedElement('error-logs')}
@@ -1379,10 +1379,10 @@ export default function SettingsScreen() {
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
-            </Pressable>
+            </TouchableOpacity>
 
             <View style={styles.supportActions}>
-              <Pressable focusable={true} 
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.supportButton, styles.supportButtonPrimary, focusedElement === 'upload-cloud' && styles.buttonFocused]}
                 onPress={handleUploadToCloud}
                 onFocus={() => setFocusedElement('upload-cloud')}
@@ -1393,8 +1393,8 @@ export default function SettingsScreen() {
                 <Text style={[styles.supportButtonText, { color: '#000', fontWeight: '600' }]}>
                   {focusedElement === 'uploading-logs' ? 'Uploading...' : 'Upload to Cloud'}
                 </Text>
-              </Pressable>
-              <Pressable focusable={true} 
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.supportButton, focusedElement === 'send-email' && styles.buttonFocused]}
                 onPress={handleSendLogsEmail}
                 onFocus={() => setFocusedElement('send-email')}
@@ -1402,8 +1402,8 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="mail" size={20} color={theme.colors.text} />
                 <Text style={styles.supportButtonText}>Send via Email</Text>
-              </Pressable>
-              <Pressable focusable={true} 
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.supportButton, focusedElement === 'send-telegram' && styles.buttonFocused]}
                 onPress={handleSendLogsTelegram}
                 onFocus={() => setFocusedElement('send-telegram')}
@@ -1411,8 +1411,8 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="paper-plane" size={20} color={theme.colors.text} />
                 <Text style={styles.supportButtonText}>Send to Telegram</Text>
-              </Pressable>
-              <Pressable focusable={true} 
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.supportButton, focusedElement === 'copy-logs' && styles.buttonFocused]}
                 onPress={handleCopyLogs}
                 onFocus={() => setFocusedElement('copy-logs')}
@@ -1421,7 +1421,7 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="copy" size={20} color={theme.colors.text} />
                 <Text style={styles.supportButtonText}>Copy Logs</Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             <Text style={styles.supportInfo}>
@@ -1560,7 +1560,7 @@ export default function SettingsScreen() {
       case 'pressable-button': {
         const isFocused = focusedElement === item.key;
         return (
-          <Pressable focusable={true}
+          <TouchableOpacity activeOpacity={0.7}
             focusable={true}
             style={[
               styles.settingsButton,
@@ -1582,7 +1582,7 @@ export default function SettingsScreen() {
               {item.sublabel && <Text style={[styles.settingsButtonSub, isFocused && { color: '#000' }]}>{item.sublabel}</Text>}
             </View>
             <Ionicons name="chevron-forward" size={18} color={isFocused ? '#000' : theme.colors.textSecondary} />
-          </Pressable>
+          </TouchableOpacity>
         );
       }
       case 'custom-section':
@@ -1621,7 +1621,7 @@ export default function SettingsScreen() {
           if (item.type === 'pressable-button') {
             const isFocused = focusedElement === item.key;
             return (
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 key={`btn-${item.key}`}
                 style={[
                   styles.settingsButton,
@@ -1643,7 +1643,7 @@ export default function SettingsScreen() {
                   {item.sublabel && <Text style={[styles.settingsButtonSub, isFocused && { color: '#000' }]}>{item.sublabel}</Text>}
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={isFocused ? '#000' : theme.colors.textSecondary} />
-              </Pressable>
+              </TouchableOpacity>
             );
           }
           return null;
@@ -1671,9 +1671,9 @@ export default function SettingsScreen() {
           <View style={styles.iptvModal}>
             <View style={styles.iptvHeader}>
               <Text style={styles.iptvTitle}>IPTV Xtreme Codes Login</Text>
-              <Pressable focusable={true} onPress={() => setIptvModalVisible(false)}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setIptvModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
-              </Pressable>
+              </TouchableOpacity>
             </View>
             <View style={styles.iptvForm}>
               <TextInput
@@ -1700,7 +1700,7 @@ export default function SettingsScreen() {
                 onChangeText={setIptvPassword}
                 secureTextEntry
               />
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[styles.iptvButton, iptvLoading && styles.iptvButtonDisabled]}
                 onPress={handleIPTVLogin}
                 disabled={iptvLoading}
@@ -1710,7 +1710,7 @@ export default function SettingsScreen() {
                 ) : (
                   <Text style={styles.iptvButtonText}>Login</Text>
                 )}
-              </Pressable>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -1727,9 +1727,9 @@ export default function SettingsScreen() {
           <View style={[styles.iptvModal, { maxWidth: 600 }]}>
             <View style={styles.iptvHeader}>
               <Text style={styles.iptvTitle}>Configure Torrentio</Text>
-              <Pressable focusable={true} onPress={() => setTorrentioModalVisible(false)}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setTorrentioModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
-              </Pressable>
+              </TouchableOpacity>
             </View>
             
             <ScrollView style={{ maxHeight: 500 }}>
@@ -1748,13 +1748,13 @@ export default function SettingsScreen() {
                   />
                 </View>
                 <Text style={styles.torrentioUrl}>{TORRENTIO_CONFIGURE_URL}</Text>
-                <Pressable focusable={true} 
+                <TouchableOpacity activeOpacity={0.7} 
                   style={styles.torrentioLinkButton}
                   onPress={() => Linking.openURL(TORRENTIO_CONFIGURE_URL)}
                 >
                   <Ionicons name="open-outline" size={18} color={theme.colors.text} />
                   <Text style={styles.torrentioLinkButtonText}>Open in Browser</Text>
-                </Pressable>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.torrentioDivider} />
@@ -1770,7 +1770,7 @@ export default function SettingsScreen() {
                 <Text style={styles.torrentioLabel}>Debrid Provider:</Text>
                 <View style={styles.torrentioProviderButtons}>
                   {(['realdebrid', 'alldebrid', 'premiumize'] as const).map((provider) => (
-                    <Pressable focusable={true}
+                    <TouchableOpacity activeOpacity={0.7}
                       key={provider}
                       style={[
                         styles.torrentioProviderButton,
@@ -1785,7 +1785,7 @@ export default function SettingsScreen() {
                         {provider === 'realdebrid' ? 'Real-Debrid' : 
                          provider === 'alldebrid' ? 'AllDebrid' : 'Premiumize'}
                       </Text>
-                    </Pressable>
+                    </TouchableOpacity>
                   ))}
                 </View>
 
@@ -1801,9 +1801,9 @@ export default function SettingsScreen() {
                   autoCorrect={false}
                 />
 
-                <Pressable focusable={true} style={styles.iptvButton} onPress={saveTorrentioConfig}>
+                <TouchableOpacity activeOpacity={0.7} style={styles.iptvButton} onPress={saveTorrentioConfig}>
                   <Text style={styles.iptvButtonText}>Save Configuration</Text>
-                </Pressable>
+                </TouchableOpacity>
 
                 <Text style={styles.torrentioHint}>
                   💡 Get your API key from your Debrid provider's website under Account settings.
@@ -1826,20 +1826,20 @@ export default function SettingsScreen() {
             <View style={styles.logsHeader}>
               <Text style={styles.logsTitle}>Error Logs</Text>
               <View style={styles.logsActions}>
-                <Pressable focusable={true} onPress={handleCopyLogs} style={styles.logAction}>
+                <TouchableOpacity activeOpacity={0.7} onPress={handleCopyLogs} style={styles.logAction}>
                   <Ionicons name="copy" size={20} color={theme.colors.text} />
-                </Pressable>
-                <Pressable focusable={true} onPress={handleClearLogs} style={styles.logAction}>
+                </TouchableOpacity>
+                <TouchableOpacity activeOpacity={0.7} onPress={handleClearLogs} style={styles.logAction}>
                   <Ionicons name="trash" size={20} color={theme.colors.error} />
-                </Pressable>
-                <Pressable focusable={true} onPress={() => setLogModalVisible(false)} style={styles.logAction}>
+                </TouchableOpacity>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setLogModalVisible(false)} style={styles.logAction}>
                   <Ionicons name="close" size={24} color={theme.colors.text} />
-                </Pressable>
+                </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.logsFilter}>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={[styles.filterButton, showErrorsOnly && styles.filterButtonActive]}
                 onPress={() => {
                   setShowErrorsOnly(true);
@@ -1849,8 +1849,8 @@ export default function SettingsScreen() {
                 <Text style={[styles.filterButtonText, showErrorsOnly && styles.filterButtonTextActive]}>
                   Errors Only
                 </Text>
-              </Pressable>
-              <Pressable focusable={true}
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7}
                 style={[styles.filterButton, !showErrorsOnly && styles.filterButtonActive]}
                 onPress={() => {
                   setShowErrorsOnly(false);
@@ -1860,7 +1860,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.filterButtonText, !showErrorsOnly && styles.filterButtonTextActive]}>
                   All Logs
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.logsList}>
@@ -1903,9 +1903,9 @@ export default function SettingsScreen() {
               <Text style={styles.parentalModalTitle}>
                 {pinMode === 'setup' ? 'Setup Parental PIN' : pinMode === 'verify' ? 'Enter PIN' : 'Change PIN'}
               </Text>
-              <Pressable focusable={true} onPress={() => setParentalModalVisible(false)}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setParentalModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.parentalForm}>
@@ -1931,9 +1931,9 @@ export default function SettingsScreen() {
                     secureTextEntry
                     maxLength={6}
                   />
-                  <Pressable focusable={true} style={styles.pinButton} onPress={handleParentalSetup}>
+                  <TouchableOpacity activeOpacity={0.7} style={styles.pinButton} onPress={handleParentalSetup}>
                     <Text style={styles.pinButtonText}>Enable Parental Controls</Text>
-                  </Pressable>
+                  </TouchableOpacity>
                 </>
               )}
 
@@ -1949,12 +1949,12 @@ export default function SettingsScreen() {
                     secureTextEntry
                     maxLength={6}
                   />
-                  <Pressable focusable={true} style={styles.pinButton} onPress={handleParentalVerify}>
+                  <TouchableOpacity activeOpacity={0.7} style={styles.pinButton} onPress={handleParentalVerify}>
                     <Text style={styles.pinButtonText}>Unlock</Text>
-                  </Pressable>
-                  <Pressable focusable={true} style={styles.pinButtonSecondary} onPress={handleParentalDisable}>
+                  </TouchableOpacity>
+                  <TouchableOpacity activeOpacity={0.7} style={styles.pinButtonSecondary} onPress={handleParentalDisable}>
                     <Text style={styles.pinButtonSecondaryText}>Disable Parental Controls</Text>
-                  </Pressable>
+                  </TouchableOpacity>
                 </>
               )}
             </View>

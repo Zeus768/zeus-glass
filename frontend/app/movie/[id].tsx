@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, Modal, Alert, Linking, Platform, BackHandler, FlatList } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, ScrollView, Dimensions, ActivityIndicator, Modal, Alert, Linking, Platform, BackHandler, FlatList } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -463,9 +463,9 @@ export default function MovieDetailScreen() {
           />
           
           {/* Back Button */}
-          <Pressable focusable={true} style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity activeOpacity={0.7} style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
         {/* Content */}
@@ -500,19 +500,19 @@ export default function MovieDetailScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actions}>
-            <Pressable focusable={true} style={styles.playButton} onPress={loadStreamLinks}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.playButton} onPress={loadStreamLinks}>
               <Ionicons name="play" size={24} color={theme.colors.text} />
               <Text style={styles.playButtonText}>Play</Text>
-            </Pressable>
-            <Pressable focusable={true} 
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7} 
               style={styles.searchAllButton} 
               onPress={() => setShowSourcesDialog(true)}
               data-testid="search-all-sources-btn"
             >
               <Ionicons name="search" size={20} color={theme.colors.text} />
               <Text style={styles.searchAllButtonText}>All Sources</Text>
-            </Pressable>
-            <Pressable focusable={true}
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7}
               style={styles.favoriteButton}
               onPress={handleFavoriteToggle}
             >
@@ -521,30 +521,30 @@ export default function MovieDetailScreen() {
                 size={24}
                 color={isFavorite(movie.id) ? theme.colors.error : theme.colors.text}
               />
-            </Pressable>
-            <Pressable focusable={true} style={styles.shareButton}>
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7} style={styles.shareButton}>
               <Ionicons name="share-outline" size={24} color={theme.colors.text} />
-            </Pressable>
+            </TouchableOpacity>
             {traktUser && (
-              <Pressable focusable={true} 
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.favoriteButton, inWatchlist && { backgroundColor: 'rgba(0, 217, 255, 0.2)' }]}
                 onPress={toggleWatchlist}
                 data-testid="trakt-watchlist-btn"
               >
                 <Ionicons name={inWatchlist ? 'bookmark' : 'bookmark-outline'} size={24} color={inWatchlist ? theme.colors.primary : theme.colors.text} />
-              </Pressable>
+              </TouchableOpacity>
             )}
             {traktUser && (
-              <Pressable focusable={true} 
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.favoriteButton, inCollection && { backgroundColor: 'rgba(0, 217, 255, 0.2)' }]}
                 onPress={toggleCollection}
                 data-testid="trakt-collection-btn"
               >
                 <Ionicons name={inCollection ? 'library' : 'library-outline'} size={24} color={inCollection ? theme.colors.primary : theme.colors.text} />
-              </Pressable>
+              </TouchableOpacity>
             )}
             {!isTV && (
-              <Pressable focusable={true} 
+              <TouchableOpacity activeOpacity={0.7} 
                 style={styles.castButton}
                 onPress={() => {
                   if (lastResolvedUrl) {
@@ -555,7 +555,7 @@ export default function MovieDetailScreen() {
                 data-testid="movie-cast-btn"
               >
                 <Ionicons name="tv-outline" size={24} color={theme.colors.primary} />
-              </Pressable>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -586,9 +586,9 @@ export default function MovieDetailScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Stream Sources</Text>
-              <Pressable focusable={true} onPress={() => setShowLinksModal(false)}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setShowLinksModal(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text} />
-              </Pressable>
+              </TouchableOpacity>
             </View>
             
             {/* Quality Filter Tabs - Primary navigation */}
@@ -601,7 +601,7 @@ export default function MovieDetailScreen() {
                     ? cachedTorrents.filter(t => t.quality === q).length
                     : directStreams.filter(s => s.quality === q).length);
                 return (
-                  <Pressable focusable={true}
+                  <TouchableOpacity activeOpacity={0.7}
                     key={q}
                     style={[styles.qualityTab, isActive && styles.qualityTabActive]}
                     onPress={() => setFilterQuality(q === 'All' ? null : q)}
@@ -614,14 +614,14 @@ export default function MovieDetailScreen() {
                     <Text style={[styles.qualityTabCount, isActive && styles.qualityTabCountActive]}>
                       {count}
                     </Text>
-                  </Pressable>
+                  </TouchableOpacity>
                 );
               })}
             </View>
 
             {/* Tab Switcher - Debrid / Direct / IPTV */}
             <View style={styles.tabSwitcher}>
-              <Pressable focusable={true} 
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.tabButton, activeTab === 'debrid' && styles.tabButtonActive]}
                 onPress={() => setActiveTab('debrid')}
               >
@@ -629,8 +629,8 @@ export default function MovieDetailScreen() {
                 <Text style={[styles.tabButtonText, activeTab === 'debrid' && styles.tabButtonTextActive]}>
                   Debrid ({cachedTorrents.length})
                 </Text>
-              </Pressable>
-              <Pressable focusable={true} 
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7} 
                 style={[styles.tabButton, activeTab === 'direct' && styles.tabButtonActive]}
                 onPress={() => setActiveTab('direct')}
               >
@@ -638,9 +638,9 @@ export default function MovieDetailScreen() {
                 <Text style={[styles.tabButtonText, activeTab === 'direct' && styles.tabButtonTextActive]}>
                   Direct ({directStreams.length})
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
               {iptvVODStream && (
-                <Pressable focusable={true} 
+                <TouchableOpacity activeOpacity={0.7} 
                   style={[styles.tabButton, styles.tabButtonIPTV, activeTab === 'iptv' && styles.tabButtonActive]}
                   onPress={() => setActiveTab('iptv')}
                 >
@@ -648,14 +648,14 @@ export default function MovieDetailScreen() {
                   <Text style={[styles.tabButtonText, styles.tabButtonTextIPTV, activeTab === 'iptv' && styles.tabButtonTextActive]}>
                     IPTV
                   </Text>
-                </Pressable>
+                </TouchableOpacity>
               )}
             </View>
             
             {/* Filter & Sort - collapsible */}
             {!loadingLinks && (cachedTorrents.length > 0 || directStreams.length > 0) && (
               <View style={styles.filterBar}>
-                <Pressable focusable={true} 
+                <TouchableOpacity activeOpacity={0.7} 
                   style={[styles.filterButton, showFilters && styles.filterButtonActive]}
                   onPress={() => setShowFilters(!showFilters)}
                 >
@@ -663,7 +663,7 @@ export default function MovieDetailScreen() {
                   <Text style={[styles.filterButtonText, showFilters && styles.filterButtonTextActive]}>
                     Sort & Filter
                   </Text>
-                </Pressable>
+                </TouchableOpacity>
               </View>
             )}
             
@@ -679,7 +679,7 @@ export default function MovieDetailScreen() {
                       { label: '5-10GB', min: 5, max: 10 },
                       { label: '> 10GB', min: 10 },
                     ].map((size) => (
-                      <Pressable focusable={true}
+                      <TouchableOpacity activeOpacity={0.7}
                         key={size.label}
                         style={[
                           styles.sizeFilterChip,
@@ -696,7 +696,7 @@ export default function MovieDetailScreen() {
                         }}
                       >
                         <Text style={styles.sizeFilterText}>{size.label}</Text>
-                      </Pressable>
+                      </TouchableOpacity>
                     ))}
                   </View>
                 </View>
@@ -708,7 +708,7 @@ export default function MovieDetailScreen() {
                       { key: 'size', icon: 'resize', label: 'Size' },
                       { key: 'seeders', icon: 'people', label: 'Seeders' },
                     ].map((s) => (
-                      <Pressable focusable={true}
+                      <TouchableOpacity activeOpacity={0.7}
                         key={s.key}
                         style={[styles.sortButton, sortBy === s.key && styles.sortButtonActive]}
                         onPress={() => setSortBy(s.key as 'quality' | 'size' | 'seeders')}
@@ -717,7 +717,7 @@ export default function MovieDetailScreen() {
                         <Text style={[styles.sortButtonText, sortBy === s.key && styles.sortButtonTextActive]}>
                           {s.label}
                         </Text>
-                      </Pressable>
+                      </TouchableOpacity>
                     ))}
                   </View>
                 </View>
@@ -815,7 +815,7 @@ export default function MovieDetailScreen() {
                     const qColor = qualityColors[torrent.quality] || theme.colors.textSecondary;
                     
                     return (
-                      <Pressable focusable={true} 
+                      <TouchableOpacity activeOpacity={0.7} 
                         focusable={true}
                         style={[
                           styles.linkCard,
@@ -864,7 +864,7 @@ export default function MovieDetailScreen() {
                         ) : (
                           <Ionicons name="play-circle" size={isTV ? 28 : 32} color={isFocusedItem ? '#000' : (torrent.cached ? theme.colors.gold : theme.colors.primary)} />
                         )}
-                      </Pressable>
+                      </TouchableOpacity>
                     );
                   }}
                   ListEmptyComponent={
@@ -895,7 +895,7 @@ export default function MovieDetailScreen() {
                                    stream.source?.toLowerCase().includes('vod');
                     
                     return (
-                      <Pressable focusable={true} 
+                      <TouchableOpacity activeOpacity={0.7} 
                         key={index} 
                         style={[
                           styles.directLinkCard,
@@ -939,7 +939,7 @@ export default function MovieDetailScreen() {
                           size={24} 
                           color={isIPTV ? '#FFD700' : theme.colors.primary} 
                         />
-                      </Pressable>
+                      </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
@@ -979,14 +979,14 @@ export default function MovieDetailScreen() {
               </Text>
             </View>
             <View style={styles.resumeModalButtons}>
-              <Pressable focusable={true}
+              <TouchableOpacity activeOpacity={0.7}
                 style={styles.resumeModalButton}
                 onPress={() => handleResumeChoice(true)}
               >
                 <Ionicons name="play" size={20} color="#000" />
                 <Text style={styles.resumeModalButtonText}>Resume</Text>
-              </Pressable>
-              <Pressable focusable={true}
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7}
                 style={[styles.resumeModalButton, styles.resumeModalButtonSecondary]}
                 onPress={() => handleResumeChoice(false)}
               >
@@ -994,7 +994,7 @@ export default function MovieDetailScreen() {
                 <Text style={[styles.resumeModalButtonText, styles.resumeModalButtonTextSecondary]}>
                   Start Over
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
