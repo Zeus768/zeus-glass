@@ -293,6 +293,17 @@ export default function TVGuideScreen() {
     }
   }, [selectedCategory, channels, categories]);
 
+  // Hoisted callback: MUST be declared before any early return so hook order
+  // stays stable between renders. Previously this was declared inline inside
+  // the JSX which caused React to throw "Rendered more hooks than during the
+  // previous render" the first time the loading state flipped to false.
+  const handleViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: any[] }) => {
+    const visibleChannels = viewableItems.map(item => item.item as IPTVChannel);
+    if (visibleChannels.length > 0) {
+      loadEPGForChannels(visibleChannels);
+    }
+  }, [channelEPGs, loadingEPG]);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -552,13 +563,7 @@ export default function TVGuideScreen() {
             );
           }}
           ListFooterComponent={<View style={{ height: 100 }} />}
-          onViewableItemsChanged={useCallback(({ viewableItems }) => {
-            // Load EPG for visible channels as they come into view
-            const visibleChannels = viewableItems.map(item => item.item as IPTVChannel);
-            if (visibleChannels.length > 0) {
-              loadEPGForChannels(visibleChannels);
-            }
-          }, [channelEPGs, loadingEPG])}
+          onViewableItemsChanged={handleViewableItemsChanged}
           viewabilityConfig={{
             itemVisiblePercentThreshold: 50,
           }}

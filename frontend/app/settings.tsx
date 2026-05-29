@@ -650,27 +650,36 @@ export default function SettingsScreen() {
                 <Text style={[styles.accountValue, isFocused && { color: '#000' }]}>{account.email}</Text>
               </View>
             )}
-            {account.expiryDate && (
-              <>
-                <View style={styles.accountRow}>
-                  <Text style={[styles.accountLabel, isFocused && { color: '#000' }]}>Expires:</Text>
-                  <Text style={[styles.accountValue, isFocused && { color: '#000' }]}>
-                    {formatDistanceToNow(new Date(account.expiryDate), { addSuffix: true })}
-                  </Text>
-                </View>
-                <View style={styles.accountRow}>
-                  <Text style={[styles.accountLabel, isFocused && { color: '#000' }]}>Days Left:</Text>
-                  <Text
-                    style={[
-                      styles.accountValue,
-                      isFocused ? { color: '#000' } : { color: account.daysLeft <= 10 ? theme.colors.error : account.daysLeft < 30 ? theme.colors.warning : theme.colors.success },
-                    ]}
-                  >
-                    {account.daysLeft} days {account.daysLeft <= 10 && '⚠️'}
-                  </Text>
-                </View>
-              </>
-            )}
+            {account.expiryDate && (account as any).isLifetime ? (
+              <View style={styles.accountRow}>
+                <Text style={[styles.accountLabel, isFocused && { color: '#000' }]}>Expires:</Text>
+                <Text style={[styles.accountValue, { color: theme.colors.gold }, isFocused && { color: '#000' }]}>
+                  Lifetime
+                </Text>
+              </View>
+            ) : account.expiryDate ? (
+              <View style={styles.accountRow}>
+                <Text style={[styles.accountLabel, isFocused && { color: '#000' }]}>Expires:</Text>
+                <Text
+                  style={[
+                    styles.accountValue,
+                    isFocused
+                      ? { color: '#000' }
+                      : {
+                          color:
+                            account.daysLeft <= 10
+                              ? theme.colors.error
+                              : account.daysLeft < 30
+                              ? theme.colors.warning
+                              : theme.colors.success,
+                        },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {format(new Date(account.expiryDate), 'd MMM yyyy')} ({account.daysLeft} day{account.daysLeft === 1 ? '' : 's'} left){account.daysLeft <= 10 && ' ⚠️'}
+                </Text>
+              </View>
+            ) : null}
             {account.type && (
               <View style={styles.accountRow}>
                 <Text style={styles.accountLabel}>Type:</Text>

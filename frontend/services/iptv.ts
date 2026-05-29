@@ -604,16 +604,45 @@ export const iptvService = {
       const userInfo = response.data?.user_info;
       if (!userInfo) return null;
 
-      const expiryTimestamp = parseInt(userInfo.exp_date) * 1000;
-      const expiryDate = new Date(expiryTimestamp);
+      // Xtreme Codes returns exp_date as unix seconds (most common) but some
+      // panels return milliseconds, ISO strings, or use a different field name.
+      // Try a couple of variants so we always show the user the *real* expiry.
+      const rawExp = (userInfo.exp_date ?? userInfo.expiration_date ?? userInfo.expiration) as
+        | string
+        | number
+        | null
+        | undefined;
+
+      let expiryTimestamp = 0;
+      if (rawExp !== null && rawExp !== undefined && String(rawExp).trim() !== '') {
+        const s = String(rawExp).trim();
+        if (/^\d+$/.test(s)) {
+          // Numeric — heuristic: 10 digits = seconds, 13 digits = ms
+          const n = parseInt(s, 10);
+          expiryTimestamp = s.length >= 13 ? n : n * 1000;
+        } else {
+          // Looks like an ISO / RFC date string
+          const parsed = Date.parse(s);
+          if (!Number.isNaN(parsed)) expiryTimestamp = parsed;
+        }
+      }
+
+      // Some lifetime / unlimited accounts come back as "0" or null. Show them
+      // as "Lifetime" instead of "Expired".
+      const isLifetime = !expiryTimestamp || expiryTimestamp <= 0;
+      const expiryDate = isLifetime ? null : new Date(expiryTimestamp);
       const now = new Date();
-      const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const daysLeft = isLifetime
+        ? 36500 // ~100 years -> displayed as Lifetime
+        : Math.ceil((expiryTimestamp - now.getTime()) / (1000 * 60 * 60 * 24));
 
       return {
         username: userInfo.username || config.username,
-        expiryDate: expiryDate.toISOString(),
+        expiryDate: expiryDate ? expiryDate.toISOString() : '',
         daysLeft: Math.max(0, daysLeft),
-      };
+        isLifetime,
+        rawExpField: String(rawExp ?? ''),
+      } as any;
     } catch (error) {
       console.error('Error fetching IPTV account info:', error);
       return null;

@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.6.2',
+    date: '2026-02-15',
+    highlights: [
+      'CRITICAL: Fixed TV Guide crash ("Rendered more hooks than during the previous render") — the page now loads cleanly every time',
+      'IPTV account card now shows the real expiry date (e.g. "6 Oct 2026 (235 days left)") instead of the duplicated "in 12 days / 12 days" — also handles lifetime accounts and alternate exp_date formats (ms / ISO strings)',
+      'Defensive parsing of IPTV exp_date — handles unix seconds, milliseconds, and date strings so the displayed expiry always matches what the server reports',
+    ],
+  },
+  {
     version: '1.6.1',
     date: '2026-02-15',
     highlights: [

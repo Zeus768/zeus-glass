@@ -46,6 +46,12 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 
 ## Completed Features
 
+### TV Guide Crash + IPTV Account Display Fixes (2026-02-15) — v1.6.2
+- **CRITICAL fix — TV Guide "Rendered more hooks than during the previous render" crash (P0)**: Root cause was `onViewableItemsChanged={useCallback(...)}` declared **inline as a JSX prop** in `tv-guide.tsx` (line 555). On the first render `loading===true` returned early with N hooks; on subsequent renders the inline `useCallback` was reached, adding an extra hook → React fatal. Hoisted the callback to `handleViewableItemsChanged` before the early `if (loading) return` block. Verified: TV Guide page now renders cleanly on web preview, no error boundary triggered.
+- **IPTV account card display fix**: Replaced the duplicated "in 12 days / 12 days" rows with a single row showing the actual expiry date + days-left: e.g. `6 Oct 2026 (235 days left)`. Lifetime accounts now show `Lifetime` in gold.
+- **Defensive IPTV exp_date parsing** (`services/iptv.ts` `getAccountInfo`): Handles unix seconds (10-digit), milliseconds (13-digit), ISO date strings, AND alternate field names `expiration_date` / `expiration` — so users always see what the server actually returned, regardless of which Xtreme Codes panel variant they connect to.
+- Code-wide scan: confirmed no other `={useCallback/useMemo/useEffect/useState(...)}` inline-hook anti-patterns exist in the project.
+
 ### IPTV Login P0 Fix — Android Cleartext Traffic (2026-02-15) — v1.6.1
 - **Root cause identified**: Android since API 28 (Android 9, 2018) blocks all HTTP cleartext traffic by default. The IPTV `usesCleartextTraffic` flag was never set in `app.json` or the custom `withAndroidTV` plugin. Almost every Xtreme Codes IPTV server (e.g. `http://jackofclubs.vip:80`) is plain HTTP — so when users entered correct creds in the APK build, axios silently failed and the UI mis-reported "Invalid credentials".
 - **Fix (3 layers)**:
