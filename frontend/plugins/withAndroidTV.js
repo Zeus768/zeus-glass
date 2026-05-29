@@ -76,6 +76,12 @@ const withAndroidTV = (config) => {
     
     // Enable hardware acceleration for smooth TV rendering
     application.$['android:hardwareAccelerated'] = 'true';
+
+    // CRITICAL: Allow cleartext HTTP traffic so Xtreme Codes IPTV servers
+    // (which run on plain http://) can be reached on Android 9+ APKs.
+    // Without this, axios silently fails the request and the user sees
+    // "Invalid credentials" even when the username/password are correct.
+    application.$['android:usesCleartextTraffic'] = 'true';
     
     return config;
   });

@@ -435,12 +435,24 @@ export default function SettingsScreen() {
         setIptvPassword('');
         errorLogService.info('IPTV login successful', 'Settings');
       } else {
-        errorLogService.error('IPTV authentication failed', 'Settings');
-        Alert.alert('Error', 'Authentication failed. Please check your credentials.');
+        errorLogService.error('IPTV authentication failed - invalid credentials', 'Settings');
+        Alert.alert(
+          'Login Failed',
+          'The IPTV server rejected your username/password. Double-check both fields (case-sensitive) and try again.'
+        );
       }
     } catch (error: any) {
       errorLogService.error(error.message, 'Settings', error);
-      Alert.alert('Error', 'Failed to authenticate. Please check your credentials.');
+      const msg = error?.message || '';
+      // Distinguish a network/reachability error from a credential error
+      if (msg.toLowerCase().includes('could not reach')) {
+        Alert.alert(
+          'Cannot Reach Server',
+          msg + '\n\nTip: most IPTV servers use http:// (not https). Make sure your URL is exactly like "http://yourhost.com:80" or "http://yourhost.com:8080".'
+        );
+      } else {
+        Alert.alert('Login Error', msg || 'Failed to authenticate. Please check your credentials.');
+      }
     } finally {
       setIptvLoading(false);
     }

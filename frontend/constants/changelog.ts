@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.6.1',
+    date: '2026-02-15',
+    highlights: [
+      'CRITICAL fix: IPTV login no longer fails with "Invalid credentials" on Android APK / TV — enabled cleartext HTTP traffic so Xtreme Codes servers (http://) can be reached',
+      'IPTV: live channels, VOD, series and stream playback all work on plain-HTTP servers again',
+      'Smarter IPTV login: honours your typed protocol (http vs https) and shows a clearer "cannot reach server" vs "invalid credentials" error',
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-02-15',
     highlights: [

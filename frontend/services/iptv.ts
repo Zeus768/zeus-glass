@@ -110,49 +110,63 @@ export const iptvService = {
   // Real Xtreme Codes authentication
   authenticate: async (domain: string, username: string, password: string): Promise<boolean> => {
     try {
-      // Clean domain (remove http/https if present, and trailing slashes)
-      let cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-      
-      // Try HTTPS first, then fall back to HTTP
-      const protocols = ['https', 'http'];
-      
+      const trimmedDomain = domain.trim();
+
+      // Honour the protocol the user typed. Otherwise default to trying HTTPS then HTTP.
+      const userProvidedProtocol = /^https?:\/\//i.test(trimmedDomain)
+        ? (trimmedDomain.toLowerCase().startsWith('https://') ? 'https' : 'http')
+        : null;
+
+      const cleanDomain = trimmedDomain.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+
+      const protocols = userProvidedProtocol
+        ? [userProvidedProtocol, userProvidedProtocol === 'http' ? 'https' : 'http']
+        : ['https', 'http'];
+
+      let reachedServer = false;
+      let lastNetworkError: string | null = null;
+
       for (const protocol of protocols) {
         try {
           const response = await axios.get(
             `${protocol}://${cleanDomain}/player_api.php`,
             {
-              params: {
-                username: username,
-                password: password,
-              },
+              params: { username, password },
               timeout: 15000,
-              validateStatus: (status) => status < 500, // Accept any status < 500
+              validateStatus: (status) => status < 500,
             }
           );
 
-          // Check for valid response with user_info
-          if (response.data && response.data.user_info) {
-            console.log(`IPTV auth successful via ${protocol}`);
+          reachedServer = true;
+
+          // Valid auth -> Xtreme Codes returns an object with user_info populated
+          if (response.data && response.data.user_info && response.data.user_info.username) {
+            console.log(`[IPTV] Auth successful via ${protocol}`);
             return true;
           }
-          
-          // Check for auth status in response
-          if (response.data && response.data.user_info === null) {
-            console.log('IPTV auth failed: invalid credentials');
-            return false;
-          }
+
+          // Server reachable but creds are wrong (response was {} or user_info=null)
+          console.log(`[IPTV] Auth failed via ${protocol}: server returned no user_info`);
+          // Don't return false yet - the other protocol may work if this was the wrong port
         } catch (protocolError: any) {
-          console.log(`IPTV ${protocol} failed:`, protocolError.message);
-          // Continue to next protocol
+          lastNetworkError = protocolError?.message || 'network error';
+          console.log(`[IPTV] ${protocol} request failed:`, lastNetworkError);
         }
       }
-      
-      // If both protocols fail
-      console.error('IPTV authentication failed on both HTTP and HTTPS');
+
+      if (!reachedServer) {
+        // Could not reach the server at all - bubble up a network error so the UI
+        // can show a clearer message instead of "invalid credentials".
+        throw new Error(
+          `Could not reach IPTV server. Check the URL (include port if needed, e.g. http://host:80) and your internet connection. Last error: ${lastNetworkError || 'unknown'}`
+        );
+      }
+
+      // Reached the server but credentials rejected
       return false;
-    } catch (error) {
-      console.error('IPTV authentication error:', error);
-      return false;
+    } catch (error: any) {
+      console.error('[IPTV] authentication error:', error?.message);
+      throw error;
     }
   },
 

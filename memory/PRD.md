@@ -46,6 +46,15 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 
 ## Completed Features
 
+### IPTV Login P0 Fix — Android Cleartext Traffic (2026-02-15) — v1.6.1
+- **Root cause identified**: Android since API 28 (Android 9, 2018) blocks all HTTP cleartext traffic by default. The IPTV `usesCleartextTraffic` flag was never set in `app.json` or the custom `withAndroidTV` plugin. Almost every Xtreme Codes IPTV server (e.g. `http://jackofclubs.vip:80`) is plain HTTP — so when users entered correct creds in the APK build, axios silently failed and the UI mis-reported "Invalid credentials".
+- **Fix (3 layers)**:
+  1. Added `"usesCleartextTraffic": true` to `app.json` → `expo.android` (EAS will set the manifest flag on next build).
+  2. Belt-and-suspenders: `plugins/withAndroidTV.js` now also sets `android:usesCleartextTraffic="true"` on the `<application>` tag directly.
+  3. `services/iptv.ts` `authenticate()` now: honours the protocol the user typed (HTTP-first when input starts with `http://`), distinguishes network errors from cred errors, and throws with a clear message so the UI can show "Cannot reach server" vs "Login failed (creds rejected)".
+- `app/settings.tsx` `handleIPTVLogin` now shows the precise error path to the user, including a tip about the URL format.
+- **Verified**: Web preview shows v1.6.1 and renders cleanly. ⚠️ The cleartext fix only takes effect on a **rebuilt APK** — user must run EAS build again.
+
 ### Service-Agnostic Debrid Resolution + In-App Changelog (2026-02-15) — v1.6.0
 - **Debrid resolution decoupled from Real-Debrid (P0 fix)**: `DebridDownloadDialog.tsx` rewritten to auto-detect the active debrid service (priority: TorBox → AllDebrid → Premiumize → Real-Debrid) and dispatch to the correct resolver. TorBox users can now stream cached + uncached torrents end-to-end without RD.
 - New per-service resolvers: `resolveTorbox`, `resolveRealDebrid`, `resolveAllDebrid`, `resolvePremiumize` — each handles the service's own magnet-add, polling, file-pick and unrestrict flow.
