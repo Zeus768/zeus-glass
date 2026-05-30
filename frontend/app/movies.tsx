@@ -345,7 +345,7 @@ export default function MoviesScreen() {
           {/* Rating Badge */}
           <View style={styles.movieInfo}>
             <View style={styles.ratingBadge}>
-              <Text style={styles.ratingText}>{item.vote_average.toFixed(1)}</Text>
+              <Text style={styles.ratingText}>{(item.vote_average ?? 0).toFixed(1)}</Text>
             </View>
           </View>
           {/* Focus Overlay */}

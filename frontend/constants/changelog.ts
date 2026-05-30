@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.6.3',
+    date: '2026-02-15',
+    highlights: [
+      'CRITICAL: Fixed boot crash "Cannot read property toFixed of undefined" — every rating badge now safely handles missing scores',
+      '⚡ CACHED badges are now BIG, gold and prominent — cached torrents glow with a gold border so you can spot them at a glance',
+      'Cached torrents are still auto-sorted to the top of the link picker',
+    ],
+  },
+  {
     version: '1.6.2',
     date: '2026-02-15',
     highlights: [

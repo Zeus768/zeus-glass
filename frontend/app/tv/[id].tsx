@@ -513,7 +513,7 @@ export default function TVShowDetailScreen() {
                           <View style={styles.episodeRating}>
                             <Ionicons name="star" size={12} color={theme.colors.gold} />
                             <Text style={styles.episodeRatingText}>
-                              {episode.vote_average.toFixed(1)}
+                              {(episode.vote_average ?? 0).toFixed(1)}
                             </Text>
                           </View>
                         ) : null}
@@ -643,6 +643,7 @@ export default function TVShowDetailScreen() {
                         focusable={true}
                         style={[
                           styles.linkCard, 
+                          torrent.cached && styles.linkCardCached,
                           isSelected && gettingStream && styles.linkCardActive,
                           isFocused && styles.linkCardFocused,
                         ]}
@@ -658,9 +659,9 @@ export default function TVShowDetailScreen() {
                         
                         <View style={[styles.linkInfo, { flex: 1 }]}>
                           <View style={torrent.cached ? styles.cachedBadge : styles.torrentBadge}>
-                            <Ionicons name={torrent.cached ? "flash" : "magnet"} size={12} color={torrent.cached ? "#000" : theme.colors.text} />
+                            <Ionicons name={torrent.cached ? "flash" : "magnet"} size={torrent.cached ? (isTV ? 16 : 14) : 12} color={torrent.cached ? "#000" : theme.colors.text} />
                             <Text style={torrent.cached ? styles.cachedText : styles.torrentText}>
-                              {torrent.cached ? 'CACHED' : 'TORRENT'}
+                              {torrent.cached ? '⚡ CACHED' : 'TORRENT'}
                             </Text>
                           </View>
                           <Text style={[styles.linkSource, isFocused && styles.linkSourceFocused]} numberOfLines={1}>
@@ -1286,15 +1287,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.gold,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
-    gap: 2,
+    paddingHorizontal: isTV ? 12 : 8,
+    paddingVertical: isTV ? 5 : 4,
+    borderRadius: theme.borderRadius.md,
+    gap: 4,
+    shadowColor: theme.colors.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 6,
   },
   cachedText: {
-    fontSize: 10,
-    fontWeight: theme.fontWeight.bold,
+    fontSize: isTV ? 14 : 12,
+    fontWeight: '900',
     color: '#000',
+    letterSpacing: 0.5,
+  },
+  linkCardCached: {
+    backgroundColor: 'rgba(255, 215, 0, 0.10)',
+    borderColor: theme.colors.gold,
+    borderWidth: isTV ? 3 : 2,
+    shadowColor: theme.colors.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 8,
   },
   uncachedBadge: {
     flexDirection: 'row',

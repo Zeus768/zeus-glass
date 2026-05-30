@@ -259,7 +259,7 @@ export default function TVShowsScreen() {
           )}
           <View style={styles.showInfo}>
             <View style={styles.ratingBadge}>
-              <Text style={styles.ratingText}>{item.vote_average.toFixed(1)}</Text>
+              <Text style={styles.ratingText}>{(item.vote_average ?? 0).toFixed(1)}</Text>
             </View>
           </View>
           {isFocused && (

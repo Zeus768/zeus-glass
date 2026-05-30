@@ -46,6 +46,10 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 
 ## Completed Features
 
+### Boot Crash Fix + Cached Torrent Visual Priority (2026-02-15) — v1.6.3
+- **CRITICAL P0 fix — Boot crash "Cannot read property 'toFixed' of undefined"**: Multiple rating-badge sites (`Carousel.tsx`, `FocusableCard.tsx`, `tv-shows.tsx`, `franchises.tsx`, `movies.tsx`, `providers.tsx`, `tv/[id].tsx`, `movie/[id].tsx`) called `item.vote_average.toFixed(1)` without null checking. Any item lacking a TMDB rating (e.g. newly-added Trakt watchlist items, ultra-new releases) caused a hard JS crash on Shield → boot error overlay. Wrapped every site with `(item.vote_average ?? 0).toFixed(1)`. Verified on web preview (Toy Story 5 now renders as `0.0` instead of crashing). Codebase-wide audit confirms zero remaining unsafe `.toFixed(` calls on dynamic data.
+- **Cached torrent visual priority (user-requested)**: ⚡ CACHED badges in the link picker (movie + TV detail pages) are now ~3× larger, bold gold, glow with a shadow, and include a lightning-bolt emoji ⚡. Added `linkCardCached` style so cached torrent rows get a glowing gold border and tinted background — instantly distinguishable from uncached. Cached items are still auto-sorted to the top of the picker.
+
 ### TV Guide Crash + IPTV Account Display Fixes (2026-02-15) — v1.6.2
 - **CRITICAL fix — TV Guide "Rendered more hooks than during the previous render" crash (P0)**: Root cause was `onViewableItemsChanged={useCallback(...)}` declared **inline as a JSX prop** in `tv-guide.tsx` (line 555). On the first render `loading===true` returned early with N hooks; on subsequent renders the inline `useCallback` was reached, adding an extra hook → React fatal. Hoisted the callback to `handleViewableItemsChanged` before the early `if (loading) return` block. Verified: TV Guide page now renders cleanly on web preview, no error boundary triggered.
 - **IPTV account card display fix**: Replaced the duplicated "in 12 days / 12 days" rows with a single row showing the actual expiry date + days-left: e.g. `6 Oct 2026 (235 days left)`. Lifetime accounts now show `Lifetime` in gold.

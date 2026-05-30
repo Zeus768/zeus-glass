@@ -80,7 +80,7 @@ export const FocusableCard: React.FC<FocusableCardProps> = memo(({
         {/* Rating Badge */}
         <View style={styles.ratingBadge}>
           <Text style={styles.ratingText}>
-            {item.vote_average.toFixed(1)}
+            {(item.vote_average ?? 0).toFixed(1)}
           </Text>
         </View>
         {/* Watched tick */}

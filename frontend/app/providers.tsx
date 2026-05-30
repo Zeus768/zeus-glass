@@ -144,7 +144,7 @@ export default function ProvidersScreen() {
           {item.vote_average > 0 && (
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={10} color="#FFD700" />
-              <Text style={styles.ratingText}>{item.vote_average.toFixed(1)}</Text>
+              <Text style={styles.ratingText}>{(item.vote_average ?? 0).toFixed(1)}</Text>
             </View>
           )}
           {/* Streaming badge */}
