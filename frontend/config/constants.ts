@@ -39,6 +39,14 @@ export const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://zeus-
 export const APP_NAME = 'Zeus Glass';
 export const APP_SCHEME = 'zeusglass';
 
+// Update Checker — GitHub Releases API
+// Set this to your GitHub repo in "owner/repo" format (e.g. "myname/zeus-glass").
+// Leave EMPTY to disable the auto-update check entirely.
+// The app will hit https://api.github.com/repos/<this>/releases/latest on launch,
+// compare tag_name (without leading 'v') to the current app version, and offer
+// the first .apk asset as a download if a newer version is found.
+export const GITHUB_RELEASES_REPO: string = '';
+
 // Quality options
 export const QUALITY_OPTIONS = [
   { label: '4K', value: '2160p', priority: 1 },

@@ -23,7 +23,9 @@ import { theme, isTV } from '../constants/theme';
 import { BACKEND_URL } from '../config/constants';
 import { QRAuthModal } from '../components/QRAuthModal';
 import { ChangelogModal } from '../components/ChangelogModal';
+import { UpdateAvailableModal } from '../components/UpdateAvailableModal';
 import { versionService } from '../services/versionService';
+import { updateChecker, UpdateInfo } from '../services/updateChecker';
 import { useAuthStore } from '../store/authStore';
 import { iptvService } from '../services/iptv';
 import { errorLogService, LogEntry } from '../services/errorLogService';
@@ -66,7 +68,38 @@ export default function SettingsScreen() {
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceType>('real-debrid');
   const [changelogVisible, setChangelogVisible] = useState(false);
+  const [updateModalVisible, setUpdateModalVisible] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const appVersion = versionService.getCurrentVersion();
+
+  const handleCheckUpdate = async () => {
+    if (!updateChecker.isConfigured()) {
+      Alert.alert(
+        'Update Check Disabled',
+        'No GitHub repo is configured for auto-updates. Edit GITHUB_RELEASES_REPO in /app/frontend/config/constants.ts (format: "owner/repo") and rebuild the APK to enable this feature.'
+      );
+      return;
+    }
+    setCheckingUpdate(true);
+    try {
+      const info = await updateChecker.checkForUpdate(true);
+      if (!info) {
+        Alert.alert('Update Check Failed', 'Could not reach GitHub. Check your internet connection and try again.');
+        return;
+      }
+      setUpdateInfo(info);
+      if (info.hasUpdate) {
+        setUpdateModalVisible(true);
+      } else {
+        Alert.alert("You're up to date!", `Zeus Glass v${info.currentVersion} is the latest version.`);
+      }
+    } catch (e: any) {
+      Alert.alert('Update Check Failed', e?.message || 'Unknown error');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
   const [iptvModalVisible, setIptvModalVisible] = useState(false);
   const [iptvDomain, setIptvDomain] = useState('');
   const [iptvUsername, setIptvUsername] = useState('');
@@ -1563,6 +1596,7 @@ export default function SettingsScreen() {
     { type: 'section-header', title: 'About' },
     { type: 'info-text', text: `Zeus Glass v${appVersion} • Premium Streaming Platform` },
     { type: 'pressable-button', key: 'view-changelog', label: "What's New / Changelog", icon: 'sparkles-outline', iconColor: theme.colors.primary, onPress: () => setChangelogVisible(true) },
+    { type: 'pressable-button', key: 'check-update', label: checkingUpdate ? 'Checking for updates...' : 'Check for Updates', icon: 'cloud-download-outline', iconColor: theme.colors.success, onPress: handleCheckUpdate },
   ];
 
   const renderSettingsItem = ({ item }: { item: SettingsItem }) => {
@@ -1690,6 +1724,14 @@ export default function SettingsScreen() {
       <ChangelogModal
         visible={changelogVisible}
         onClose={() => setChangelogVisible(false)}
+      />
+
+      {/* Update Available Modal (manual check from Settings → About) */}
+      <UpdateAvailableModal
+        visible={updateModalVisible}
+        info={updateInfo}
+        onClose={() => setUpdateModalVisible(false)}
+        showSkip={false}
       />
 
       {/* IPTV Login Modal */}

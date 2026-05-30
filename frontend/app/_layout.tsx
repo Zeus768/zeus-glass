@@ -9,6 +9,8 @@ import { initWatchedStore } from '../stores/useWatchedStore';
 import { debugTracker } from '../services/debugTracker';
 import { versionService } from '../services/versionService';
 import { ChangelogModal } from '../components/ChangelogModal';
+import { updateChecker, UpdateInfo } from '../services/updateChecker';
+import { UpdateAvailableModal } from '../components/UpdateAvailableModal';
 import { BackHandler } from 'react-native';
 import { 
   Platform, 
@@ -393,6 +395,8 @@ export default function TabLayout() {
   const [showDonation, setShowDonation] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelogSince, setChangelogSince] = useState<string | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdate, setShowUpdate] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -420,6 +424,19 @@ export default function TabLayout() {
         if (updated) {
           setChangelogSince(lastSeen);
           setShowChangelog(true);
+        }
+      } catch {}
+      // Async update check (cooldown-throttled; skipped if user dismissed this version)
+      try {
+        if (updateChecker.isConfigured()) {
+          const info = await updateChecker.checkForUpdate(false);
+          if (info?.hasUpdate && info.latestVersion) {
+            const dismissed = await updateChecker.isVersionDismissed(info.latestVersion);
+            if (!dismissed) {
+              setUpdateInfo(info);
+              setShowUpdate(true);
+            }
+          }
         }
       } catch {}
     };
@@ -550,6 +567,14 @@ export default function TabLayout() {
             await versionService.markCurrentVersionSeen();
           } catch {}
         }}
+      />
+
+      {/* Update Available Modal - auto-pops on launch when a newer release exists */}
+      <UpdateAvailableModal
+        visible={showUpdate}
+        info={updateInfo}
+        onClose={() => setShowUpdate(false)}
+        showSkip
       />
     </View>
     </AppErrorBoundary>

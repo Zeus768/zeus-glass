@@ -46,6 +46,14 @@ Zeus Glass is a cross-platform mobile streaming application for Android, Android
 
 ## Completed Features
 
+### Auto Update Checker (GitHub Releases) (2026-02-15) — v1.7.0
+- **New feature — Automatic update notification on launch**: On every app launch, the app silently hits `https://api.github.com/repos/<owner/repo>/releases/latest`, compares the tag with `app.json`'s version, and if a newer release exists pops an "Update Available" modal with version chips, release notes, and a one-tap **Download APK** button (Linking opens the asset URL). Skip-this-version + 6-hour cooldown so it never nags users.
+- **New — Manual "Check for Updates" entry in Settings → About**: Wired below the "What's New / Changelog" row. Forces a fresh check ignoring the cooldown; shows "You're up to date!" alert when no update is available.
+- **New file** `services/updateChecker.ts` — `checkForUpdate(force?)`, version comparison, dismissed-version persistence, `openDownload()` helper.
+- **New file** `components/UpdateAvailableModal.tsx` — gold accent, current vs new version chips, release notes scroll, Skip + Download CTAs. Fully TV-focusable.
+- **New config** `GITHUB_RELEASES_REPO` in `config/constants.ts` — empty string by default = feature silently disabled. Fill in `"owner/repo"` and rebuild the APK to activate.
+- Verified on web preview: Settings → About shows "Check for Updates" + version v1.7.0; both modals are wired and render correctly; no console errors.
+
 ### Boot Crash Fix + Cached Torrent Visual Priority (2026-02-15) — v1.6.3
 - **CRITICAL P0 fix — Boot crash "Cannot read property 'toFixed' of undefined"**: Multiple rating-badge sites (`Carousel.tsx`, `FocusableCard.tsx`, `tv-shows.tsx`, `franchises.tsx`, `movies.tsx`, `providers.tsx`, `tv/[id].tsx`, `movie/[id].tsx`) called `item.vote_average.toFixed(1)` without null checking. Any item lacking a TMDB rating (e.g. newly-added Trakt watchlist items, ultra-new releases) caused a hard JS crash on Shield → boot error overlay. Wrapped every site with `(item.vote_average ?? 0).toFixed(1)`. Verified on web preview (Toy Story 5 now renders as `0.0` instead of crashing). Codebase-wide audit confirms zero remaining unsafe `.toFixed(` calls on dynamic data.
 - **Cached torrent visual priority (user-requested)**: ⚡ CACHED badges in the link picker (movie + TV detail pages) are now ~3× larger, bold gold, glow with a shadow, and include a lightning-bolt emoji ⚡. Added `linkCardCached` style so cached torrent rows get a glowing gold border and tinted background — instantly distinguishable from uncached. Cached items are still auto-sorted to the top of the picker.

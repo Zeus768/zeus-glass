@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.7.0',
+    date: '2026-02-15',
+    highlights: [
+      'New: Automatic update check on launch — when a newer release is on GitHub, you get an "Update Available" popup with a one-tap Download APK button',
+      'New: "Check for Updates" button in Settings → About — manually trigger the check anytime',
+      'Skip-this-version + 6-hour cooldown so the popup never nags you',
+      'Config: set GITHUB_RELEASES_REPO in config/constants.ts to your repo (owner/repo). Empty = disabled.',
+    ],
+  },
+  {
     version: '1.6.3',
     date: '2026-02-15',
     highlights: [
